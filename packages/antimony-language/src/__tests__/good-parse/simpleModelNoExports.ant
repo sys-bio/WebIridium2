@@ -1,0 +1,6 @@
+model Test
+    A + B -> C; 0.5*k1
+
+    k1 = 0.5
+    A = 3; B = 3; C = 0
+end

@@ -6,7 +6,6 @@ import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { SumContext } from "./AntimonyParser";
 import { ProductContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
-import { ExpContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
@@ -28,6 +27,7 @@ import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { CompartmentSpecifierContext } from "./AntimonyParser";
+import { AssignmentContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ParameterListContext } from "./AntimonyParser";
@@ -77,19 +77,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitPower?: (ctx: PowerContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `exp`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterExp?: (ctx: ExpContext) => void;
-	/**
-	 * Exit a parse tree produced by the `exp`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitExp?: (ctx: ExpContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `group`
@@ -337,6 +324,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitCompartmentSpecifier?: (ctx: CompartmentSpecifierContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.assignment`.
+	 * @param ctx the parse tree
+	 */
+	enterAssignment?: (ctx: AssignmentContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.assignment`.
+	 * @param ctx the parse tree
+	 */
+	exitAssignment?: (ctx: AssignmentContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.formula`.

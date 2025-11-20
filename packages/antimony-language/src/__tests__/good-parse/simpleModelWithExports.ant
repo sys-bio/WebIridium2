@@ -1,4 +1,4 @@
-model Test(A, B)
+model Test(A,B)
     A + B -> C; 0.5*k1
 
     k1 = 0.5

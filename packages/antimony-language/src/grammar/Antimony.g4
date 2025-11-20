@@ -1,15 +1,12 @@
 grammar Antimony;
 import AntimonyLexer;
 
-root : (topLevelStatement (statementSeparator topLevelStatement)*)?;
-statementSeparator : (';' | NEWLINE)*;
+root : (topLevelStatement? statementSeparator)*;
+statementSeparator : ';' | NEWLINE;
 topLevelStatement : model | statement;
 
-statementList : (statement (statementSeparator statement)*)?;
-statement : reaction;
-
-model : MODEL '*'? NAME exportList? statementList END;
-exportList : '(' (variable (',' variable)* )? ')';
+statementList : (statement? statementSeparator)+;
+statement : reaction | assignment;
 
 // e.g
 // model Test(A, B)

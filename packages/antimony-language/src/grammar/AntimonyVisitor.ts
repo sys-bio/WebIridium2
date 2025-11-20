@@ -6,7 +6,6 @@ import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 import { SumContext } from "./AntimonyParser";
 import { ProductContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
-import { ExpContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
@@ -28,6 +27,7 @@ import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { CompartmentSpecifierContext } from "./AntimonyParser";
+import { AssignmentContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ParameterListContext } from "./AntimonyParser";
@@ -65,14 +65,6 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitPower?: (ctx: PowerContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `exp`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitExp?: (ctx: ExpContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `group`
@@ -228,6 +220,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitCompartmentSpecifier?: (ctx: CompartmentSpecifierContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.assignment`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAssignment?: (ctx: AssignmentContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.formula`.
