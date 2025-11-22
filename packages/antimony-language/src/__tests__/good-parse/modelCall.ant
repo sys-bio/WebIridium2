@@ -1,0 +1,13 @@
+model Animal(BunnyRate, WolfRate)
+    BunnyRate = 30
+    WolfRate = 2
+    C = 3000
+end
+
+T: Animal(EatRate, DieRate)
+
+Bunny = 300
+Wolf = 50
+
+Bunny -> Wolf; EatRate
+Wolf ->; T.WolfRate

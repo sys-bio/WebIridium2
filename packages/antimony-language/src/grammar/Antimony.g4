@@ -6,7 +6,10 @@ statementSeparator : ';' | NEWLINE;
 topLevelStatement : model | statement;
 
 statementList : (statement? statementSeparator)+;
-statement : reaction | assignment;
+statement : reaction
+    | assignment
+    | modelCall
+    ;
 
 // e.g
 // model Test(A, B)
@@ -48,3 +51,7 @@ variable : NAME
     | variable '.' NAME
     | '$' variable
     ;
+
+// the syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
+// as far as I can tell
+modelCall : reactionName NAME exportList;
