@@ -31,8 +31,8 @@ compartmentSpecifier : IN NAME;
 assignment : NAME '=' formula;
 
 formula : formula ('+' | '-') formula #sum
-    | formula ('*' | '/') formula #product
-    | formula '^' #power
+    | formula ('*' | '/' | '%') formula #productOrMod
+    | <assoc=right> formula '^' #power
     // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
     | '(' formula ')' #group
     | formula LOGICAL formula #logical
