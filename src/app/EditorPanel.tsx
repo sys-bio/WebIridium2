@@ -25,6 +25,8 @@ import {
 } from "@/globals/slider";
 import { monacoThemes } from "@/features/editor/monacoThemes";
 
+const OWNER_NAME = "iridium";
+
 const SEMANTIC_CHECKER_DEBOUNCE = 100; // in ms
 
 const VARIABLE_CHANGED_WARNING_DEBOUNCE = 10_000; // in ms
@@ -213,13 +215,34 @@ const EditorPanel = () => {
     const editor = editorRef.current;
     if (!editor) return;
 
+    const model = editor.getModel();
+    if (!model) return;
+
     if (semanticCheckerTimerIdRef.current) {
       clearTimeout(semanticCheckerTimerIdRef.current);
     }
 
     semanticCheckerTimerIdRef.current = window.setTimeout(() => {
       semanticCheckerTimerIdRef.current = null;
-      lint(editor.getValue());
+
+      const lints = lint(model.getValue());
+
+      const markers: monaco.editor.IMarkerData[] = [];
+      for (const lint of lints) {
+        markers.push({
+          message: lint.message,
+          severity:
+            lint.severity === "error"
+              ? monaco.MarkerSeverity.Error
+              : monaco.MarkerSeverity.Warning,
+          startLineNumber: lint.line,
+          startColumn: lint.column,
+          endLineNumber: lint.line,
+          endColumn: lint.column,
+        });
+      }
+
+      monaco.editor.setModelMarkers(model, OWNER_NAME, markers);
     }, SEMANTIC_CHECKER_DEBOUNCE);
   };
 

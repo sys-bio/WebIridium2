@@ -12,7 +12,7 @@ const parse = (code: string) => {
   lexer.removeErrorListeners();
   parser.removeErrorListeners();
 
-  const errorHandler: ANTLRErrorListener<unknown> = {
+  const errorListener: ANTLRErrorListener<unknown> = {
     syntaxError: (
       _recognizer,
       offendingSymbol,
@@ -27,8 +27,8 @@ const parse = (code: string) => {
     },
   };
 
-  lexer.addErrorListener(errorHandler);
-  parser.addErrorListener(errorHandler);
+  lexer.addErrorListener(errorListener);
+  parser.addErrorListener(errorListener);
 
   parser.root();
 };
