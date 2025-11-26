@@ -3,8 +3,11 @@
 
 import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 
+import { NameContext } from "./AntimonyParser";
+import { PropertyContext } from "./AntimonyParser";
+import { BoundarySpeciesContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
-import { ProductContext } from "./AntimonyParser";
+import { ProductOrModContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
@@ -44,6 +47,30 @@ import { ModelCallContext } from "./AntimonyParser";
  */
 export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	/**
+	 * Visit a parse tree produced by the `name`
+	 * labeled alternative in `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitName?: (ctx: NameContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `property`
+	 * labeled alternative in `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitProperty?: (ctx: PropertyContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `boundarySpecies`
+	 * labeled alternative in `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitBoundarySpecies?: (ctx: BoundarySpeciesContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by the `sum`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
@@ -52,12 +79,12 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitSum?: (ctx: SumContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `product`
+	 * Visit a parse tree produced by the `productOrMod`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitProduct?: (ctx: ProductContext) => Result;
+	visitProductOrMod?: (ctx: ProductOrModContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `power`

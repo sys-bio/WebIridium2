@@ -1,7 +1,7 @@
 grammar Antimony;
 import AntimonyLexer;
 
-root : (topLevelStatement? statementSeparator)*;
+root : topLevelStatement? (statementSeparator topLevelStatement?)*;
 statementSeparator : ';' | NEWLINE;
 topLevelStatement : model | statement;
 
@@ -32,14 +32,14 @@ assignment : NAME '=' formula;
 
 formula : formula ('+' | '-') formula #sum
     | formula ('*' | '/' | '%') formula #productOrMod
-    | <assoc=right> formula '^' #power
+    | <assoc=right> formula '^' formula #power
     // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
     | '(' formula ')' #group
     | formula LOGICAL formula #logical
     | formula COMPARE formula #compare
     | variable #var
-    | '-' NUMBER #negative
-    | '+' NUMBER #positive
+    | '-' formula #negative
+    | '+' formula #positive
     | NUMBER #number
     | functionCall #call
     ;
@@ -47,11 +47,11 @@ formula : formula ('+' | '-') formula #sum
 functionCall : NAME '(' parameterList? ')';
 parameterList : formula (',' formula)*;
 
-variable : NAME
-    | variable '.' NAME
-    | '$' variable
+variable : NAME #name
+    | variable '.' NAME #property
+    | '$' variable #boundarySpecies
     ;
 
-// the syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
-// as far as I can tell
+// The syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
+// as far as I can tell. Still compiles, however.
 modelCall : reactionName NAME exportList;

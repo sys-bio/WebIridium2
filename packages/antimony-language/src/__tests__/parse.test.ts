@@ -52,6 +52,32 @@ describe("good models", () => {
   }
 });
 
+describe("examples", () => {
+  const exampleModels: Record<string, string> = import.meta.glob(
+    // feels wrong to grab files from a different package, but whatever
+    "@/assets/examples/*.ant",
+    {
+      eager: true,
+      query: "?raw",
+      import: "default",
+    },
+  );
+
+  for (const [name, code] of Object.entries(exampleModels)) {
+    it(`${name} should not error`, () => {
+      expect(() => {
+        parse(code);
+      }).not.toThrow();
+    });
+
+    it(`${name} should error when prefixed with "model"`, () => {
+      expect(() => {
+        parse("model\n" + code);
+      }).toThrow();
+    });
+  }
+});
+
 describe("bad models", () => {
   const badModels: Record<string, string> = import.meta.glob(
     "./bad-parse/*.ant",
@@ -63,7 +89,7 @@ describe("bad models", () => {
   );
 
   for (const [name, code] of Object.entries(badModels)) {
-    it(`${name} should not error`, () => {
+    it(`${name} should error`, () => {
       expect(() => {
         parse(code);
       }).toThrow();
