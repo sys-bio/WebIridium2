@@ -1,5 +1,5 @@
 {
-  "name": "antimony-language",
+  "name": "@sys-bio/antimony-language",
   "description": "antimony language analysis library",
   "version": "1.0.0",
   "type": "module",
@@ -8,5 +8,6 @@
   },
   "devDependencies": {
     "antlr4ts-cli": "^0.5.0-alpha.4"
-  }
+  },
+  "main": "src/index.ts"
 }

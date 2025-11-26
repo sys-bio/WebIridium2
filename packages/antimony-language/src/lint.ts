@@ -14,6 +14,6 @@ export type Lint = {
 export const isMoreSevere = (lint1: Lint, lint2: Lint): boolean =>
   lintSeverityValues[lint1.severity] > lintSeverityValues[lint2.severity];
 
-export const lint = (root: RootContext): Lint[] => {
+export const lint = (code: string): Lint[] => {
   return [];
 };
