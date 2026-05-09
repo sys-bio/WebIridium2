@@ -22,4 +22,4 @@ LOGICAL : '&&' | '||';
 NEWLINE      : [\n\r];
 WHITESPACE   : [ \t\r\u000C] -> channel(HIDDEN);
 COMMENT      : '/*' .*? '*/' -> channel(HIDDEN);
-LINE_COMMENT : '//' ~[\r\n]* -> channel(HIDDEN);
+LINE_COMMENT : ('//' ~[\r\n]* | '#' ~[\r\n]*) -> channel(HIDDEN);

@@ -888,7 +888,7 @@ export class AntimonyParser extends Parser {
 
 					case 2:
 						{
-						_localctx = new ProductOrModContext(new FormulaContext(_parentctx, _parentState));
+						_localctx = new ProductContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 159;
 						if (!(this.precpred(this._ctx, 10))) {
@@ -1094,7 +1094,7 @@ export class AntimonyParser extends Parser {
 				break;
 			case AntimonyParser.T__13:
 				{
-				_localctx = new BoundarySpeciesContext(_localctx);
+				_localctx = new ConstantContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
 				this.state = 193;
@@ -1118,7 +1118,7 @@ export class AntimonyParser extends Parser {
 					_prevctx = _localctx;
 					{
 					{
-					_localctx = new PropertyContext(new VariableContext(_parentctx, _parentState));
+					_localctx = new AccessContext(new VariableContext(_parentctx, _parentState));
 					this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_variable);
 					this.state = 197;
 					if (!(this.precpred(this._ctx, 2))) {
@@ -1888,7 +1888,7 @@ export class SumContext extends FormulaContext {
 		}
 	}
 }
-export class ProductOrModContext extends FormulaContext {
+export class ProductContext extends FormulaContext {
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {
@@ -1904,20 +1904,20 @@ export class ProductOrModContext extends FormulaContext {
 	}
 	// @Override
 	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterProductOrMod) {
-			listener.enterProductOrMod(this);
+		if (listener.enterProduct) {
+			listener.enterProduct(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitProductOrMod) {
-			listener.exitProductOrMod(this);
+		if (listener.exitProduct) {
+			listener.exitProduct(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitProductOrMod) {
-			return visitor.visitProductOrMod(this);
+		if (visitor.visitProduct) {
+			return visitor.visitProduct(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
@@ -2312,7 +2312,7 @@ export class NameContext extends VariableContext {
 		}
 	}
 }
-export class PropertyContext extends VariableContext {
+export class AccessContext extends VariableContext {
 	public variable(): VariableContext {
 		return this.getRuleContext(0, VariableContext);
 	}
@@ -2323,26 +2323,26 @@ export class PropertyContext extends VariableContext {
 	}
 	// @Override
 	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterProperty) {
-			listener.enterProperty(this);
+		if (listener.enterAccess) {
+			listener.enterAccess(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitProperty) {
-			listener.exitProperty(this);
+		if (listener.exitAccess) {
+			listener.exitAccess(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitProperty) {
-			return visitor.visitProperty(this);
+		if (visitor.visitAccess) {
+			return visitor.visitAccess(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
 	}
 }
-export class BoundarySpeciesContext extends VariableContext {
+export class ConstantContext extends VariableContext {
 	public variable(): VariableContext {
 		return this.getRuleContext(0, VariableContext);
 	}
@@ -2352,20 +2352,20 @@ export class BoundarySpeciesContext extends VariableContext {
 	}
 	// @Override
 	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterBoundarySpecies) {
-			listener.enterBoundarySpecies(this);
+		if (listener.enterConstant) {
+			listener.enterConstant(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitBoundarySpecies) {
-			listener.exitBoundarySpecies(this);
+		if (listener.exitConstant) {
+			listener.exitConstant(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitBoundarySpecies) {
-			return visitor.visitBoundarySpecies(this);
+		if (visitor.visitConstant) {
+			return visitor.visitConstant(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

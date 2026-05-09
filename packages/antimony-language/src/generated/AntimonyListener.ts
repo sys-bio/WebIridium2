@@ -4,10 +4,10 @@
 import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 
 import { NameContext } from "./AntimonyParser";
-import { PropertyContext } from "./AntimonyParser";
-import { BoundarySpeciesContext } from "./AntimonyParser";
+import { AccessContext } from "./AntimonyParser";
+import { ConstantContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
-import { ProductOrModContext } from "./AntimonyParser";
+import { ProductContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
@@ -57,30 +57,30 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitName?: (ctx: NameContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `property`
+	 * Enter a parse tree produced by the `access`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 */
-	enterProperty?: (ctx: PropertyContext) => void;
+	enterAccess?: (ctx: AccessContext) => void;
 	/**
-	 * Exit a parse tree produced by the `property`
+	 * Exit a parse tree produced by the `access`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 */
-	exitProperty?: (ctx: PropertyContext) => void;
+	exitAccess?: (ctx: AccessContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `boundarySpecies`
+	 * Enter a parse tree produced by the `constant`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 */
-	enterBoundarySpecies?: (ctx: BoundarySpeciesContext) => void;
+	enterConstant?: (ctx: ConstantContext) => void;
 	/**
-	 * Exit a parse tree produced by the `boundarySpecies`
+	 * Exit a parse tree produced by the `constant`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 */
-	exitBoundarySpecies?: (ctx: BoundarySpeciesContext) => void;
+	exitConstant?: (ctx: ConstantContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `sum`
@@ -96,17 +96,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitSum?: (ctx: SumContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `productOrMod`
+	 * Enter a parse tree produced by the `product`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 */
-	enterProductOrMod?: (ctx: ProductOrModContext) => void;
+	enterProduct?: (ctx: ProductContext) => void;
 	/**
-	 * Exit a parse tree produced by the `productOrMod`
+	 * Exit a parse tree produced by the `product`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 */
-	exitProductOrMod?: (ctx: ProductOrModContext) => void;
+	exitProduct?: (ctx: ProductContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `power`

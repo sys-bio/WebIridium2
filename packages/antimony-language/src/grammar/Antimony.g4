@@ -31,7 +31,7 @@ compartmentSpecifier : IN NAME;
 assignment : NAME '=' formula;
 
 formula : formula ('+' | '-') formula #sum
-    | formula ('*' | '/' | '%') formula #productOrMod
+    | formula ('*' | '/' | '%') formula #product
     | <assoc=right> formula '^' formula #power
     // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
     | '(' formula ')' #group
@@ -48,8 +48,8 @@ functionCall : NAME '(' parameterList? ')';
 parameterList : formula (',' formula)*;
 
 variable : NAME #name
-    | variable '.' NAME #property
-    | '$' variable #boundarySpecies
+    | variable '.' NAME #access
+    | '$' variable #constant
     ;
 
 // The syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning

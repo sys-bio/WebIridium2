@@ -1,6 +1,6 @@
 import { ANTLRErrorListener, CharStreams, CommonTokenStream } from "antlr4ts";
-import { AntimonyParser, RootContext } from "./grammar/AntimonyParser.ts";
-import { AntimonyLexer } from "./grammar/AntimonyLexer.ts";
+import { AntimonyParser, RootContext } from "./generated/AntimonyParser.ts";
+import { AntimonyLexer } from "./generated/AntimonyLexer.ts";
 
 const lintSeverityValues = {
   warning: 1,

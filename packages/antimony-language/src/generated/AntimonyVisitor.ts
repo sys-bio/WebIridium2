@@ -4,10 +4,10 @@
 import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 
 import { NameContext } from "./AntimonyParser";
-import { PropertyContext } from "./AntimonyParser";
-import { BoundarySpeciesContext } from "./AntimonyParser";
+import { AccessContext } from "./AntimonyParser";
+import { ConstantContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
-import { ProductOrModContext } from "./AntimonyParser";
+import { ProductContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
@@ -55,20 +55,20 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitName?: (ctx: NameContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `property`
+	 * Visit a parse tree produced by the `access`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitProperty?: (ctx: PropertyContext) => Result;
+	visitAccess?: (ctx: AccessContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `boundarySpecies`
+	 * Visit a parse tree produced by the `constant`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitBoundarySpecies?: (ctx: BoundarySpeciesContext) => Result;
+	visitConstant?: (ctx: ConstantContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `sum`
@@ -79,12 +79,12 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitSum?: (ctx: SumContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `productOrMod`
+	 * Visit a parse tree produced by the `product`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitProductOrMod?: (ctx: ProductOrModContext) => Result;
+	visitProduct?: (ctx: ProductContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `power`

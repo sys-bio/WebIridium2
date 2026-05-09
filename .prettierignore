@@ -7,5 +7,5 @@ src/vendor/
 DEVINSTRUCTIONS/**/*.md
 manual/theme/**/*
 manual/book/**/*
-packages/antimony-language/src/grammar/
+packages/antimony-language/src/generated/
 packages/cvode-simulator/build/

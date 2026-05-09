@@ -17,7 +17,7 @@ export default tseslint.config(
       "coverage",
       "src/vendor",
       "src/features/editor/language-handler",
-      "packages/antimony-language/src/grammar",
+      "packages/antimony-language/src/generated",
       "packages/cvode-simulator/build",
     ],
   },
