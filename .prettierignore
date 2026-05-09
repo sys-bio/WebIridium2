@@ -8,3 +8,4 @@ DEVINSTRUCTIONS/**/*.md
 manual/theme/**/*
 manual/book/**/*
 packages/antimony-language/src/grammar/
+packages/cvode-simulator/build/

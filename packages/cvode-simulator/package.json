@@ -1,0 +1,6 @@
+{
+  "name": "cvode-simulator",
+  "description": "simulator for iridium using CVODE and WASM JIT",
+  "version": "0.0.0",
+  "type": "module"
+}

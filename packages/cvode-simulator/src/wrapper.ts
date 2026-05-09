@@ -1,0 +1,155 @@
+import createBindings from "../build/cvodeBindings.js";
+import type { MainModule, Model } from "../build/cvodeBindings.d.ts";
+// import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
+
+export interface FloatingSpeciesSpec {
+  name: string;
+  initialValue: number;
+}
+
+export interface ParameterSpec {
+  name: string;
+  initialValue: number;
+}
+
+export interface BoundarySpeciesSpec {
+  name: string;
+  initialValue: number;
+}
+
+export interface ModelSpec {
+  floatingSpecies: FloatingSpeciesSpec[];
+  boundarySpecies: BoundarySpeciesSpec[];
+  parameters: ParameterSpec[];
+  rhsWasm: ArrayBuffer;
+}
+
+interface InternalModel {
+  spec: ModelSpec;
+
+  /** The model on the C-side. */
+  binding: Model;
+}
+
+class Wrapper {
+  #bindings: MainModule;
+  #internalModel: InternalModel | undefined;
+
+  constructor(bindings: MainModule) {
+    this.#bindings = bindings;
+  }
+
+  getModel(): ModelSpec | undefined {
+    return this.#internalModel?.spec;
+  }
+
+  setModel(spec: ModelSpec): void {
+    this.#internalModel?.binding?.delete();
+
+    const floatingSpeciesVector = new this.#bindings.DoubleVector();
+    for (const v of spec.floatingSpecies)
+      floatingSpeciesVector.push_back(v.initialValue);
+
+    const boundarySpeciesVector = new this.#bindings.DoubleVector();
+    for (const v of spec.boundarySpecies)
+      boundarySpeciesVector.push_back(v.initialValue);
+
+    const parametersVector = new this.#bindings.DoubleVector();
+    for (const v of spec.parameters) parametersVector.push_back(v.initialValue);
+
+    // eslint-disable-next-line
+    const funcPtr: number = this.#bindings.addFunction(() => {
+      return 0;
+    }, "vi");
+
+    this.#internalModel = {
+      spec,
+      binding: new this.#bindings.Model(
+        floatingSpeciesVector,
+        boundarySpeciesVector,
+        parametersVector,
+        funcPtr,
+      ),
+    };
+
+    // ok to delete now since they got copied into the bindings model
+    floatingSpeciesVector.delete();
+    boundarySpeciesVector.delete();
+    parametersVector.delete();
+  }
+
+  #checkModel(): InternalModel {
+    if (!this.#internalModel) throw new Error("model not loaded");
+    return this.#internalModel;
+  }
+
+  simulate(
+    startTime: number,
+    endTime: number,
+    numPoints: number,
+  ): Float64Array {
+    const model = this.#checkModel();
+
+    const array = model.binding.SimulateTimeCourse(
+      startTime,
+      endTime,
+      numPoints,
+    );
+
+    // copy
+    return array.slice();
+  }
+
+  resultToString(result: Float64Array): string {
+    const model = this.#checkModel();
+
+    const builder: string[] = [];
+
+    for (const floating of model.spec.floatingSpecies) {
+      builder.push(floating.name);
+      builder.push(",");
+    }
+
+    for (const boundary of model.spec.boundarySpecies) {
+      builder.push(boundary.name);
+      builder.push(",");
+    }
+
+    for (const parameter of model.spec.parameters) {
+      builder.push(parameter.name);
+      builder.push(",");
+    }
+
+    builder.push("Time\n");
+
+    const cols = model.binding.num_variables();
+
+    for (let i = 0; i < result.length; i++) {
+      builder.push(result[i].toString());
+
+      if (i < result.length - 1) {
+        if ((i + 1) % cols === 0) {
+          builder.push("\n");
+        } else {
+          builder.push(",");
+        }
+      }
+    }
+
+    return builder.join("");
+  }
+}
+
+export const createWrapper = async (): Promise<Wrapper> => {
+  const locateFile = (name: string, root: string) => {
+    console.log("root:", root);
+    const isNode = typeof process === "object" && !process.browser;
+    if (name.endsWith(".wasm")) {
+      return isNode ? root + "cvodeBindings.wasm" : "stub"; // CvodeBindingsWasmUrl;
+    }
+    return root + name;
+  };
+
+  const bindings = await createBindings({ locateFile });
+  return new Wrapper(bindings);
+};

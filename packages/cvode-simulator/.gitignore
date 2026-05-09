@@ -1,0 +1,7 @@
+build/**/*
+# we want to keep the wrapper
+!build/cvodeBindings*
+
+# tooling
+.clangd
+.cache
