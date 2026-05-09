@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import * as monaco from "monaco-editor";
-import { lint } from "@sys-bio/antimony-language";
 
 import styles from "./EditorPanel.module.css";
 import { useToast } from "@/components/Toast";
@@ -18,6 +17,7 @@ import {
   createLoadPresetProvider,
 } from "@/features/editor/presetComments";
 import { type SettableVariable } from "@/features/simulation/Simulator";
+import ModelSemanticsChecker from "@/features/editor/language-handler/ModelSemanticChecker";
 import {
   areSlidersActiveAtom,
   loadPresetAndSimulateAtom,
@@ -25,9 +25,8 @@ import {
 } from "@/globals/slider";
 import { monacoThemes } from "@/features/editor/monacoThemes";
 
-const OWNER_NAME = "iridium";
-
 const SEMANTIC_CHECKER_DEBOUNCE = 100; // in ms
+const ANNOTATION_COLOR = "Red";
 
 const VARIABLE_CHANGED_WARNING_DEBOUNCE = 10_000; // in ms
 
@@ -48,7 +47,9 @@ const EditorPanel = () => {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const decorationsRef = useRef<string[]>([]);
   const semanticCheckerTimerIdRef = useRef<number | null>(null);
+  const areAnnotationsEnabledRef = useRef(false);
 
   const canWarnChangedRef = useRef(true); // used for debouncing the warning when a variable with a slider on changes
   const onEditorChangeRef = useRef<() => Promise<void>>(async () => {});
@@ -224,25 +225,13 @@ const EditorPanel = () => {
 
     semanticCheckerTimerIdRef.current = window.setTimeout(() => {
       semanticCheckerTimerIdRef.current = null;
-
-      const lints = lint(model.getValue());
-
-      const markers: monaco.editor.IMarkerData[] = [];
-      for (const lint of lints) {
-        markers.push({
-          message: lint.message,
-          severity:
-            lint.severity === "error"
-              ? monaco.MarkerSeverity.Error
-              : monaco.MarkerSeverity.Warning,
-          startLineNumber: lint.line,
-          startColumn: lint.column,
-          endLineNumber: lint.line,
-          endColumn: lint.column,
-        });
-      }
-
-      monaco.editor.setModelMarkers(model, OWNER_NAME, markers);
+      ModelSemanticsChecker(
+        editor,
+        areAnnotationsEnabledRef.current,
+        true,
+        ANNOTATION_COLOR,
+        decorationsRef.current,
+      );
     }, SEMANTIC_CHECKER_DEBOUNCE);
   };
 
