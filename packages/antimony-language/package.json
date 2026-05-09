@@ -1,5 +1,5 @@
 {
-  "name": "@sys-bio/antimony-language",
+  "name": "antimony-language",
   "description": "antimony language analysis library",
   "version": "1.0.0",
   "type": "module",
