@@ -74,7 +74,7 @@ public:
 
         cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
         y_ = N_VNew_Serial(floating_species.size(), ctx_);
-        y2_ = new double[boundary_species.size() + parameters.size()];
+        p_ = new double[boundary_species.size() + parameters.size()];
         matrix_ = SUNDenseMatrix(default_floating_species_.size(), default_floating_species_.size(), ctx_);
         linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -87,7 +87,7 @@ public:
         }
         SUNLinSolFree_Dense(linear_solver_);
         SUNMatDestroy_Dense(matrix_);
-        delete[] y2_;
+        delete[] p_;
         N_VDestroy_Serial(y_);
         CVodeFree(&cvode_mem_);
         SUNContext_Free(&ctx_);
@@ -112,11 +112,11 @@ public:
         }
 
         for (int i = 0; i < default_boundary_species_.size(); i++) {
-            y2_[i] = default_boundary_species_[i];
+            p_[i] = default_boundary_species_[i];
         }
 
         for (int i = 0; i < default_parameters_.size(); i++) {
-            y2_[default_boundary_species_.size() + i] = default_parameters_[i];
+            p_[default_boundary_species_.size() + i] = default_parameters_[i];
         }
     }
 
@@ -144,7 +144,7 @@ public:
             CVodeInit(cvode_mem_, rhs_, 0.0, y_);
 
             CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
-            CVodeSetUserData(cvode_mem_, y2_);
+            CVodeSetUserData(cvode_mem_, p_);
 
             has_init_ = true;
         } else {
@@ -198,11 +198,11 @@ private:
         }
 
         for (int i = 0; i < default_boundary_species_.size(); i++, col++) {
-            output_array_[start + col] = y2_[i];
+            output_array_[start + col] = p_[i];
         }
 
         for (int i = 0; i < default_parameters_.size(); i++, col++) {
-            output_array_[start + col] = y2_[default_boundary_species_.size() + i];
+            output_array_[start + col] = p_[default_boundary_species_.size() + i];
         }
 
         output_array_[start + col] = time;
@@ -222,7 +222,7 @@ private:
     N_Vector y_;
     CVRhsFn rhs_;
     // array of concat(boundary, parameters)
-    double *y2_;
+    double *p_;
 
     bool has_init_ = false;
     double *output_array_ = nullptr;
