@@ -21,7 +21,7 @@ export interface ModelSpec {
   floatingSpecies: FloatingSpeciesSpec[];
   boundarySpecies: BoundarySpeciesSpec[];
   parameters: ParameterSpec[];
-  rhsWasm: ArrayBuffer;
+  rhsModule: WebAssembly.Module;
 }
 
 interface InternalModel {
@@ -43,7 +43,7 @@ class Wrapper {
     return this.#internalModel?.spec;
   }
 
-  setModel(spec: ModelSpec): void {
+  async setModel(spec: ModelSpec): Promise<void> {
     this.#internalModel?.binding?.delete();
 
     const floatingSpeciesVector = new this.#bindings.DoubleVector();
@@ -57,10 +57,21 @@ class Wrapper {
     const parametersVector = new this.#bindings.DoubleVector();
     for (const v of spec.parameters) parametersVector.push_back(v.initialValue);
 
+    const instance = await WebAssembly.instantiate(spec.rhsModule);
+
     // eslint-disable-next-line
-    const funcPtr: number = this.#bindings.addFunction(() => {
-      return 0;
-    }, "vi");
+    const funcPtr: number = this.#bindings.addFunction(
+      (
+        instance.exports as {
+          rhs: (
+            t: number,
+            yPtr: number,
+            ydotPtr: number,
+            y2Ptr: number,
+          ) => void;
+        }
+      ).rhs,
+    );
 
     this.#internalModel = {
       spec,

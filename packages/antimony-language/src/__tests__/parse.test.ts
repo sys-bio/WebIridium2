@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ANTLRErrorListener, CharStreams, CommonTokenStream } from "antlr4ts";
-import { AntimonyLexer } from "../grammar/AntimonyLexer.ts";
-import { AntimonyParser } from "../grammar/AntimonyParser";
+import { AntimonyLexer } from "../generated/AntimonyLexer.ts";
+import { AntimonyParser } from "../generated/AntimonyParser";
 
 const parse = (code: string) => {
   const inputStream = CharStreams.fromString(code);
@@ -22,6 +22,7 @@ const parse = (code: string) => {
       _,
     ) => {
       throw new Error(
+        // eslint-disable-next-line
         `${offendingSymbol} line ${line} pos ${charPositionInLine}: ${msg}`,
       );
     },

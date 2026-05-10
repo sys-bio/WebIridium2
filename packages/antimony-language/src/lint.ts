@@ -1,6 +1,5 @@
-import { ANTLRErrorListener, CharStreams, CommonTokenStream } from "antlr4ts";
-import { AntimonyParser, RootContext } from "./generated/AntimonyParser.ts";
-import { AntimonyLexer } from "./generated/AntimonyLexer.ts";
+import { ANTLRErrorListener } from "antlr4ts";
+import { createLexerAndParser } from "./parse.ts";
 
 const lintSeverityValues = {
   warning: 1,
@@ -19,10 +18,7 @@ export const isMoreSevere = (lint1: Lint, lint2: Lint): boolean =>
   lintSeverityValues[lint1.severity] > lintSeverityValues[lint2.severity];
 
 export const lint = (code: string): Lint[] => {
-  const inputStream = CharStreams.fromString(code);
-  const lexer = new AntimonyLexer(inputStream);
-  const tokenStream = new CommonTokenStream(lexer);
-  const parser = new AntimonyParser(tokenStream);
+  const [lexer, parser] = createLexerAndParser(code);
 
   lexer.removeErrorListeners();
   parser.removeErrorListeners();

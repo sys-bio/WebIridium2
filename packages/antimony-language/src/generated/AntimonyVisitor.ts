@@ -4,17 +4,17 @@
 import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 
 import { NameContext } from "./AntimonyParser";
-import { AccessContext } from "./AntimonyParser";
+import { SubvariableContext } from "./AntimonyParser";
 import { ConstantContext } from "./AntimonyParser";
+import { LogicalContext } from "./AntimonyParser";
+import { CompareContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { ProductContext } from "./AntimonyParser";
 import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
-import { LogicalContext } from "./AntimonyParser";
-import { CompareContext } from "./AntimonyParser";
-import { VarContext } from "./AntimonyParser";
 import { NegativeContext } from "./AntimonyParser";
 import { PositiveContext } from "./AntimonyParser";
+import { VarContext } from "./AntimonyParser";
 import { NumberContext } from "./AntimonyParser";
 import { CallContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
@@ -29,7 +29,7 @@ import { ReactionNameContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
-import { CompartmentSpecifierContext } from "./AntimonyParser";
+import { InCompartmentContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
@@ -55,12 +55,12 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitName?: (ctx: NameContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `access`
+	 * Visit a parse tree produced by the `subvariable`
 	 * labeled alternative in `AntimonyParser.variable`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitAccess?: (ctx: AccessContext) => Result;
+	visitSubvariable?: (ctx: SubvariableContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `constant`
@@ -69,6 +69,22 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitConstant?: (ctx: ConstantContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `logical`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitLogical?: (ctx: LogicalContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `compare`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitCompare?: (ctx: CompareContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `sum`
@@ -103,30 +119,6 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitGroup?: (ctx: GroupContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `logical`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitLogical?: (ctx: LogicalContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `compare`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitCompare?: (ctx: CompareContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `var`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitVar?: (ctx: VarContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `negative`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
@@ -141,6 +133,14 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitPositive?: (ctx: PositiveContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `var`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitVar?: (ctx: VarContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `number`
@@ -243,11 +243,11 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitReactant?: (ctx: ReactantContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `AntimonyParser.compartmentSpecifier`.
+	 * Visit a parse tree produced by `AntimonyParser.inCompartment`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitCompartmentSpecifier?: (ctx: CompartmentSpecifierContext) => Result;
+	visitInCompartment?: (ctx: InCompartmentContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.assignment`.
