@@ -16,7 +16,9 @@ export const IMPORT_NAMESPACE = "iridium";
 export const MEMORY_IMPORT_NAME = "mem";
 
 const RHS_NAME = "rhs";
+
 const SIZEOF_DOUBLE = 8;
+const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
 
 export const compile = (code: string): Promise<WebAssembly.Module> => {
   return WebAssembly.instantiate(compileModelsToBytecode(deriveModels(code)));
@@ -164,14 +166,14 @@ const compileRhs = (model: AntimonyModel): Emitter => {
       emitter.emitUint32(localTable.getParam(P_PTR_PARAM));
 
       emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(0); // TODO: alignment. Not really sure what this should be.
+      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
       emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name)); // offset
     } else if (yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localTable.getParam(Y_PTR_PARAM));
 
       emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(0); // TODO: alignment. Not really sure what this should be.
+      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
       emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name)); // offset
     } else {
       throw new Error(`Unbound name: ${name}`);
@@ -243,7 +245,9 @@ const compileRhs = (model: AntimonyModel): Emitter => {
         emitter.emitByte(OpCode.localget);
         emitter.emitUint32(localTable.getLocal(reaction));
 
-        if (stoichiometry !== 1) {
+        if (stoichiometry === -1) {
+          emitter.emitByte(OpCode.f64neg);
+        } else if (stoichiometry !== 1) {
           emitter.emitByte(OpCode.f64const);
           emitter.emitFloat64(stoichiometry);
           emitter.emitByte(OpCode.f64mul);
@@ -262,8 +266,8 @@ const compileRhs = (model: AntimonyModel): Emitter => {
     }
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(0); // TODO: alignment (8?)
-    emitter.emitUint32(yTable.get(f.name));
+    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
   }
 
   // return success
