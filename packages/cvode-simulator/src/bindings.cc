@@ -187,25 +187,25 @@ private:
 
         output_array_ = new double[num_points * num_variables()];
         current_output_row_ = 0;
+        column_size_ = num_points;
     }
 
     void RecordToOutputArray(double time) {
-        int start = current_output_row_ * num_variables();
         int col = 0;
 
         for (int i = 0; i < default_floating_species_.size(); i++, col++) {
-            output_array_[start + col] = NV_Ith_S(y_, i);
+            output_array_[current_output_row_ + col * column_size_] = NV_Ith_S(y_, i);
         }
 
         for (int i = 0; i < default_boundary_species_.size(); i++, col++) {
-            output_array_[start + col] = p_[i];
+            output_array_[current_output_row_ + col * column_size_] = p_[i];
         }
 
         for (int i = 0; i < default_parameters_.size(); i++, col++) {
-            output_array_[start + col] = p_[default_boundary_species_.size() + i];
+            output_array_[current_output_row_ + col * column_size_] = p_[default_boundary_species_.size() + i];
         }
 
-        output_array_[start + col] = time;
+        output_array_[current_output_row_ + col * column_size_] = time;
 
         current_output_row_ += 1;
     }
@@ -225,7 +225,8 @@ private:
     double *p_;
 
     bool has_init_ = false;
-    double *output_array_ = nullptr;
+    double *output_array_ = nullptr; // column-major
+    int column_size_ = -1;
     int current_output_row_ = -1;
 };
 

@@ -104,45 +104,6 @@ class Wrapper {
     // copy
     return array.slice();
   }
-
-  resultToString(result: Float64Array): string {
-    const model = this.#checkModel();
-
-    const builder: string[] = [];
-
-    for (const floating of model.spec.floatingSpecies) {
-      builder.push(floating.name);
-      builder.push(",");
-    }
-
-    for (const boundary of model.spec.boundarySpecies) {
-      builder.push(boundary.name);
-      builder.push(",");
-    }
-
-    for (const parameter of model.spec.parameters) {
-      builder.push(parameter.name);
-      builder.push(",");
-    }
-
-    builder.push("Time\n");
-
-    const cols = model.binding.num_variables();
-
-    for (let i = 0; i < result.length; i++) {
-      builder.push(result[i].toString());
-
-      if (i < result.length - 1) {
-        if ((i + 1) % cols === 0) {
-          builder.push("\n");
-        } else {
-          builder.push(",");
-        }
-      }
-    }
-
-    return builder.join("");
-  }
 }
 
 export const createWrapper = async (): Promise<Wrapper> => {
