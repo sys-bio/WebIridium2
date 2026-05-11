@@ -3,14 +3,13 @@ import { AntimonyListener } from "../generated/AntimonyListener";
 import {
   AssignmentContext,
   ConstantContext,
-  NameContext,
   ReactantListContext,
   ReactionContext,
-  SubvariableContext,
   VariableContext,
 } from "../generated/AntimonyParser";
 import { AntimonyVariable, AntimonyModel, AntimonyReactionTerm } from "./model";
 import { ErrorNode } from "antlr4ts/tree/ErrorNode";
+import { getVariableName } from "./util";
 
 /**
  * Derives an array of AntimonyModel.
@@ -46,21 +45,9 @@ export class DeriveModelListener
     return this.#currentModel;
   }
 
-  #getVariableName(variableCtx: VariableContext): string {
-    if (variableCtx instanceof NameContext) {
-      return variableCtx.NAME().text;
-    } else if (variableCtx instanceof SubvariableContext) {
-      throw new Error("subvariables not yet supported");
-    } else if (variableCtx instanceof ConstantContext) {
-      return this.#getVariableName(variableCtx.variable());
-    } else {
-      throw new Error(`unknown variable type: ${variableCtx.text}`);
-    }
-  }
-
   #getOrCreateVariable(variableCtx: VariableContext): AntimonyVariable {
     const model = this.#getActiveModel();
-    const name = this.#getVariableName(variableCtx);
+    const name = getVariableName(variableCtx);
     let variable = model.variables.get(name);
 
     if (!variable) {

@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { deriveModels } from "../semantic";
+import { deriveModels } from "../semantic/semantic";
 
 import defaultModel from "@/assets/default.ant?raw";
 

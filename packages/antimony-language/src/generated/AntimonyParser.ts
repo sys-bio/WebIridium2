@@ -911,9 +911,10 @@ export class AntimonyParser extends Parser {
 							throw this.createFailedPredicateException("this.precpred(this._ctx, 9)");
 						}
 						this.state = 166;
+						(_localctx as SumContext)._op = this._input.LT(1);
 						_la = this._input.LA(1);
 						if (!(_la === AntimonyParser.T__6 || _la === AntimonyParser.T__8)) {
-						this._errHandler.recoverInline(this);
+							(_localctx as SumContext)._op = this._errHandler.recoverInline(this);
 						} else {
 							if (this._input.LA(1) === Token.EOF) {
 								this.matchedEOF = true;
@@ -936,9 +937,10 @@ export class AntimonyParser extends Parser {
 							throw this.createFailedPredicateException("this.precpred(this._ctx, 8)");
 						}
 						this.state = 169;
+						(_localctx as ProductContext)._op = this._input.LT(1);
 						_la = this._input.LA(1);
 						if (!((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << AntimonyParser.T__1) | (1 << AntimonyParser.T__9) | (1 << AntimonyParser.T__10))) !== 0))) {
-						this._errHandler.recoverInline(this);
+							(_localctx as ProductContext)._op = this._errHandler.recoverInline(this);
 						} else {
 							if (this._input.LA(1) === Token.EOF) {
 								this.matchedEOF = true;
@@ -1948,6 +1950,7 @@ export class CompareContext extends FormulaContext {
 	}
 }
 export class SumContext extends FormulaContext {
+	public _op!: Token;
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {
@@ -1983,6 +1986,7 @@ export class SumContext extends FormulaContext {
 	}
 }
 export class ProductContext extends FormulaContext {
+	public _op!: Token;
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {

@@ -1,7 +1,5 @@
 {
   "extends": "../../tsconfig.app.json",
-  "compilerOptions": {
-    "paths": {}
-  },
-  "include": ["src"]
+  "compilerOptions": {},
+  "include": ["src", "vitest.config.ts"]
 }

@@ -32,8 +32,8 @@ assignment : variable inCompartment? '=' formula;
 
 formula : formula LOGICAL formula #logical
     | formula COMPARE formula #compare
-    | formula ('+' | '-') formula #sum
-    | formula ('*' | '/' | '%') formula #product
+    | formula op=('+' | '-') formula #sum
+    | formula op=('*' | '/' | '%') formula #product
     | <assoc=right> formula '^' formula #power
     // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
     | '(' formula ')' #group

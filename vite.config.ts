@@ -70,6 +70,7 @@ export default defineConfig({
           __dirname + "/node_modules/monaco-editor/esm/vs/editor/editor.api",
       },
     ],
+    workspace: ["packages/cvode-simulator/vitest.config.ts"],
     setupFiles: ["./src/vitestSetup.ts", "@vitest/web-worker"],
     environment: "jsdom",
     coverage: {

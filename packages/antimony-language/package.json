@@ -12,5 +12,10 @@
   "devDependencies": {
     "antlr4ts-cli": "^0.5.0-alpha.4"
   },
-  "main": "src/index.ts"
+  "exports": {
+    "./lint": "./src/lint.ts",
+    "./grammar": "./src/grammar.ts",
+    "./semantic": "./src/semantic/semantic.ts",
+    "./semantic/util": "./src/semantic/util.ts"
+  }
 }
