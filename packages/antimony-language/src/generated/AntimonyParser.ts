@@ -882,7 +882,7 @@ export class AntimonyParser extends Parser {
 							throw this.createFailedPredicateException("this.precpred(this._ctx, 11)");
 						}
 						this.state = 160;
-						this.match(AntimonyParser.LOGICAL);
+						(_localctx as LogicalContext)._op = this.match(AntimonyParser.LOGICAL);
 						this.state = 161;
 						this.formula(12);
 						}
@@ -897,7 +897,7 @@ export class AntimonyParser extends Parser {
 							throw this.createFailedPredicateException("this.precpred(this._ctx, 10)");
 						}
 						this.state = 163;
-						this.match(AntimonyParser.COMPARE);
+						(_localctx as CompareContext)._op = this.match(AntimonyParser.COMPARE);
 						this.state = 164;
 						this.formula(11);
 						}
@@ -1879,6 +1879,7 @@ export class FormulaContext extends ParserRuleContext {
 	}
 }
 export class LogicalContext extends FormulaContext {
+	public _op!: Token;
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {
@@ -1915,6 +1916,7 @@ export class LogicalContext extends FormulaContext {
 	}
 }
 export class CompareContext extends FormulaContext {
+	public _op!: Token;
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {

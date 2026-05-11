@@ -30,8 +30,8 @@ inCompartment : IN variable;
 
 assignment : variable inCompartment? '=' formula;
 
-formula : formula LOGICAL formula #logical
-    | formula COMPARE formula #compare
+formula : formula op=LOGICAL formula #logical
+    | formula op=COMPARE formula #compare
     | formula op=('+' | '-') formula #sum
     | formula op=('*' | '/' | '%') formula #product
     | <assoc=right> formula '^' formula #power

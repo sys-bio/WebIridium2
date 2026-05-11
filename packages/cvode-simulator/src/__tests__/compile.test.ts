@@ -7,7 +7,7 @@ import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
 // useful to use with WABT to analyze the WebAssembly output.
-const WRITE_BASIC_MODEL = true;
+const WRITE_BASIC_MODEL = false;
 
 describe("compiling basic model", () => {
   it("should be valid WASM", async () => {

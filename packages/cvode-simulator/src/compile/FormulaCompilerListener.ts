@@ -46,7 +46,7 @@ export class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitPositive(_ctx: PositiveContext): void {
-    // TODO: is this actually how the + operator works
+    // TODO: is this actually how the + operator works (does not seem so)
     this.#emitter.emitByte(OpCode.f64abs);
   }
 

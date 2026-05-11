@@ -42,7 +42,7 @@ it("should derive reactions and parameters", () => {
       },
     },
     k1: {
-      kind: "unknown",
+      kind: "parameter",
       isConst: false,
       assignment: {
         kind: "set",
@@ -52,7 +52,7 @@ it("should derive reactions and parameters", () => {
       },
     },
     k2: {
-      kind: "unknown",
+      kind: "parameter",
       isConst: false,
       assignment: {
         kind: "set",

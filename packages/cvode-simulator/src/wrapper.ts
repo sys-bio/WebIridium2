@@ -1,34 +1,15 @@
 import createBindings from "../build/cvodeBindings.js";
 import type { MainModule, Model } from "../build/cvodeBindings.d.ts";
+import { IMPORT_NAMESPACE, MEMORY_IMPORT_NAME } from "./compile/compile.ts";
+import type { ModelSpec } from "./modelSpec.ts";
 // import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
-
-export interface FloatingSpeciesSpec {
-  name: string;
-  initialValue: number;
-}
-
-export interface ParameterSpec {
-  name: string;
-  initialValue: number;
-}
-
-export interface BoundarySpeciesSpec {
-  name: string;
-  initialValue: number;
-}
-
-export interface ModelSpec {
-  floatingSpecies: FloatingSpeciesSpec[];
-  boundarySpecies: BoundarySpeciesSpec[];
-  parameters: ParameterSpec[];
-  rhsModule: WebAssembly.Module;
-}
 
 interface InternalModel {
   spec: ModelSpec;
 
   /** The model on the C-side. */
   binding: Model;
+  rhsFuncPtr: number;
 }
 
 class Wrapper {
@@ -44,7 +25,7 @@ class Wrapper {
   }
 
   async setModel(spec: ModelSpec): Promise<void> {
-    this.#internalModel?.binding?.delete();
+    this.#disposeCurrentModel();
 
     const floatingSpeciesVector = new this.#bindings.DoubleVector();
     for (const v of spec.floatingSpecies)
@@ -57,7 +38,12 @@ class Wrapper {
     const parametersVector = new this.#bindings.DoubleVector();
     for (const v of spec.parameters) parametersVector.push_back(v.initialValue);
 
-    const instance = await WebAssembly.instantiate(spec.rhsModule);
+    const instance = await WebAssembly.instantiate(spec.rhsModule, {
+      [IMPORT_NAMESPACE]: {
+        // eslint-disable-next-line
+        [MEMORY_IMPORT_NAME]: this.#bindings.wasmMemory,
+      },
+    });
 
     // eslint-disable-next-line
     const funcPtr: number = this.#bindings.addFunction(
@@ -81,12 +67,20 @@ class Wrapper {
         parametersVector,
         funcPtr,
       ),
+      rhsFuncPtr: funcPtr,
     };
 
     // ok to delete now since they got copied into the bindings model
     floatingSpeciesVector.delete();
     boundarySpeciesVector.delete();
     parametersVector.delete();
+  }
+
+  #disposeCurrentModel(): void {
+    if (this.#internalModel) {
+      this.#bindings.removeFunction(this.#internalModel.rhsFuncPtr);
+      this.#internalModel.binding.delete();
+    }
   }
 
   #checkModel(): InternalModel {

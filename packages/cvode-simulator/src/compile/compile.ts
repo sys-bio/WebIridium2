@@ -11,17 +11,68 @@ import { LocalsSymbolTable, IndexSymbolTable } from "./SymbolTable";
 import { FormulaCompilerListener } from "./FormulaCompilerListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
+import type {
+  BoundarySpeciesSpec,
+  FloatingSpeciesSpec,
+  ModelSpec,
+  ParameterSpec,
+} from "../modelSpec";
+import { evaluateInitialValues } from "./evaluate";
 
 export const IMPORT_NAMESPACE = "iridium";
 export const MEMORY_IMPORT_NAME = "mem";
 
 const RHS_NAME = "rhs";
+const TIME_NAME = "time";
 
 const SIZEOF_DOUBLE = 8;
 const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
 
+export const compileToSpec = async (code: string): Promise<ModelSpec> => {
+  const models = deriveModels(code);
+  const module = await WebAssembly.compile(compileModelsToBytecode(models));
+
+  // TODO: get the main model properly
+  const mainModel = models[0];
+
+  const initialValues = evaluateInitialValues(mainModel);
+  const floatingSpecies: FloatingSpeciesSpec[] = [];
+  const boundarySpecies: BoundarySpeciesSpec[] = [];
+  const parameters: ParameterSpec[] = [];
+
+  for (const variable of mainModel.variables.values()) {
+    if (variable.kind === "species") {
+      if (variable.isConst) {
+        boundarySpecies.push({
+          name: variable.name,
+          initialValue: initialValues.get(variable.name) as number,
+        });
+      } else {
+        floatingSpecies.push({
+          name: variable.name,
+          initialValue: initialValues.get(variable.name) as number,
+        });
+      }
+    } else if (variable.kind === "parameter") {
+      parameters.push({
+        name: variable.name,
+        initialValue: initialValues.get(variable.name) as number,
+      });
+    } else {
+      throw new Error(`Unknown variable kind`);
+    }
+  }
+
+  return {
+    floatingSpecies,
+    boundarySpecies,
+    parameters,
+    rhsModule: module,
+  };
+};
+
 export const compile = (code: string): Promise<WebAssembly.Module> => {
-  return WebAssembly.instantiate(compileModelsToBytecode(deriveModels(code)));
+  return WebAssembly.compile(compileModelsToBytecode(deriveModels(code)));
 };
 
 export const compileModelsToBytecode = (
@@ -131,7 +182,7 @@ const compileRhs = (model: AntimonyModel): Emitter => {
     (v) => v.kind === "species" && v.isConst,
   );
   const parameters = Array.from(model.variables.values()).filter(
-    (v) => v.kind === "unknown" || v.kind === "parameter",
+    (v) => v.kind === "parameter",
   );
 
   const yTable = new IndexSymbolTable();
@@ -161,7 +212,10 @@ const compileRhs = (model: AntimonyModel): Emitter => {
   // calculate all the reaction rates
 
   const emitLoadVariable = (name: string): void => {
-    if (pTable.has(name)) {
+    if (name === TIME_NAME) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localTable.getParam(T_PARAM));
+    } else if (pTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localTable.getParam(P_PTR_PARAM));
 

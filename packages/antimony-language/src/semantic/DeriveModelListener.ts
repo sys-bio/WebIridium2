@@ -17,9 +17,6 @@ import { getVariableName } from "./util";
 
 /**
  * Derives an array of AntimonyModel.
- *
- * Every variable starts off "unknown". At the end of an evaluation, all "unknown"
- * variables are equivalently
  */
 export class DeriveModelListener
   implements AntimonyListener, ParseTreeListener
@@ -56,7 +53,7 @@ export class DeriveModelListener
 
     if (!variable) {
       variable = {
-        kind: "unknown",
+        kind: "parameter",
         name: name,
         isConst: variableCtx instanceof ConstantContext,
       };

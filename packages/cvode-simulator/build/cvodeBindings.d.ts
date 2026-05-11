@@ -2,6 +2,8 @@
 declare namespace RuntimeExports {
     /** @param {string=} sig */
     function addFunction(func: any, sig?: string | undefined): any;
+    function removeFunction(index: any): void;
+    let wasmMemory: any;
 }
 interface WasmModule {
 }
