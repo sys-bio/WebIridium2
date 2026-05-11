@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { deriveModels } from "antimony-language/semantic";
 
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "@/assets/examples/smallest-hopf-model-by-wilhelm-and-heinrich.txt?raw";
 import { compileModelsToBytecode } from "../compile/compile";
 import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
 // useful to use with WABT to analyze the WebAssembly output.
-const WRITE_BASIC_MODEL = false;
+const WRITE_BASIC_MODEL = true;
 
 describe("compiling basic model", () => {
   it("should be valid WASM", async () => {

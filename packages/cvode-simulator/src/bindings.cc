@@ -24,31 +24,15 @@
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
-int DummyAiRhs(sunrealtype t, N_Vector y, N_Vector ydot, void *user_data) {
-    // Access state variables
-    sunrealtype *y_data = NV_DATA_S(y);
-    sunrealtype *ydot_data = NV_DATA_S(ydot);
-    
-    // Access parameters from userData
-    sunrealtype *params = static_cast<double *>(user_data);
-    sunrealtype k1 = params[0];
-    sunrealtype k2 = params[1];
+typedef int(*RHSFunc)(double t, double y[], double ydot[], double p[]);
 
-    // Species mapping
-    sunrealtype A = y_data[0];
-    sunrealtype B = y_data[1];
-    // C is y_data[2], but only needed if it affects rates
+struct UserData {
+    RHSFunc rhs;
+    double *p;
+};
 
-    // Define reaction rates
-    sunrealtype reaction1 = k1 * A;
-    sunrealtype reaction2 = k2 * B;
-
-    // Calculate derivatives (RHS)
-    ydot_data[0] = -reaction1;             // dA/dt
-    ydot_data[1] =  reaction1 - reaction2; // dB/dt
-    ydot_data[2] =  reaction2;             // dC/dt
-
-    return 0; // Success
+static int delegating_rhs(double t, N_Vector y, N_Vector ydot, UserData *data) {
+    return data->rhs(t, NV_DATA_S(y), NV_DATA_S(ydot), data->p);
 }
 
 class Model {
@@ -66,15 +50,15 @@ public:
         uintptr_t rhs
     ) : default_floating_species_(floating_species),
         default_boundary_species_(boundary_species),
-        default_parameters_(parameters),
-        rhs_(DummyAiRhs)
+        default_parameters_(parameters)
     {
         // TODO: handle errors?
         SUNContext_Create(SUN_COMM_NULL, &ctx_);
 
         cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
         y_ = N_VNew_Serial(floating_species.size(), ctx_);
-        p_ = new double[boundary_species.size() + parameters.size()];
+        user_data_.p = new double[boundary_species.size() + parameters.size()];
+        user_data_.rhs = (RHSFunc)rhs;
         matrix_ = SUNDenseMatrix(default_floating_species_.size(), default_floating_species_.size(), ctx_);
         linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -87,7 +71,7 @@ public:
         }
         SUNLinSolFree_Dense(linear_solver_);
         SUNMatDestroy_Dense(matrix_);
-        delete[] p_;
+        delete[] user_data_.p;
         N_VDestroy_Serial(y_);
         CVodeFree(&cvode_mem_);
         SUNContext_Free(&ctx_);
@@ -112,11 +96,11 @@ public:
         }
 
         for (int i = 0; i < default_boundary_species_.size(); i++) {
-            p_[i] = default_boundary_species_[i];
+            user_data_.p[i] = default_boundary_species_[i];
         }
 
         for (int i = 0; i < default_parameters_.size(); i++) {
-            p_[default_boundary_species_.size() + i] = default_parameters_[i];
+            user_data_.p[default_boundary_species_.size() + i] = default_parameters_[i];
         }
     }
 
@@ -141,10 +125,10 @@ public:
         if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
         if (!has_init_) {
-            CVodeInit(cvode_mem_, rhs_, 0.0, y_);
+            CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, 0.0, y_);
 
             CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
-            CVodeSetUserData(cvode_mem_, p_);
+            CVodeSetUserData(cvode_mem_, &user_data_);
 
             has_init_ = true;
         } else {
@@ -187,25 +171,25 @@ private:
 
         output_array_ = new double[num_points * num_variables()];
         current_output_row_ = 0;
-        column_size_ = num_points;
     }
 
     void RecordToOutputArray(double time) {
+        int start = current_output_row_ * num_variables();
         int col = 0;
 
         for (int i = 0; i < default_floating_species_.size(); i++, col++) {
-            output_array_[current_output_row_ + col * column_size_] = NV_Ith_S(y_, i);
+            output_array_[start + col] = NV_Ith_S(y_, i);
         }
 
         for (int i = 0; i < default_boundary_species_.size(); i++, col++) {
-            output_array_[current_output_row_ + col * column_size_] = p_[i];
+            output_array_[start + col] = user_data_.p[i];
         }
 
         for (int i = 0; i < default_parameters_.size(); i++, col++) {
-            output_array_[current_output_row_ + col * column_size_] = p_[default_boundary_species_.size() + i];
+            output_array_[start + col] = user_data_.p[default_boundary_species_.size() + i];
         }
 
-        output_array_[current_output_row_ + col * column_size_] = time;
+        output_array_[start + col] = time;
 
         current_output_row_ += 1;
     }
@@ -220,13 +204,10 @@ private:
     std::vector<double> default_parameters_;
 
     N_Vector y_;
-    CVRhsFn rhs_;
-    // array of concat(boundary, parameters)
-    double *p_;
+    UserData user_data_;
 
     bool has_init_ = false;
-    double *output_array_ = nullptr; // column-major
-    int column_size_ = -1;
+    double *output_array_ = nullptr; // row-major
     int current_output_row_ = -1;
 };
 

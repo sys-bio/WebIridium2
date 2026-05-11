@@ -277,7 +277,10 @@ const compileRhs = (model: AntimonyModel): Emitter => {
     for (const product of reaction.products) {
       const productMap = involvedReactions.get(product.name);
       if (productMap) {
-        productMap.set(reaction.name, product.stoichiometry);
+        productMap.set(
+          reaction.name,
+          (productMap.get(reaction.name) ?? 0) + product.stoichiometry,
+        );
       } else {
         involvedReactions.set(
           product.name,
@@ -286,6 +289,8 @@ const compileRhs = (model: AntimonyModel): Emitter => {
       }
     }
   }
+
+  console.log(involvedReactions);
 
   for (const f of floatingSpecies) {
     const reactions = involvedReactions.get(f.name);
@@ -296,6 +301,8 @@ const compileRhs = (model: AntimonyModel): Emitter => {
     if (reactions) {
       let isFirst = true;
       for (const [reaction, stoichiometry] of reactions) {
+        if (stoichiometry === 0) continue;
+
         emitter.emitByte(OpCode.localget);
         emitter.emitUint32(localTable.getLocal(reaction));
 

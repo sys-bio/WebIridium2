@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createWrapper } from "../wrapper.ts";
 
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "@/assets/examples/smallest-hopf-model-by-wilhelm-and-heinrich.txt?raw";
 import { compileToSpec } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 
@@ -29,20 +29,20 @@ const resultToString = (
 
   builder.push("Time\n");
 
-  const rows =
+  const cols =
     spec.floatingSpecies.length +
     spec.boundarySpecies.length +
     spec.parameters.length +
     1;
 
-  for (let x = 0; x < numPoints; x++) {
-    for (let y = 0; y < rows; y++) {
-      builder.push(result[x + numPoints * y].toString());
-      if (y < rows - 1) {
+  for (let y = 0; y < numPoints; y++) {
+    for (let x = 0; x < cols; x++) {
+      builder.push(result[x + cols * y].toString());
+      if (x < cols - 1) {
         builder.push(",");
       }
     }
-    if (x < numPoints - 1) {
+    if (y < numPoints - 1) {
       builder.push("\n");
     }
   }
@@ -55,8 +55,6 @@ describe("simulating basic model", () => {
     const wrapper = await createWrapper();
     const spec = await compileToSpec(defaultModel);
     const numPoints = 200;
-
-    console.log(spec);
 
     await wrapper.setModel(spec);
 
