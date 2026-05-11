@@ -1,6 +1,6 @@
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { createLexerAndParser } from "../parse";
-import { AntimonyModel } from "./model";
+import type { AntimonyModel } from "./model";
 import { DeriveModelListener } from "./DeriveModelListener";
 
 export * from "./model.ts";

@@ -1,5 +1,5 @@
-import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import { AntimonyListener } from "../generated/AntimonyListener";
+import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
+import type { AntimonyListener } from "../generated/AntimonyListener";
 import {
   AssignmentContext,
   ConstantContext,
@@ -7,7 +7,11 @@ import {
   ReactionContext,
   VariableContext,
 } from "../generated/AntimonyParser";
-import { AntimonyVariable, AntimonyModel, AntimonyReactionTerm } from "./model";
+import type {
+  AntimonyVariable,
+  AntimonyModel,
+  AntimonyReactionTerm,
+} from "./model";
 import { ErrorNode } from "antlr4ts/tree/ErrorNode";
 import { getVariableName } from "./util";
 

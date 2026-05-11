@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ANTLRErrorListener, CharStreams, CommonTokenStream } from "antlr4ts";
+import {
+  type ANTLRErrorListener,
+  CharStreams,
+  CommonTokenStream,
+} from "antlr4ts";
 import { AntimonyLexer } from "../generated/AntimonyLexer.ts";
 import { AntimonyParser } from "../generated/AntimonyParser";
 

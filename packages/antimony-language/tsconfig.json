@@ -1,9 +1,5 @@
 {
   "extends": "../../tsconfig.app.json",
-  "compilerOptions": {
-    "verbatimModuleSyntax": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
-  },
+  "compilerOptions": {},
   "include": ["src"]
 }

@@ -1,4 +1,4 @@
-import { ANTLRErrorListener } from "antlr4ts";
+import type { ANTLRErrorListener } from "antlr4ts";
 import { createLexerAndParser } from "./parse.ts";
 
 const lintSeverityValues = {
