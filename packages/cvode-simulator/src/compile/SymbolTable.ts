@@ -71,7 +71,7 @@ export class LocalsSymbolTable {
     if (this.#localsMap.has(local)) throw new Error(`Duplicate: ${local}`);
 
     const index = this.#paramMap.size + this.#localsMap.size;
-    this.#localsMap.set(local, this.#paramMap.size);
+    this.#localsMap.set(local, index);
     return index;
   }
 }
