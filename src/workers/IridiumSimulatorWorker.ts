@@ -37,10 +37,27 @@ const ensureWrapper = (): Promise<CvodeWrapper> => {
 
 const simulateTimeCourse = async ({
   parameters,
+  parameterScanOptions,
+  variableValues,
 }: IridiumTimeCourseAction["payload"]): Promise<
   IridiumTimeCourseResult["data"]
 > => {
   const wrapper = await ensureWrapper();
+
+  if (parameters.resetInitialConditions) {
+    console.log("yee yee yee yee");
+    wrapper.resetAllVariables();
+  }
+
+  if (parameterScanOptions?.varyingParameter) {
+    wrapper.setVariable(parameterScanOptions.varyingParameter, parameterScanOptions.varyingParameterValue);
+  }
+
+  for (const [name, value] of Object.entries(variableValues)) {
+    if (name !== parameterScanOptions?.varyingParameter) {
+      wrapper.setVariable(name, value);
+    }
+  }
 
   // TODO: implement resetInitialConditions
 

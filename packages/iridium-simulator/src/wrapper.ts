@@ -11,8 +11,17 @@ import type { ModelSpec } from "./modelSpec.ts";
 import { builtinFunctions } from "./compile/builtinImports.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 
+const VariableType = {
+  floating: 0,
+  boundary: 1,
+  parameter: 2,
+} as const;
+
+type VariableType = typeof VariableType[keyof typeof VariableType];
+
 interface InternalModel {
   spec: ModelSpec;
+  variableMapping: Map<string, { type: VariableType; index: number }>;
 
   /** The model on the C-side. */
   binding: Model;
@@ -69,8 +78,14 @@ export class CvodeWrapper {
       ).rhs,
     );
 
+    const variableMapping = new Map<string, { type: VariableType; index: number }>();
+    for (const [i, f] of spec.floatingSpecies.entries()) variableMapping.set(f.name, { type: VariableType.floating, index: i });
+    for (const [i, b] of spec.boundarySpecies.entries()) variableMapping.set(b.name, { type: VariableType.boundary, index: i });
+    for (const [i, p] of spec.parameters.entries()) variableMapping.set(p.name, { type: VariableType.parameter, index: i });
+
     this.#internalModel = {
       spec,
+      variableMapping,
       binding: new this.#bindings.Model(
         floatingSpeciesVector,
         boundarySpeciesVector,
@@ -113,6 +128,25 @@ export class CvodeWrapper {
 
     // copy
     return array.slice();
+  }
+
+  resetAllVariables(): void {
+    this.#internalModel?.binding.ResetAllVariables();
+  }
+
+  setVariable(name: string, value: number): void {
+    if (!this.#internalModel) return;
+
+    const variable = this.#internalModel.variableMapping.get(name);
+    if (variable === undefined) return;
+
+    if (variable.type === VariableType.floating) {
+      this.#internalModel?.binding.SetFloatingSpecies(variable.index, value);
+    } else if (variable.type === VariableType.boundary) {
+      this.#internalModel?.binding.SetBoundarySpecies(variable.index, value);
+    } else if (variable.type === VariableType.parameter) {
+      this.#internalModel?.binding.SetParameter(variable.index, value);
+    }
   }
 }
 
