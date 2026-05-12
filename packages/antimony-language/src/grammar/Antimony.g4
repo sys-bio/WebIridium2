@@ -7,9 +7,9 @@ topLevelStatement : model | statement;
 
 statementList : (statement? statementSeparator)+;
 statement : reaction
-    | assignment
-    | modelCall
-    ;
+          | assignment
+          | modelCall
+          ;
 
 // e.g
 // model Test(A, B)
@@ -22,35 +22,36 @@ exportList : '(' (variable (',' variable)* )? ')';
 reaction        : reactionName? reactionFormula ';' formula? inCompartment?;
 reactionName    : NAME inCompartment? ':';
 reactionFormula : left=reactantList? ARROW right=reactantList
-    | left=reactantList ARROW right=reactantList?
-    ;
+                | left=reactantList ARROW right=reactantList?
+                ;
 reactantList : reactant ('+' reactant)*;
 reactant : NUMBER? variable;
+
 inCompartment : IN variable;
 
-assignment : variable inCompartment? '=' formula;
+assignment : variable inCompartment? apostrophe='\''? op=ASSIGNMENT formula;
 
 formula : '(' formula ')' #group
-    | NUMBER #number
-    | functionCall #call
-    | variable #var
-    | '+' formula #positive
-    | '-' formula #negative
-    // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
-    | <assoc=right> formula '^' formula #power
-    | formula op=('*' | '/' | '%') formula #product
-    | formula op=('+' | '-') formula #sum
-    | formula op=COMPARE formula #compare
-    | formula op=LOGICAL formula #logical
-    ;
+        | NUMBER #number
+        | functionCall #call
+        | variable #var
+        | '+' formula #positive
+        | '-' formula #negative
+        // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
+        | <assoc=right> formula '^' formula #power
+        | formula op=('*' | '/' | '%') formula #product
+        | formula op=('+' | '-') formula #sum
+        | formula op=COMPARE formula #compare
+        | formula op=LOGICAL formula #logical
+        ;
 
 functionCall : NAME '(' parameterList? ')';
 parameterList : formula (',' formula)*;
 
 variable : NAME #name
-    | variable '.' NAME #subvariable
-    | '$' variable #constant
-    ;
+         | variable '.' NAME #subvariable
+         | '$' variable #constant
+         ;
 
 // The syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
 // as far as I can tell. Still compiles, however.

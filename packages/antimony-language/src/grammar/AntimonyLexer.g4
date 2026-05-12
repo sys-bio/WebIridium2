@@ -12,12 +12,13 @@ NUMBER_FRACTION : '.' [0-9]*;
 NUMBER_EXPONENT : ('e' | 'E') [0-9]+;
 
 ARROW       : '->' | '=>';
+ASSIGNMENT  : '=' | ':=';
 // These are pretty much arrows, but they also have some different semantics (not sure what exactly)
 // See this: https://tellurium.readthedocs.io/en/latest/antimony.html#interactions
 INTERACTION : '-|' | '-o' | '-(';
-DASHES : '--';
-COMPARE : '>=' | '<=' | '>' | '<' | '==';
-LOGICAL : '&&' | '||';
+DASHES      : '--';
+COMPARE     : '>=' | '<=' | '>' | '<' | '==';
+LOGICAL     : '&&' | '||';
 
 NEWLINE      : [\n\r];
 WHITESPACE   : [ \t\r\u000C] -> channel(HIDDEN);
