@@ -8,31 +8,33 @@ import { type Simulator } from "@/features/simulation/Simulator";
 import { CopasiSimulator } from "@/features/simulation/CopasiSimulator";
 import { LibSbmlSimSimulator } from "@/features/simulation/LibSbmlSimSimulator";
 import { RoadrunnerServerSimulator } from "@/features/simulation/RoadrunnerServerSimulator";
+import { IridiumSimulator } from "@/features/simulation/IridiumSimulator";
 
 import { editorContentAtom, updateEditorContentAtom } from "./model";
 import { parameterScanOptionsAtom } from "./settings";
 
-export const SIMULATOR_PRODUCERS: Record<string, () => Simulator> = {
-  COPASI: () => new CopasiSimulator(),
-  "RoadRunner (Server)": () => new RoadrunnerServerSimulator(),
-  libsbmlsim: () => new LibSbmlSimSimulator(),
+export const SIMULATOR_CONSTRUCTORS: Record<string, { new (): Simulator }> = {
+  COPASI: CopasiSimulator,
+  "Iridium (Preview)": IridiumSimulator,
+  "RoadRunner (Server)": RoadrunnerServerSimulator,
+  libsbmlsim: LibSbmlSimSimulator,
 };
-export const SIMULATOR_LIST = Object.keys(SIMULATOR_PRODUCERS);
+export const SIMULATOR_LIST = Object.keys(SIMULATOR_CONSTRUCTORS);
 
 export const getSimulatorName = (simulator: Simulator): string => {
-  if (simulator instanceof CopasiSimulator) {
-    return "COPASI";
-  } else if (simulator instanceof RoadrunnerServerSimulator) {
-    return "RoadRunner (Server)";
-  } else {
-    return "libsbmlsim";
+  for (const [name, constructor] of Object.entries(SIMULATOR_CONSTRUCTORS)) {
+    if (simulator instanceof constructor) {
+      return name;
+    }
   }
+
+  throw new Error(`Unknown simulator: ${simulator.constructor.name}`);
 };
 
 const _simulatorNameAtom = atom("COPASI");
 
 export const simulatorAtom = atom((get) => {
-  return SIMULATOR_PRODUCERS[get(_simulatorNameAtom)]();
+  return new SIMULATOR_CONSTRUCTORS[get(_simulatorNameAtom)]();
 });
 
 export const updateSimulatorAtom = atom(null, (get, set, name: string) => {

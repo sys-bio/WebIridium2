@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createWrapper } from "../wrapper.ts";
+import { createCvodeWrapper } from "../wrapper.ts";
 
 import defaultModel from "@/assets/examples/feedback-oscillator-model.txt?raw";
 import { compile } from "../compile/compile";
@@ -52,7 +52,7 @@ const resultToString = (
 
 describe("simulating basic model", () => {
   it("should match expected output", async () => {
-    const wrapper = await createWrapper();
+    const wrapper = await createCvodeWrapper();
     const spec = await compile(defaultModel);
     const numPoints = 200;
 

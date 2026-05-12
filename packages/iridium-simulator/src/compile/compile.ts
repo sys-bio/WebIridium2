@@ -36,7 +36,7 @@ export const MEMORY_IMPORT_NAME = "mem";
 export const IMPORT_NAMESPACE = "js";
 
 const RHS_NAME = "rhs";
-const TIME_NAME = "time";
+export const TIME_NAME = "time";
 
 const SIZEOF_DOUBLE = 8;
 const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
@@ -52,8 +52,6 @@ export const compileIntermediate = (
   const root = parse(code);
   const models = deriveModelsFromParseTree(root);
   const imports = Array.from(getImportedFunctions(root));
-
-  console.log(root.toStringTree());
 
   return {
     models,

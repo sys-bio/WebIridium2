@@ -23,6 +23,7 @@ export const createWorker = (type: WorkerType) => {
       );
       break;
     }
+
     case "copasi": {
       worker.port.addEventListener(
         "message",
@@ -202,6 +203,18 @@ export const createWorker = (type: WorkerType) => {
                 },
               };
           }
+        }),
+      );
+      break;
+    }
+
+    case "iridiumSimulator": {
+      // TODO: mock this?
+      worker.port.addEventListener(
+        "message",
+        createMockWorkerMessageHandler(worker, (_) => {
+          // TODO: mock this? or maybe not
+          return {};
         }),
       );
       break;

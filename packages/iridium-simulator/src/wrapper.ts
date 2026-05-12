@@ -1,3 +1,5 @@
+import "./env.d.ts";
+
 import createBindings from "../build/cvodeBindings.js";
 import type { MainModule, Model } from "../build/cvodeBindings.d.ts";
 import {
@@ -7,7 +9,7 @@ import {
 } from "./compile/compile.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import { builtinFunctions } from "./compile/builtinImports.ts";
-// import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
+import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 
 interface InternalModel {
   spec: ModelSpec;
@@ -17,7 +19,7 @@ interface InternalModel {
   rhsFuncPtr: number;
 }
 
-class Wrapper {
+export class CvodeWrapper {
   #bindings: MainModule;
   #internalModel: InternalModel | undefined;
 
@@ -114,16 +116,15 @@ class Wrapper {
   }
 }
 
-export const createWrapper = async (): Promise<Wrapper> => {
+export const createCvodeWrapper = async (): Promise<CvodeWrapper> => {
   const locateFile = (name: string, root: string) => {
-    console.log("root:", root);
     const isNode = typeof process === "object" && !process.browser;
     if (name.endsWith(".wasm")) {
-      return isNode ? root + "cvodeBindings.wasm" : "stub"; // CvodeBindingsWasmUrl;
+      return isNode ? root + "cvodeBindings.wasm" : CvodeBindingsWasmUrl;
     }
     return root + name;
   };
 
   const bindings = await createBindings({ locateFile });
-  return new Wrapper(bindings);
+  return new CvodeWrapper(bindings);
 };

@@ -1,8 +1,9 @@
 {
-  "name": "cvode-simulator",
+  "name": "iridium-simulator",
   "description": "simulator for iridium using CVODE and WASM JIT",
   "version": "0.0.0",
   "type": "module",
+  "main": "src/index.ts",
   "dependencies": {
     "antimony-language": "*"
   }

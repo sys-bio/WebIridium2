@@ -1,6 +1,6 @@
 # Building
 
-To build the bindings, navigate into the package: `cd packages/cvode-simulator`.
+To build the bindings, navigate into the package: `cd packages/iridium-simulator`.
 
 You will need CMake and Emscripten. You also need a TypeScript less than version 6 on your PATH.
 

@@ -1,5 +1,7 @@
 {
-  "extends": "../../tsconfig.app.json",
-  "compilerOptions": {},
-  "include": ["src"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.antlr.json" },
+    { "path": "./tsconfig.app.json" }
+  ]
 }

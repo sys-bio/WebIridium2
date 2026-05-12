@@ -18,7 +18,7 @@ export default tseslint.config(
       "src/vendor",
       "src/features/editor/language-handler",
       "packages/antimony-language/src/generated",
-      "packages/cvode-simulator/build",
+      "packages/iridium-simulator/build",
     ],
   },
   {

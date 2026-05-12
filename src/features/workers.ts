@@ -7,8 +7,14 @@ import FileSystemWorker from "@/workers/FileSystemWorker?worker";
 import AntimonyWorker from "@/workers/AntimonyWorker?worker";
 import LibSbmlSimWorker from "@/workers/LibSbmlSimWorker?worker";
 import CopasiWorker from "@/workers/CopasiWorker?worker";
+import IridiumSimulatorWorker from "@/workers/IridiumSimulatorWorker?worker";
 
-export type WorkerType = "fileSystem" | "copasi" | "antimony" | "libsbmlsim";
+export type WorkerType =
+  | "fileSystem"
+  | "copasi"
+  | "antimony"
+  | "iridiumSimulator"
+  | "libsbmlsim";
 
 export const createWorker = (type: WorkerType): Worker => {
   switch (type) {
@@ -16,9 +22,11 @@ export const createWorker = (type: WorkerType): Worker => {
       return new FileSystemWorker();
     case "copasi":
       return new CopasiWorker();
-    case "libsbmlsim":
-      return new LibSbmlSimWorker();
     case "antimony":
       return new AntimonyWorker();
+    case "iridiumSimulator":
+      return new IridiumSimulatorWorker();
+    case "libsbmlsim":
+      return new LibSbmlSimWorker();
   }
 };
