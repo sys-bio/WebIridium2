@@ -30,18 +30,18 @@ inCompartment : IN variable;
 
 assignment : variable inCompartment? '=' formula;
 
-formula : formula op=LOGICAL formula #logical
-    | formula op=COMPARE formula #compare
-    | formula op=('+' | '-') formula #sum
-    | formula op=('*' | '/' | '%') formula #product
-    | <assoc=right> formula '^' formula #power
-    // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
-    | '(' formula ')' #group
-    | '-' formula #negative
-    | '+' formula #positive
-    | variable #var
+formula : '(' formula ')' #group
     | NUMBER #number
     | functionCall #call
+    | variable #var
+    | '+' formula #positive
+    | '-' formula #negative
+    // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
+    | <assoc=right> formula '^' formula #power
+    | formula op=('*' | '/' | '%') formula #product
+    | formula op=('+' | '-') formula #sum
+    | formula op=COMPARE formula #compare
+    | formula op=LOGICAL formula #logical
     ;
 
 functionCall : NAME '(' parameterList? ')';

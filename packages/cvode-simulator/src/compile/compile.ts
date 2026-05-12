@@ -1,4 +1,8 @@
-import { deriveModels, type AntimonyModel } from "antimony-language/semantic";
+import { parse } from "antimony-language/parse";
+import {
+  deriveModelsFromParseTree,
+  type AntimonyModel,
+} from "antimony-language/semantic";
 import Emitter from "./Emitter";
 import {
   MAGIC_WORD,
@@ -8,6 +12,7 @@ import {
   ValType,
 } from "./codes";
 import { LocalsSymbolTable, IndexSymbolTable } from "./SymbolTable";
+import { TypeTable } from "./wasmTypes";
 import { FormulaCompilerListener } from "./FormulaCompilerListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
@@ -18,9 +23,17 @@ import type {
   ParameterSpec,
 } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
+import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
+import type {
+  AntimonyListener,
+  FunctionCallContext,
+  PowerContext,
+} from "antimony-language/grammar";
+import type { ParserRuleContext } from "antlr4ts";
 
-export const IMPORT_NAMESPACE = "iridium";
+export const CORE_NAMESPACE = "core";
 export const MEMORY_IMPORT_NAME = "mem";
+export const IMPORT_NAMESPACE = "js";
 
 const RHS_NAME = "rhs";
 const TIME_NAME = "time";
@@ -28,9 +41,29 @@ const TIME_NAME = "time";
 const SIZEOF_DOUBLE = 8;
 const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
 
-export const compileToSpec = async (code: string): Promise<ModelSpec> => {
-  const models = deriveModels(code);
-  const module = await WebAssembly.compile(compileModelsToBytecode(models));
+/** Used for testing. */
+export const compileIntermediate = (
+  code: string,
+): {
+  models: AntimonyModel[];
+  imports: string[];
+  bytecode: Uint8Array;
+} => {
+  const root = parse(code);
+  const models = deriveModelsFromParseTree(root);
+  const imports = Array.from(getImportedFunctions(root));
+
+  console.log(root.toStringTree());
+
+  return {
+    models,
+    imports,
+    bytecode: compileModels(models, imports),
+  };
+};
+
+export const compile = async (code: string): Promise<ModelSpec> => {
+  const { models, imports, bytecode } = compileIntermediate(code);
 
   // TODO: get the main model properly
   const mainModel = models[0];
@@ -67,31 +100,155 @@ export const compileToSpec = async (code: string): Promise<ModelSpec> => {
     floatingSpecies,
     boundarySpecies,
     parameters,
-    rhsModule: module,
+    rhsModule: await WebAssembly.compile(bytecode),
+    funcImports: imports,
   };
 };
 
-export const compile = (code: string): Promise<WebAssembly.Module> => {
-  return WebAssembly.compile(compileModelsToBytecode(deriveModels(code)));
+const compileModels = (
+  models: AntimonyModel[],
+  imports: string[],
+): Uint8Array => {
+  // TODO: get mainModel properly?
+  const mainModel = models[0];
+  return compileFunctions([
+    {
+      kind: "compile",
+      isExported: true,
+      name: RHS_NAME,
+      params: RHS_PARAMS,
+      results: RHS_RESULTS,
+      compileBody: (functionTable: IndexSymbolTable) =>
+        compileRhs(functionTable, mainModel).getOutput(),
+    },
+    ...imports.map((name) => ({
+      kind: "import" as const,
+      name: name,
+    })),
+  ]);
 };
 
-export const compileModelsToBytecode = (
-  models: AntimonyModel[],
-): Uint8Array => {
-  // TODO: get the main model properly
-  const mainModel = models[0];
+const getImportedFunctions = (context: ParserRuleContext): Set<string> => {
+  const imported = new Set<string>();
+  const listener = new GetImportedListener(imported);
+  ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, context);
+  return imported;
+};
 
-  const typeTable = new IndexSymbolTable();
-  const typeSection = compileTypeSection(typeTable);
+class GetImportedListener implements AntimonyListener {
+  #imported: Set<string>;
 
-  const importSection = compileImportSection();
+  constructor(imported: Set<string>) {
+    this.#imported = imported;
+  }
 
+  enterFunctionCall(ctx: FunctionCallContext): void {
+    const name = ctx.NAME().text;
+    if (Object.hasOwn(builtinFunctions, name)) {
+      this.#imported.add(name);
+    }
+  }
+
+  enterPower(_ctx: PowerContext): void {
+    this.#imported.add(POW_RESERVED_NAME);
+  }
+}
+
+export type ImportedFunction = {
+  kind: "import";
+  name: string;
+};
+
+export type CompiledFunction = {
+  kind: "compile";
+  isExported: boolean;
+  name: string;
+  params: ValType[];
+  results: ValType[];
+  compileBody: (functionTable: IndexSymbolTable) => Uint8Array;
+};
+
+export type WasmFunction = ImportedFunction | CompiledFunction;
+
+/** Compiles a list of functions into a WebAssembly module. */
+export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
+  const typeTable = new TypeTable();
   const functionTable = new IndexSymbolTable();
-  const functionSection = compileFunctionSection(functionTable, typeTable);
 
-  const exportSection = compileExportSection(functionTable);
+  const importedFunctions: ImportedFunction[] = [];
+  const compiledFunctions: CompiledFunction[] = [];
+  const exportedFunctions: CompiledFunction[] = [];
+  for (const func of funcs) {
+    if (func.kind === "import") {
+      importedFunctions.push(func);
+    } else {
+      compiledFunctions.push(func);
+      if (func.isExported) {
+        exportedFunctions.push(func);
+      }
+    }
+  }
 
-  const codeSection = compileCodeSection(mainModel);
+  const typeSection = new Emitter();
+  const importSection = new Emitter();
+  const functionSection = new Emitter();
+  const exportSection = new Emitter();
+  const codeSection = new Emitter();
+
+  importSection.emitListHeader(
+    1 + funcs.filter((f) => f.kind === "import").length,
+  );
+  functionSection.emitListHeader(compiledFunctions.length);
+  exportSection.emitListHeader(exportedFunctions.length);
+  codeSection.emitListHeader(compiledFunctions.length);
+
+  importSection.emitName(CORE_NAMESPACE);
+  importSection.emitName(MEMORY_IMPORT_NAME);
+  importSection.emitExternMemoryType(1);
+
+  for (const func of importedFunctions) {
+    functionTable.add(func.name);
+
+    const definition = builtinFunctions[func.name];
+    const funcTypeIndex = typeTable.addFunc(
+      definition.params,
+      definition.results,
+    );
+
+    importSection.emitName(IMPORT_NAMESPACE);
+    importSection.emitName(definition.name);
+    importSection.emitExternFunctionType(funcTypeIndex);
+  }
+
+  for (const func of compiledFunctions) {
+    const funcTypeIndex = typeTable.addFunc(func.params, func.results);
+    const funcIndex = functionTable.add(func.name);
+
+    functionSection.emitUint32(funcTypeIndex);
+
+    if (func.isExported) {
+      exportSection.emitName(func.name);
+      exportSection.emitExternFunctionType(funcIndex);
+    }
+  }
+
+  typeSection.emitListHeader(typeTable.size);
+  for (const type of typeTable) {
+    if (type.definition.kind === "function") {
+      typeSection.emitFunctionType(
+        type.definition.params,
+        type.definition.results,
+      );
+    } else {
+      throw new Error(`Unknown type kind`);
+    }
+  }
+
+  for (const func of compiledFunctions) {
+    const body = func.compileBody(functionTable);
+    codeSection.emitUint32(body.byteLength);
+    codeSection.appendBytes(body);
+  }
 
   const module = new Emitter();
 
@@ -107,68 +264,26 @@ export const compileModelsToBytecode = (
   return module.getOutput();
 };
 
-const compileTypeSection = (typeTable: IndexSymbolTable): Emitter => {
-  const emitter = new Emitter();
-
-  typeTable.add(RHS_NAME);
-
-  // we only have one type
-  emitter.emitListHeader(1);
-
-  emitter.emitFunctionType(
-    [ValType.f64, ValType.i32, ValType.i32, ValType.i32],
-    [ValType.i32],
-  );
-
-  return emitter;
-};
-
-const compileImportSection = (): Emitter => {
-  const emitter = new Emitter();
-
-  emitter.emitListHeader(1);
-
-  // only one import right now - the memory
-  emitter.emitName(IMPORT_NAMESPACE);
-  emitter.emitName(MEMORY_IMPORT_NAME);
-  emitter.emitExternMemoryType(1);
-
-  return emitter;
-};
-
-const compileFunctionSection = (
-  functionTable: IndexSymbolTable,
-  typeTable: IndexSymbolTable,
-): Emitter => {
-  const emitter = new Emitter();
-
-  functionTable.add(RHS_NAME);
-
-  emitter.emitListHeader(1);
-  emitter.emitUint32(typeTable.get(RHS_NAME));
-
-  return emitter;
-};
-
-const compileExportSection = (functionTable: IndexSymbolTable): Emitter => {
-  const emitter = new Emitter();
-
-  emitter.emitListHeader(1);
-  emitter.emitName(RHS_NAME);
-  emitter.emitExternFunctionType(functionTable.get(RHS_NAME));
-
-  return emitter;
-};
-
 const T_PARAM = "t";
 const Y_PTR_PARAM = "*y";
 const YDOT_PTR_PARAM = "*yDot";
 const P_PTR_PARAM = "*p";
 
-const compileRhs = (model: AntimonyModel): Emitter => {
+const RHS_PARAMS: ValType[] = [
+  ValType.f64,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
+const RHS_RESULTS: ValType[] = [ValType.i32];
+
+const compileRhs = (
+  functionTable: IndexSymbolTable,
+  model: AntimonyModel,
+): Emitter => {
   const emitter = new Emitter();
 
-  const localTable = new LocalsSymbolTable([
+  const localsTable = new LocalsSymbolTable([
     T_PARAM,
     Y_PTR_PARAM,
     YDOT_PTR_PARAM,
@@ -199,7 +314,7 @@ const compileRhs = (model: AntimonyModel): Emitter => {
   }
 
   for (const name of model.reactions.keys()) {
-    localTable.addLocal(name);
+    localsTable.addLocal(name);
   }
 
   // we only have one type of local: f64
@@ -214,17 +329,17 @@ const compileRhs = (model: AntimonyModel): Emitter => {
   const emitLoadVariable = (name: string): void => {
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localTable.getParam(T_PARAM));
+      emitter.emitUint32(localsTable.getParam(T_PARAM));
     } else if (pTable.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localTable.getParam(P_PTR_PARAM));
+      emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
       emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name)); // offset
     } else if (yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localTable.getParam(Y_PTR_PARAM));
+      emitter.emitUint32(localsTable.getParam(Y_PTR_PARAM));
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
@@ -239,6 +354,7 @@ const compileRhs = (model: AntimonyModel): Emitter => {
       const formulaListener = new FormulaCompilerListener(
         emitter,
         emitLoadVariable,
+        functionTable,
       );
       ParseTreeWalker.DEFAULT.walk(
         formulaListener as ParseTreeListener,
@@ -246,14 +362,14 @@ const compileRhs = (model: AntimonyModel): Emitter => {
       );
 
       emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localTable.getLocal(name));
+      emitter.emitUint32(localsTable.getLocal(name));
     } else {
       // TODO: how to handle missing rate?
       emitter.emitByte(OpCode.f64const);
       emitter.emitUint32(0);
 
       emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localTable.getLocal(name));
+      emitter.emitUint32(localsTable.getLocal(name));
     }
   }
 
@@ -290,13 +406,11 @@ const compileRhs = (model: AntimonyModel): Emitter => {
     }
   }
 
-  console.log(involvedReactions);
-
   for (const f of floatingSpecies) {
     const reactions = involvedReactions.get(f.name);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localTable.getParam(YDOT_PTR_PARAM));
+    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
 
     if (reactions) {
       let isFirst = true;
@@ -304,7 +418,7 @@ const compileRhs = (model: AntimonyModel): Emitter => {
         if (stoichiometry === 0) continue;
 
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localTable.getLocal(reaction));
+        emitter.emitUint32(localsTable.getLocal(reaction));
 
         if (stoichiometry === -1) {
           emitter.emitByte(OpCode.f64neg);
@@ -337,14 +451,5 @@ const compileRhs = (model: AntimonyModel): Emitter => {
 
   emitter.emitByte(OpCode.end);
 
-  return emitter;
-};
-
-const compileCodeSection = (model: AntimonyModel): Emitter => {
-  const emitter = new Emitter();
-  const rhsFunc = compileRhs(model).getOutput();
-  emitter.emitListHeader(1);
-  emitter.emitUint32(rhsFunc.byteLength);
-  emitter.appendBytes(rhsFunc);
   return emitter;
 };

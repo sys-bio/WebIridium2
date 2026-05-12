@@ -3,7 +3,7 @@
  * Name indices start at 0 and increment by 1 for each new item.
  */
 export class IndexSymbolTable {
-  #map: Map<unknown, number>;
+  #map: Map<string, number>;
 
   constructor() {
     this.#map = new Map();
@@ -39,8 +39,8 @@ export class IndexSymbolTable {
 }
 
 export class LocalsSymbolTable {
-  #paramMap: Map<unknown, number>;
-  #localsMap: Map<unknown, number>;
+  #paramMap: Map<string, number>;
+  #localsMap: Map<string, number>;
 
   constructor(params: string[]) {
     this.#paramMap = new Map();

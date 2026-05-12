@@ -18,4 +18,5 @@ export interface ModelSpec {
   boundarySpecies: BoundarySpeciesSpec[];
   parameters: ParameterSpec[];
   rhsModule: WebAssembly.Module;
+  funcImports: string[];
 }

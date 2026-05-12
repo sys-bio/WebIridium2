@@ -88,7 +88,7 @@ export class AntimonyParser extends Parser {
 
 	private static readonly _LITERAL_NAMES: Array<string | undefined> = [
 		undefined, "';'", "'*'", "'('", "','", "')'", "':'", "'+'", "'='", "'-'", 
-		"'/'", "'%'", "'^'", "'.'", "'$'", undefined, "'end'", "'in'", undefined, 
+		"'^'", "'/'", "'%'", "'.'", "'$'", undefined, "'end'", "'in'", undefined, 
 		undefined, undefined, undefined, undefined, undefined, "'--'",
 	];
 	private static readonly _SYMBOLIC_NAMES: Array<string | undefined> = [
@@ -807,25 +807,21 @@ export class AntimonyParser extends Parser {
 
 			case 2:
 				{
-				_localctx = new NegativeContext(_localctx);
+				_localctx = new NumberContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
 				this.state = 150;
-				this.match(AntimonyParser.T__8);
-				this.state = 151;
-				this.formula(5);
+				this.match(AntimonyParser.NUMBER);
 				}
 				break;
 
 			case 3:
 				{
-				_localctx = new PositiveContext(_localctx);
+				_localctx = new CallContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
-				this.state = 152;
-				this.match(AntimonyParser.T__6);
-				this.state = 153;
-				this.formula(4);
+				this.state = 151;
+				this.functionCall();
 				}
 				break;
 
@@ -834,28 +830,32 @@ export class AntimonyParser extends Parser {
 				_localctx = new VarContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
-				this.state = 154;
+				this.state = 152;
 				this.variable(0);
 				}
 				break;
 
 			case 5:
 				{
-				_localctx = new NumberContext(_localctx);
+				_localctx = new PositiveContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
-				this.state = 155;
-				this.match(AntimonyParser.NUMBER);
+				this.state = 153;
+				this.match(AntimonyParser.T__6);
+				this.state = 154;
+				this.formula(7);
 				}
 				break;
 
 			case 6:
 				{
-				_localctx = new CallContext(_localctx);
+				_localctx = new NegativeContext(_localctx);
 				this._ctx = _localctx;
 				_prevctx = _localctx;
+				this.state = 155;
+				this.match(AntimonyParser.T__8);
 				this.state = 156;
-				this.functionCall();
+				this.formula(6);
 				}
 				break;
 			}
@@ -875,31 +875,42 @@ export class AntimonyParser extends Parser {
 					switch ( this.interpreter.adaptivePredict(this._input, 22, this._ctx) ) {
 					case 1:
 						{
-						_localctx = new LogicalContext(new FormulaContext(_parentctx, _parentState));
+						_localctx = new PowerContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 159;
-						if (!(this.precpred(this._ctx, 11))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 11)");
+						if (!(this.precpred(this._ctx, 5))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 5)");
 						}
 						this.state = 160;
-						(_localctx as LogicalContext)._op = this.match(AntimonyParser.LOGICAL);
+						this.match(AntimonyParser.T__9);
 						this.state = 161;
-						this.formula(12);
+						this.formula(5);
 						}
 						break;
 
 					case 2:
 						{
-						_localctx = new CompareContext(new FormulaContext(_parentctx, _parentState));
+						_localctx = new ProductContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 162;
-						if (!(this.precpred(this._ctx, 10))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 10)");
+						if (!(this.precpred(this._ctx, 4))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 4)");
 						}
 						this.state = 163;
-						(_localctx as CompareContext)._op = this.match(AntimonyParser.COMPARE);
+						(_localctx as ProductContext)._op = this._input.LT(1);
+						_la = this._input.LA(1);
+						if (!((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << AntimonyParser.T__1) | (1 << AntimonyParser.T__10) | (1 << AntimonyParser.T__11))) !== 0))) {
+							(_localctx as ProductContext)._op = this._errHandler.recoverInline(this);
+						} else {
+							if (this._input.LA(1) === Token.EOF) {
+								this.matchedEOF = true;
+							}
+
+							this._errHandler.reportMatch(this);
+							this.consume();
+						}
 						this.state = 164;
-						this.formula(11);
+						this.formula(5);
 						}
 						break;
 
@@ -908,8 +919,8 @@ export class AntimonyParser extends Parser {
 						_localctx = new SumContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 165;
-						if (!(this.precpred(this._ctx, 9))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 9)");
+						if (!(this.precpred(this._ctx, 3))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 3)");
 						}
 						this.state = 166;
 						(_localctx as SumContext)._op = this._input.LT(1);
@@ -925,48 +936,37 @@ export class AntimonyParser extends Parser {
 							this.consume();
 						}
 						this.state = 167;
-						this.formula(10);
+						this.formula(4);
 						}
 						break;
 
 					case 4:
 						{
-						_localctx = new ProductContext(new FormulaContext(_parentctx, _parentState));
+						_localctx = new CompareContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 168;
-						if (!(this.precpred(this._ctx, 8))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 8)");
+						if (!(this.precpred(this._ctx, 2))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 2)");
 						}
 						this.state = 169;
-						(_localctx as ProductContext)._op = this._input.LT(1);
-						_la = this._input.LA(1);
-						if (!((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << AntimonyParser.T__1) | (1 << AntimonyParser.T__9) | (1 << AntimonyParser.T__10))) !== 0))) {
-							(_localctx as ProductContext)._op = this._errHandler.recoverInline(this);
-						} else {
-							if (this._input.LA(1) === Token.EOF) {
-								this.matchedEOF = true;
-							}
-
-							this._errHandler.reportMatch(this);
-							this.consume();
-						}
+						(_localctx as CompareContext)._op = this.match(AntimonyParser.COMPARE);
 						this.state = 170;
-						this.formula(9);
+						this.formula(3);
 						}
 						break;
 
 					case 5:
 						{
-						_localctx = new PowerContext(new FormulaContext(_parentctx, _parentState));
+						_localctx = new LogicalContext(new FormulaContext(_parentctx, _parentState));
 						this.pushNewRecursionContext(_localctx, _startState, AntimonyParser.RULE_formula);
 						this.state = 171;
-						if (!(this.precpred(this._ctx, 7))) {
-							throw this.createFailedPredicateException("this.precpred(this._ctx, 7)");
+						if (!(this.precpred(this._ctx, 1))) {
+							throw this.createFailedPredicateException("this.precpred(this._ctx, 1)");
 						}
 						this.state = 172;
-						this.match(AntimonyParser.T__11);
+						(_localctx as LogicalContext)._op = this.match(AntimonyParser.LOGICAL);
 						this.state = 173;
-						this.formula(7);
+						this.formula(2);
 						}
 						break;
 					}
@@ -1208,19 +1208,19 @@ export class AntimonyParser extends Parser {
 	private formula_sempred(_localctx: FormulaContext, predIndex: number): boolean {
 		switch (predIndex) {
 		case 0:
-			return this.precpred(this._ctx, 11);
+			return this.precpred(this._ctx, 5);
 
 		case 1:
-			return this.precpred(this._ctx, 10);
+			return this.precpred(this._ctx, 4);
 
 		case 2:
-			return this.precpred(this._ctx, 9);
+			return this.precpred(this._ctx, 3);
 
 		case 3:
-			return this.precpred(this._ctx, 8);
+			return this.precpred(this._ctx, 2);
 
 		case 4:
-			return this.precpred(this._ctx, 7);
+			return this.precpred(this._ctx, 1);
 		}
 		return true;
 	}
@@ -1258,7 +1258,7 @@ export class AntimonyParser extends Parser {
 		"\x14\x03\x14\x03\x14\x03\x14\x03\x14\x02\x02\x04\x1E$\x15\x02\x02\x04" +
 		"\x02\x06\x02\b\x02\n\x02\f\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02" +
 		"\x18\x02\x1A\x02\x1C\x02\x1E\x02 \x02\"\x02$\x02&\x02\x02\x05\x04\x02" +
-		"\x03\x03\x1D\x1D\x04\x02\t\t\v\v\x04\x02\x04\x04\f\r\x02\xE7\x02)\x03" +
+		"\x03\x03\x1D\x1D\x04\x02\x04\x04\r\x0E\x04\x02\t\t\v\v\x02\xE7\x02)\x03" +
 		"\x02\x02\x02\x044\x03\x02\x02\x02\x068\x03\x02\x02\x02\b>\x03\x02\x02" +
 		"\x02\nE\x03\x02\x02\x02\fG\x03\x02\x02\x02\x0ER\x03\x02\x02\x02\x10`\x03" +
 		"\x02\x02\x02\x12j\x03\x02\x02\x02\x14z\x03\x02\x02\x02\x16|\x03\x02\x02" +
@@ -1300,33 +1300,33 @@ export class AntimonyParser extends Parser {
 		"\x1A\x0E\x02\x8E\x8D\x03\x02\x02\x02\x8E\x8F\x03\x02\x02\x02\x8F\x90\x03" +
 		"\x02\x02\x02\x90\x91\x07\n\x02\x02\x91\x92\x05\x1E\x10\x02\x92\x1D\x03" +
 		"\x02\x02\x02\x93\x94\b\x10\x01\x02\x94\x95\x07\x05\x02\x02\x95\x96\x05" +
-		"\x1E\x10\x02\x96\x97\x07\x07\x02\x02\x97\xA0\x03\x02\x02\x02\x98\x99\x07" +
-		"\v\x02\x02\x99\xA0\x05\x1E\x10\x07\x9A\x9B\x07\t\x02\x02\x9B\xA0\x05\x1E" +
-		"\x10\x06\x9C\xA0\x05$\x13\x02\x9D\xA0\x07\x15\x02\x02\x9E\xA0\x05 \x11" +
-		"\x02\x9F\x93\x03\x02\x02\x02\x9F\x98\x03\x02\x02\x02\x9F\x9A\x03\x02\x02" +
-		"\x02\x9F\x9C\x03\x02\x02\x02\x9F\x9D\x03\x02\x02\x02\x9F\x9E\x03\x02\x02" +
-		"\x02\xA0\xB2\x03\x02\x02\x02\xA1\xA2\f\r\x02\x02\xA2\xA3\x07\x1C\x02\x02" +
-		"\xA3\xB1\x05\x1E\x10\x0E\xA4\xA5\f\f\x02\x02\xA5\xA6\x07\x1B\x02\x02\xA6" +
-		"\xB1\x05\x1E\x10\r\xA7\xA8\f\v\x02\x02\xA8\xA9\t\x03\x02\x02\xA9\xB1\x05" +
-		"\x1E\x10\f\xAA\xAB\f\n\x02\x02\xAB\xAC\t\x04\x02\x02\xAC\xB1\x05\x1E\x10" +
-		"\v\xAD\xAE\f\t\x02\x02\xAE\xAF\x07\x0E\x02\x02\xAF\xB1\x05\x1E\x10\t\xB0" +
-		"\xA1\x03\x02\x02\x02\xB0\xA4\x03\x02\x02\x02\xB0\xA7\x03\x02\x02\x02\xB0" +
-		"\xAA\x03\x02\x02\x02\xB0\xAD\x03\x02\x02\x02\xB1\xB4\x03\x02\x02\x02\xB2" +
-		"\xB0\x03\x02\x02\x02\xB2\xB3\x03\x02\x02\x02\xB3\x1F\x03\x02\x02\x02\xB4" +
-		"\xB2\x03\x02\x02\x02\xB5\xB6\x07\x14\x02\x02\xB6\xB8\x07\x05\x02\x02\xB7" +
-		"\xB9\x05\"\x12\x02\xB8\xB7\x03\x02\x02\x02\xB8\xB9\x03\x02\x02\x02\xB9" +
-		"\xBA\x03\x02\x02\x02\xBA\xBB\x07\x07\x02\x02\xBB!\x03\x02\x02\x02\xBC" +
-		"\xC1\x05\x1E\x10\x02\xBD\xBE\x07\x06\x02\x02\xBE\xC0\x05\x1E\x10\x02\xBF" +
-		"\xBD\x03\x02\x02\x02\xC0\xC3\x03\x02\x02\x02\xC1\xBF\x03\x02\x02\x02\xC1" +
-		"\xC2\x03\x02\x02\x02\xC2#\x03\x02\x02\x02\xC3\xC1\x03\x02\x02\x02\xC4" +
-		"\xC5\b\x13\x01\x02\xC5\xC9\x07\x14\x02\x02\xC6\xC7\x07\x10\x02\x02\xC7" +
-		"\xC9\x05$\x13\x03\xC8\xC4\x03\x02\x02\x02\xC8\xC6\x03\x02\x02\x02\xC9" +
-		"\xCF\x03\x02\x02\x02\xCA\xCB\f\x04\x02\x02\xCB\xCC\x07\x0F\x02\x02\xCC" +
-		"\xCE\x07\x14\x02\x02\xCD\xCA\x03\x02\x02\x02\xCE\xD1\x03\x02\x02\x02\xCF" +
-		"\xCD\x03\x02\x02\x02\xCF\xD0\x03\x02\x02\x02\xD0%\x03\x02\x02\x02\xD1" +
-		"\xCF\x03\x02\x02\x02\xD2\xD3\x05\x12\n\x02\xD3\xD4\x07\x14\x02\x02\xD4" +
-		"\xD5\x05\x0E\b\x02\xD5\'\x03\x02\x02\x02\x1E)-18;@EIMX[`ehlqxz\x81\x85" +
-		"\x8E\x9F\xB0\xB2\xB8\xC1\xC8\xCF";
+		"\x1E\x10\x02\x96\x97\x07\x07\x02\x02\x97\xA0\x03\x02\x02\x02\x98\xA0\x07" +
+		"\x15\x02\x02\x99\xA0\x05 \x11\x02\x9A\xA0\x05$\x13\x02\x9B\x9C\x07\t\x02" +
+		"\x02\x9C\xA0\x05\x1E\x10\t\x9D\x9E\x07\v\x02\x02\x9E\xA0\x05\x1E\x10\b" +
+		"\x9F\x93\x03\x02\x02\x02\x9F\x98\x03\x02\x02\x02\x9F\x99\x03\x02\x02\x02" +
+		"\x9F\x9A\x03\x02\x02\x02\x9F\x9B\x03\x02\x02\x02\x9F\x9D\x03\x02\x02\x02" +
+		"\xA0\xB2\x03\x02\x02\x02\xA1\xA2\f\x07\x02\x02\xA2\xA3\x07\f\x02\x02\xA3" +
+		"\xB1\x05\x1E\x10\x07\xA4\xA5\f\x06\x02\x02\xA5\xA6\t\x03\x02\x02\xA6\xB1" +
+		"\x05\x1E\x10\x07\xA7\xA8\f\x05\x02\x02\xA8\xA9\t\x04\x02\x02\xA9\xB1\x05" +
+		"\x1E\x10\x06\xAA\xAB\f\x04\x02\x02\xAB\xAC\x07\x1B\x02\x02\xAC\xB1\x05" +
+		"\x1E\x10\x05\xAD\xAE\f\x03\x02\x02\xAE\xAF\x07\x1C\x02\x02\xAF\xB1\x05" +
+		"\x1E\x10\x04\xB0\xA1\x03\x02\x02\x02\xB0\xA4\x03\x02\x02\x02\xB0\xA7\x03" +
+		"\x02\x02\x02\xB0\xAA\x03\x02\x02\x02\xB0\xAD\x03\x02\x02\x02\xB1\xB4\x03" +
+		"\x02\x02\x02\xB2\xB0\x03\x02\x02\x02\xB2\xB3\x03\x02\x02\x02\xB3\x1F\x03" +
+		"\x02\x02\x02\xB4\xB2\x03\x02\x02\x02\xB5\xB6\x07\x14\x02\x02\xB6\xB8\x07" +
+		"\x05\x02\x02\xB7\xB9\x05\"\x12\x02\xB8\xB7\x03\x02\x02\x02\xB8\xB9\x03" +
+		"\x02\x02\x02\xB9\xBA\x03\x02\x02\x02\xBA\xBB\x07\x07\x02\x02\xBB!\x03" +
+		"\x02\x02\x02\xBC\xC1\x05\x1E\x10\x02\xBD\xBE\x07\x06\x02\x02\xBE\xC0\x05" +
+		"\x1E\x10\x02\xBF\xBD\x03\x02\x02\x02\xC0\xC3\x03\x02\x02\x02\xC1\xBF\x03" +
+		"\x02\x02\x02\xC1\xC2\x03\x02\x02\x02\xC2#\x03\x02\x02\x02\xC3\xC1\x03" +
+		"\x02\x02\x02\xC4\xC5\b\x13\x01\x02\xC5\xC9\x07\x14\x02\x02\xC6\xC7\x07" +
+		"\x10\x02\x02\xC7\xC9\x05$\x13\x03\xC8\xC4\x03\x02\x02\x02\xC8\xC6\x03" +
+		"\x02\x02\x02\xC9\xCF\x03\x02\x02\x02\xCA\xCB\f\x04\x02\x02\xCB\xCC\x07" +
+		"\x0F\x02\x02\xCC\xCE\x07\x14\x02\x02\xCD\xCA\x03\x02\x02\x02\xCE\xD1\x03" +
+		"\x02\x02\x02\xCF\xCD\x03\x02\x02\x02\xCF\xD0\x03\x02\x02\x02\xD0%\x03" +
+		"\x02\x02\x02\xD1\xCF\x03\x02\x02\x02\xD2\xD3\x05\x12\n\x02\xD3\xD4\x07" +
+		"\x14\x02\x02\xD4\xD5\x05\x0E\b\x02\xD5\'\x03\x02\x02\x02\x1E)-18;@EIM" +
+		"X[`ehlqxz\x81\x85\x8E\x9F\xB0\xB2\xB8\xC1\xC8\xCF";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!AntimonyParser.__ATN) {
@@ -1878,187 +1878,6 @@ export class FormulaContext extends ParserRuleContext {
 		super.copyFrom(ctx);
 	}
 }
-export class LogicalContext extends FormulaContext {
-	public _op!: Token;
-	public formula(): FormulaContext[];
-	public formula(i: number): FormulaContext;
-	public formula(i?: number): FormulaContext | FormulaContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(FormulaContext);
-		} else {
-			return this.getRuleContext(i, FormulaContext);
-		}
-	}
-	public LOGICAL(): TerminalNode { return this.getToken(AntimonyParser.LOGICAL, 0); }
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterLogical) {
-			listener.enterLogical(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitLogical) {
-			listener.exitLogical(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitLogical) {
-			return visitor.visitLogical(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class CompareContext extends FormulaContext {
-	public _op!: Token;
-	public formula(): FormulaContext[];
-	public formula(i: number): FormulaContext;
-	public formula(i?: number): FormulaContext | FormulaContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(FormulaContext);
-		} else {
-			return this.getRuleContext(i, FormulaContext);
-		}
-	}
-	public COMPARE(): TerminalNode { return this.getToken(AntimonyParser.COMPARE, 0); }
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterCompare) {
-			listener.enterCompare(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitCompare) {
-			listener.exitCompare(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitCompare) {
-			return visitor.visitCompare(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class SumContext extends FormulaContext {
-	public _op!: Token;
-	public formula(): FormulaContext[];
-	public formula(i: number): FormulaContext;
-	public formula(i?: number): FormulaContext | FormulaContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(FormulaContext);
-		} else {
-			return this.getRuleContext(i, FormulaContext);
-		}
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterSum) {
-			listener.enterSum(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitSum) {
-			listener.exitSum(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitSum) {
-			return visitor.visitSum(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class ProductContext extends FormulaContext {
-	public _op!: Token;
-	public formula(): FormulaContext[];
-	public formula(i: number): FormulaContext;
-	public formula(i?: number): FormulaContext | FormulaContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(FormulaContext);
-		} else {
-			return this.getRuleContext(i, FormulaContext);
-		}
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterProduct) {
-			listener.enterProduct(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitProduct) {
-			listener.exitProduct(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitProduct) {
-			return visitor.visitProduct(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class PowerContext extends FormulaContext {
-	public formula(): FormulaContext[];
-	public formula(i: number): FormulaContext;
-	public formula(i?: number): FormulaContext | FormulaContext[] {
-		if (i === undefined) {
-			return this.getRuleContexts(FormulaContext);
-		} else {
-			return this.getRuleContext(i, FormulaContext);
-		}
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterPower) {
-			listener.enterPower(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitPower) {
-			listener.exitPower(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitPower) {
-			return visitor.visitPower(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
 export class GroupContext extends FormulaContext {
 	public formula(): FormulaContext {
 		return this.getRuleContext(0, FormulaContext);
@@ -2083,93 +1902,6 @@ export class GroupContext extends FormulaContext {
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
 		if (visitor.visitGroup) {
 			return visitor.visitGroup(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class NegativeContext extends FormulaContext {
-	public formula(): FormulaContext {
-		return this.getRuleContext(0, FormulaContext);
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterNegative) {
-			listener.enterNegative(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitNegative) {
-			listener.exitNegative(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitNegative) {
-			return visitor.visitNegative(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class PositiveContext extends FormulaContext {
-	public formula(): FormulaContext {
-		return this.getRuleContext(0, FormulaContext);
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterPositive) {
-			listener.enterPositive(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitPositive) {
-			listener.exitPositive(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitPositive) {
-			return visitor.visitPositive(this);
-		} else {
-			return visitor.visitChildren(this);
-		}
-	}
-}
-export class VarContext extends FormulaContext {
-	public variable(): VariableContext {
-		return this.getRuleContext(0, VariableContext);
-	}
-	constructor(ctx: FormulaContext) {
-		super(ctx.parent, ctx.invokingState);
-		this.copyFrom(ctx);
-	}
-	// @Override
-	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterVar) {
-			listener.enterVar(this);
-		}
-	}
-	// @Override
-	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitVar) {
-			listener.exitVar(this);
-		}
-	}
-	// @Override
-	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitVar) {
-			return visitor.visitVar(this);
 		} else {
 			return visitor.visitChildren(this);
 		}
@@ -2226,6 +1958,274 @@ export class CallContext extends FormulaContext {
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
 		if (visitor.visitCall) {
 			return visitor.visitCall(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class VarContext extends FormulaContext {
+	public variable(): VariableContext {
+		return this.getRuleContext(0, VariableContext);
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterVar) {
+			listener.enterVar(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitVar) {
+			listener.exitVar(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitVar) {
+			return visitor.visitVar(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class PositiveContext extends FormulaContext {
+	public formula(): FormulaContext {
+		return this.getRuleContext(0, FormulaContext);
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterPositive) {
+			listener.enterPositive(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitPositive) {
+			listener.exitPositive(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitPositive) {
+			return visitor.visitPositive(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class NegativeContext extends FormulaContext {
+	public formula(): FormulaContext {
+		return this.getRuleContext(0, FormulaContext);
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterNegative) {
+			listener.enterNegative(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitNegative) {
+			listener.exitNegative(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitNegative) {
+			return visitor.visitNegative(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class PowerContext extends FormulaContext {
+	public formula(): FormulaContext[];
+	public formula(i: number): FormulaContext;
+	public formula(i?: number): FormulaContext | FormulaContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(FormulaContext);
+		} else {
+			return this.getRuleContext(i, FormulaContext);
+		}
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterPower) {
+			listener.enterPower(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitPower) {
+			listener.exitPower(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitPower) {
+			return visitor.visitPower(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class ProductContext extends FormulaContext {
+	public _op!: Token;
+	public formula(): FormulaContext[];
+	public formula(i: number): FormulaContext;
+	public formula(i?: number): FormulaContext | FormulaContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(FormulaContext);
+		} else {
+			return this.getRuleContext(i, FormulaContext);
+		}
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterProduct) {
+			listener.enterProduct(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitProduct) {
+			listener.exitProduct(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitProduct) {
+			return visitor.visitProduct(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class SumContext extends FormulaContext {
+	public _op!: Token;
+	public formula(): FormulaContext[];
+	public formula(i: number): FormulaContext;
+	public formula(i?: number): FormulaContext | FormulaContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(FormulaContext);
+		} else {
+			return this.getRuleContext(i, FormulaContext);
+		}
+	}
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterSum) {
+			listener.enterSum(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitSum) {
+			listener.exitSum(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitSum) {
+			return visitor.visitSum(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class CompareContext extends FormulaContext {
+	public _op!: Token;
+	public formula(): FormulaContext[];
+	public formula(i: number): FormulaContext;
+	public formula(i?: number): FormulaContext | FormulaContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(FormulaContext);
+		} else {
+			return this.getRuleContext(i, FormulaContext);
+		}
+	}
+	public COMPARE(): TerminalNode { return this.getToken(AntimonyParser.COMPARE, 0); }
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterCompare) {
+			listener.enterCompare(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitCompare) {
+			listener.exitCompare(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitCompare) {
+			return visitor.visitCompare(this);
+		} else {
+			return visitor.visitChildren(this);
+		}
+	}
+}
+export class LogicalContext extends FormulaContext {
+	public _op!: Token;
+	public formula(): FormulaContext[];
+	public formula(i: number): FormulaContext;
+	public formula(i?: number): FormulaContext | FormulaContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(FormulaContext);
+		} else {
+			return this.getRuleContext(i, FormulaContext);
+		}
+	}
+	public LOGICAL(): TerminalNode { return this.getToken(AntimonyParser.LOGICAL, 0); }
+	constructor(ctx: FormulaContext) {
+		super(ctx.parent, ctx.invokingState);
+		this.copyFrom(ctx);
+	}
+	// @Override
+	public enterRule(listener: AntimonyListener): void {
+		if (listener.enterLogical) {
+			listener.enterLogical(this);
+		}
+	}
+	// @Override
+	public exitRule(listener: AntimonyListener): void {
+		if (listener.exitLogical) {
+			listener.exitLogical(this);
+		}
+	}
+	// @Override
+	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
+		if (visitor.visitLogical) {
+			return visitor.visitLogical(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

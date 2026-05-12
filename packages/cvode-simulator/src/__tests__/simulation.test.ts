@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createWrapper } from "../wrapper.ts";
 
-import defaultModel from "@/assets/examples/smallest-hopf-model-by-wilhelm-and-heinrich.txt?raw";
-import { compileToSpec } from "../compile/compile";
+import defaultModel from "@/assets/examples/feedback-oscillator-model.txt?raw";
+import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 
 const resultToString = (
@@ -53,7 +53,7 @@ const resultToString = (
 describe("simulating basic model", () => {
   it("should match expected output", async () => {
     const wrapper = await createWrapper();
-    const spec = await compileToSpec(defaultModel);
+    const spec = await compile(defaultModel);
     const numPoints = 200;
 
     await wrapper.setModel(spec);

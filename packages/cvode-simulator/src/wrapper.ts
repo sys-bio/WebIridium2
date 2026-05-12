@@ -1,7 +1,12 @@
 import createBindings from "../build/cvodeBindings.js";
 import type { MainModule, Model } from "../build/cvodeBindings.d.ts";
-import { IMPORT_NAMESPACE, MEMORY_IMPORT_NAME } from "./compile/compile.ts";
+import {
+  CORE_NAMESPACE,
+  IMPORT_NAMESPACE,
+  MEMORY_IMPORT_NAME,
+} from "./compile/compile.ts";
 import type { ModelSpec } from "./modelSpec.ts";
+import { builtinFunctions } from "./compile/builtinImports.ts";
 // import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 
 interface InternalModel {
@@ -39,10 +44,13 @@ class Wrapper {
     for (const v of spec.parameters) parametersVector.push_back(v.initialValue);
 
     const instance = await WebAssembly.instantiate(spec.rhsModule, {
-      [IMPORT_NAMESPACE]: {
+      [CORE_NAMESPACE]: {
         // eslint-disable-next-line
         [MEMORY_IMPORT_NAME]: this.#bindings.wasmMemory,
       },
+      [IMPORT_NAMESPACE]: Object.fromEntries(
+        spec.funcImports.map((name) => [name, builtinFunctions[name].js]),
+      ),
     });
 
     // eslint-disable-next-line

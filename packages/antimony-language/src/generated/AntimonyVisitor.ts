@@ -7,17 +7,17 @@ import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 import { NameContext } from "./AntimonyParser";
 import { SubvariableContext } from "./AntimonyParser";
 import { ConstantContext } from "./AntimonyParser";
-import { LogicalContext } from "./AntimonyParser";
-import { CompareContext } from "./AntimonyParser";
-import { SumContext } from "./AntimonyParser";
-import { ProductContext } from "./AntimonyParser";
-import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
-import { NegativeContext } from "./AntimonyParser";
-import { PositiveContext } from "./AntimonyParser";
-import { VarContext } from "./AntimonyParser";
 import { NumberContext } from "./AntimonyParser";
 import { CallContext } from "./AntimonyParser";
+import { VarContext } from "./AntimonyParser";
+import { PositiveContext } from "./AntimonyParser";
+import { NegativeContext } from "./AntimonyParser";
+import { PowerContext } from "./AntimonyParser";
+import { ProductContext } from "./AntimonyParser";
+import { SumContext } from "./AntimonyParser";
+import { CompareContext } from "./AntimonyParser";
+import { LogicalContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
 import { StatementSeparatorContext } from "./AntimonyParser";
 import { TopLevelStatementContext } from "./AntimonyParser";
@@ -72,76 +72,12 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitConstant?: (ctx: ConstantContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `logical`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitLogical?: (ctx: LogicalContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `compare`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitCompare?: (ctx: CompareContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `sum`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitSum?: (ctx: SumContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `product`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitProduct?: (ctx: ProductContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `power`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitPower?: (ctx: PowerContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by the `group`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	visitGroup?: (ctx: GroupContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `negative`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitNegative?: (ctx: NegativeContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `positive`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitPositive?: (ctx: PositiveContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by the `var`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitVar?: (ctx: VarContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `number`
@@ -158,6 +94,70 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitCall?: (ctx: CallContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `var`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitVar?: (ctx: VarContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `positive`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitPositive?: (ctx: PositiveContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `negative`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitNegative?: (ctx: NegativeContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitPower?: (ctx: PowerContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `product`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitProduct?: (ctx: ProductContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `sum`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitSum?: (ctx: SumContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `compare`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitCompare?: (ctx: CompareContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `logical`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitLogical?: (ctx: LogicalContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.root`.

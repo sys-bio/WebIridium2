@@ -45,6 +45,8 @@ export const SectionCode = {
 export type SectionCode = (typeof SectionCode)[keyof typeof SectionCode];
 
 export const OpCode = {
+  call: 0x10,
+
   localget: 0x20,
   localset: 0x21,
 

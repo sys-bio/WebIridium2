@@ -7,17 +7,17 @@ import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { NameContext } from "./AntimonyParser";
 import { SubvariableContext } from "./AntimonyParser";
 import { ConstantContext } from "./AntimonyParser";
-import { LogicalContext } from "./AntimonyParser";
-import { CompareContext } from "./AntimonyParser";
-import { SumContext } from "./AntimonyParser";
-import { ProductContext } from "./AntimonyParser";
-import { PowerContext } from "./AntimonyParser";
 import { GroupContext } from "./AntimonyParser";
-import { NegativeContext } from "./AntimonyParser";
-import { PositiveContext } from "./AntimonyParser";
-import { VarContext } from "./AntimonyParser";
 import { NumberContext } from "./AntimonyParser";
 import { CallContext } from "./AntimonyParser";
+import { VarContext } from "./AntimonyParser";
+import { PositiveContext } from "./AntimonyParser";
+import { NegativeContext } from "./AntimonyParser";
+import { PowerContext } from "./AntimonyParser";
+import { ProductContext } from "./AntimonyParser";
+import { SumContext } from "./AntimonyParser";
+import { CompareContext } from "./AntimonyParser";
+import { LogicalContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
 import { StatementSeparatorContext } from "./AntimonyParser";
 import { TopLevelStatementContext } from "./AntimonyParser";
@@ -84,71 +84,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitConstant?: (ctx: ConstantContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `logical`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterLogical?: (ctx: LogicalContext) => void;
-	/**
-	 * Exit a parse tree produced by the `logical`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitLogical?: (ctx: LogicalContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `compare`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterCompare?: (ctx: CompareContext) => void;
-	/**
-	 * Exit a parse tree produced by the `compare`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitCompare?: (ctx: CompareContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `sum`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterSum?: (ctx: SumContext) => void;
-	/**
-	 * Exit a parse tree produced by the `sum`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitSum?: (ctx: SumContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `product`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterProduct?: (ctx: ProductContext) => void;
-	/**
-	 * Exit a parse tree produced by the `product`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitProduct?: (ctx: ProductContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `power`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterPower?: (ctx: PowerContext) => void;
-	/**
-	 * Exit a parse tree produced by the `power`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitPower?: (ctx: PowerContext) => void;
-
-	/**
 	 * Enter a parse tree produced by the `group`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
@@ -160,45 +95,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitGroup?: (ctx: GroupContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `negative`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterNegative?: (ctx: NegativeContext) => void;
-	/**
-	 * Exit a parse tree produced by the `negative`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitNegative?: (ctx: NegativeContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `positive`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterPositive?: (ctx: PositiveContext) => void;
-	/**
-	 * Exit a parse tree produced by the `positive`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitPositive?: (ctx: PositiveContext) => void;
-
-	/**
-	 * Enter a parse tree produced by the `var`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterVar?: (ctx: VarContext) => void;
-	/**
-	 * Exit a parse tree produced by the `var`
-	 * labeled alternative in `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitVar?: (ctx: VarContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `number`
@@ -225,6 +121,110 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitCall?: (ctx: CallContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `var`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterVar?: (ctx: VarContext) => void;
+	/**
+	 * Exit a parse tree produced by the `var`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitVar?: (ctx: VarContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `positive`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterPositive?: (ctx: PositiveContext) => void;
+	/**
+	 * Exit a parse tree produced by the `positive`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitPositive?: (ctx: PositiveContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `negative`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterNegative?: (ctx: NegativeContext) => void;
+	/**
+	 * Exit a parse tree produced by the `negative`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitNegative?: (ctx: NegativeContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterPower?: (ctx: PowerContext) => void;
+	/**
+	 * Exit a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitPower?: (ctx: PowerContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `product`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterProduct?: (ctx: ProductContext) => void;
+	/**
+	 * Exit a parse tree produced by the `product`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitProduct?: (ctx: ProductContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `sum`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterSum?: (ctx: SumContext) => void;
+	/**
+	 * Exit a parse tree produced by the `sum`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitSum?: (ctx: SumContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `compare`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterCompare?: (ctx: CompareContext) => void;
+	/**
+	 * Exit a parse tree produced by the `compare`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitCompare?: (ctx: CompareContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `logical`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterLogical?: (ctx: LogicalContext) => void;
+	/**
+	 * Exit a parse tree produced by the `logical`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitLogical?: (ctx: LogicalContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.root`.

@@ -14,6 +14,8 @@ import { getVariableName } from "antimony-language/semantic/util";
 
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
+import type { IndexSymbolTable } from "./SymbolTable";
+import { POW_RESERVED_NAME } from "./builtinImports";
 
 const TODO = () => {
   throw new Error("TODO");
@@ -22,18 +24,26 @@ const TODO = () => {
 export class FormulaCompilerListener implements AntimonyListener {
   #emitter: Emitter;
   #emitLoadVariable: (name: string) => void;
+  #functionTable: IndexSymbolTable;
 
   /**
    * Load variable should emit instructions to load f64 in memory for the
    * given variable name.
    */
-  constructor(emitter: Emitter, emitLoadVariable: (name: string) => void) {
+  constructor(
+    emitter: Emitter,
+    emitLoadVariable: (name: string) => void,
+    functionTable: IndexSymbolTable,
+  ) {
     this.#emitter = emitter;
     this.#emitLoadVariable = emitLoadVariable;
+    this.#functionTable = functionTable;
   }
 
   exitFunctionCall(_ctx: FunctionCallContext): void {
-    TODO();
+    const functionIndex = this.#functionTable.get(_ctx.NAME().text);
+    this.#emitter.emitByte(OpCode.call);
+    this.#emitter.emitUint32(functionIndex);
   }
 
   exitNumber(ctx: NumberContext): void {
@@ -55,8 +65,8 @@ export class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitPower(_ctx: PowerContext) {
-    // no general power operation in wasm
-    TODO();
+    this.#emitter.emitByte(OpCode.call);
+    this.#emitter.emitUint32(this.#functionTable.get(POW_RESERVED_NAME));
   }
 
   exitProduct(ctx: ProductContext): void {
@@ -77,7 +87,7 @@ export class FormulaCompilerListener implements AntimonyListener {
     if (ctx._op.text === "+") {
       this.#emitter.emitByte(OpCode.f64add);
     } else if (ctx._op.text === "-") {
-      this.#emitter.emitByte(OpCode.f64min);
+      this.#emitter.emitByte(OpCode.f64sub);
     } else {
       throw new Error(`unknown op: ${ctx._op.text}`);
     }
