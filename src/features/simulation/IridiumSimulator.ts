@@ -63,6 +63,17 @@ export class IridiumSimulator extends Simulator {
       });
     }
 
+    for (const o of spec.odes) {
+      variables.push({
+        type: "settable",
+        defaultDisplayName: o.name,
+        name: o.name,
+        category: "ODEs",
+        setName: o.name,
+        defaultValue: o.initialValue,
+      });
+    }
+
     for (const b of spec.boundarySpecies) {
       variables.push({
         type: "settable",
@@ -146,6 +157,7 @@ export class IridiumSimulator extends Simulator {
 
     const titles = [
       ...spec.floatingSpecies.map((v) => v.name),
+      ...spec.odes.map((v) => v.name),
       ...spec.boundarySpecies.map((v) => v.name),
       ...spec.parameters.map((v) => v.name),
       ...spec.reactions,

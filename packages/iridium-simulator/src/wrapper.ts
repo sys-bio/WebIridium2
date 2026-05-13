@@ -44,6 +44,10 @@ export class CvodeWrapper {
       yIndices.add(v.name);
       yVector.push_back(v.initialValue);
     }
+    for (const v of spec.odes) {
+      yIndices.add(v.name);
+      yVector.push_back(v.initialValue);
+    }
 
     const pIndices = new IndexSymbolTable();
     const pVector = new this.#bindings.DoubleVector();

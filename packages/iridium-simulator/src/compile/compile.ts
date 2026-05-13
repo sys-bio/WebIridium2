@@ -2,6 +2,7 @@ import { parse } from "antimony-language/parse";
 import {
   deriveModelsFromParseTree,
   type AntimonyModel,
+  type AntimonyVariable,
 } from "antimony-language/semantic";
 import Emitter from "./Emitter";
 import {
@@ -16,12 +17,7 @@ import { TypeTable } from "./wasmTypes";
 import { FormulaCompilerListener } from "./FormulaCompilerListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import type {
-  BoundarySpeciesSpec,
-  FloatingSpeciesSpec,
-  ModelSpec,
-  ParameterSpec,
-} from "../modelSpec";
+import type { ModelSpec, VariableSpec } from "../modelSpec";
 import { evaluateInitialValues, getEvaluationOrder } from "./evaluate";
 import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
 import type {
@@ -68,9 +64,10 @@ export const compile = async (code: string): Promise<ModelSpec> => {
   const mainModel = models[0];
 
   const initialValues = evaluateInitialValues(mainModel);
-  const floatingSpecies: FloatingSpeciesSpec[] = [];
-  const boundarySpecies: BoundarySpeciesSpec[] = [];
-  const parameters: ParameterSpec[] = [];
+  const floatingSpecies: VariableSpec[] = [];
+  const odes: VariableSpec[] = [];
+  const boundarySpecies: VariableSpec[] = [];
+  const parameters: VariableSpec[] = [];
 
   for (const variable of mainModel.variables.values()) {
     if (variable.kind === "species") {
@@ -86,10 +83,17 @@ export const compile = async (code: string): Promise<ModelSpec> => {
         });
       }
     } else if (variable.kind === "parameter") {
-      parameters.push({
-        name: variable.name,
-        initialValue: initialValues.get(variable.name) as number,
-      });
+      if (variable.assignment?.kind === "rate") {
+        odes.push({
+          name: variable.name,
+          initialValue: initialValues.get(variable.name) as number,
+        });
+      } else {
+        parameters.push({
+          name: variable.name,
+          initialValue: initialValues.get(variable.name) as number,
+        });
+      }
     } else {
       throw new Error(`Unknown variable kind`);
     }
@@ -97,6 +101,7 @@ export const compile = async (code: string): Promise<ModelSpec> => {
 
   return {
     floatingSpecies,
+    odes,
     boundarySpecies,
     parameters,
     reactions: Array.from(mainModel.reactions.keys()),
@@ -294,19 +299,32 @@ const compileRhs = (
     P_PTR_PARAM,
   ]);
 
-  const floatingSpecies = Array.from(model.variables.values()).filter(
-    (v) => v.kind === "species" && !v.isConst,
-  );
-  const boundarySpecies = Array.from(model.variables.values()).filter(
-    (v) => v.kind === "species" && v.isConst,
-  );
-  const parameters = Array.from(model.variables.values()).filter(
-    (v) => v.kind === "parameter",
-  );
+  const floatingSpecies: AntimonyVariable[] = [];
+  const odes: AntimonyVariable[] = [];
+  const boundarySpecies: AntimonyVariable[] = [];
+  const parameters: AntimonyVariable[] = [];
+  for (const variable of model.variables.values()) {
+    if (variable.kind === "species") {
+      if (variable.isConst) {
+        boundarySpecies.push(variable);
+      } else {
+        floatingSpecies.push(variable);
+      }
+    } else if (variable.kind === "parameter") {
+      if (variable.assignment?.kind === "rate") {
+        odes.push(variable);
+      } else {
+        parameters.push(variable);
+      }
+    }
+  }
 
   const yTable = new IndexSymbolTable();
   for (const f of floatingSpecies) {
     yTable.add(f.name);
+  }
+  for (const o of odes) {
+    yTable.add(o.name);
   }
 
   const pTable = new IndexSymbolTable();
@@ -467,6 +485,18 @@ const compileRhs = (
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
+  }
+
+  // do rate rules
+  for (const ode of odes) {
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
+
+    emitFormula(ode.assignment!.formula);
+
+    emitter.emitByte(OpCode.f64store);
+    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(ode.name));
   }
 
   // add to reactions to p (for output)

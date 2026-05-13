@@ -33,13 +33,24 @@ export const evaluateInitialValues = (
   const initialValues: Map<string, number> = new Map();
   const evalOrder = getEvaluationOrder(model, "set");
 
+  // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
+  initialValues.set(TIME_NAME, 0);
+
   for (const name of evalOrder) {
     const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
     const variable = model.variables.get(name)!;
 
     if (variable.assignment) {
-      initialValues.set(name, evalVisitor.visit(variable.assignment.formula));
-      console.log(name, initialValues.get(name));
+      if (
+        variable.assignment.kind === "set" ||
+        variable.assignment.kind === "rule"
+      ) {
+        initialValues.set(name, evalVisitor.visit(variable.assignment.formula));
+      } else if (variable.assignment.kind === "rate") {
+        initialValues.set(name, DEFAULT_INITIAL_VALUE);
+      } else {
+        throw new Error("Unknown variable assignment.");
+      }
     } else {
       initialValues.set(name, DEFAULT_INITIAL_VALUE);
     }

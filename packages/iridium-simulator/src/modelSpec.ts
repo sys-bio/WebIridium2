@@ -1,22 +1,13 @@
-export interface FloatingSpeciesSpec {
-  name: string;
-  initialValue: number;
-}
-
-export interface ParameterSpec {
-  name: string;
-  initialValue: number;
-}
-
-export interface BoundarySpeciesSpec {
+export interface VariableSpec {
   name: string;
   initialValue: number;
 }
 
 export interface ModelSpec {
-  floatingSpecies: FloatingSpeciesSpec[];
-  boundarySpecies: BoundarySpeciesSpec[];
-  parameters: ParameterSpec[];
+  floatingSpecies: VariableSpec[];
+  odes: VariableSpec[];
+  boundarySpecies: VariableSpec[];
+  parameters: VariableSpec[];
   reactions: string[];
   rhsModule: WebAssembly.Module;
   funcImports: string[];
