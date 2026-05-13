@@ -98,6 +98,7 @@ export const compile = async (code: string): Promise<ModelSpec> => {
     floatingSpecies,
     boundarySpecies,
     parameters,
+    reactions: Array.from(mainModel.reactions.keys()),
     rhsModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };
@@ -310,6 +311,9 @@ const compileRhs = (
   for (const p of parameters) {
     pTable.add(p.name);
   }
+  for (const name of model.reactions.keys()) {
+    pTable.add(name);
+  }
 
   for (const name of model.reactions.keys()) {
     localsTable.addLocal(name);
@@ -441,6 +445,21 @@ const compileRhs = (
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
+  }
+
+  // add to reactions to p (for output)
+  for (const name of model.reactions.keys()) {
+    const index = pTable.get(name);
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getLocal(name));
+
+    emitter.emitByte(OpCode.f64store);
+    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_DOUBLE * index);
   }
 
   // return success

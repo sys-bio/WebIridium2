@@ -39,7 +39,7 @@ interface EmbindModule {
     new(): DoubleVector;
   };
   Model: {
-    new(_0: DoubleVector, _1: DoubleVector, _2: DoubleVector, _3: number): Model;
+    new(_0: DoubleVector, _1: DoubleVector, _2: DoubleVector, _3: number, _4: number): Model;
   };
 }
 

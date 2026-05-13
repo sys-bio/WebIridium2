@@ -27,12 +27,18 @@ const resultToString = (
     builder.push(",");
   }
 
+  for (const reaction of spec.reactions) {
+    builder.push(reaction);
+    builder.push(",");
+  }
+
   builder.push("Time\n");
 
   const cols =
     spec.floatingSpecies.length +
     spec.boundarySpecies.length +
     spec.parameters.length +
+    spec.reactions.length +
     1;
 
   for (let y = 0; y < numPoints; y++) {

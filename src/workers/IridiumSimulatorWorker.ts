@@ -50,7 +50,10 @@ const simulateTimeCourse = async ({
   }
 
   if (parameterScanOptions?.varyingParameter) {
-    wrapper.setVariable(parameterScanOptions.varyingParameter, parameterScanOptions.varyingParameterValue);
+    wrapper.setVariable(
+      parameterScanOptions.varyingParameter,
+      parameterScanOptions.varyingParameterValue,
+    );
   }
 
   for (const [name, value] of Object.entries(variableValues)) {

@@ -4,6 +4,7 @@
  * TODO: how are errors handled?
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <emscripten/wire.h>
@@ -28,7 +29,10 @@ typedef int(*RHSFunc)(double t, double y[], double ydot[], double p[]);
 
 struct UserData {
     RHSFunc rhs;
+    // Concatentating [ boundary species | parameters | reaction rates]
+    // Everything after the parameters is just for recording. It should NOT be set.
     double *p;
+    size_t p_len;
 };
 
 static int delegating_rhs(double t, N_Vector y, N_Vector ydot, UserData *data) {
@@ -47,17 +51,20 @@ public:
         std::vector<double> floating_species,
         std::vector<double> boundary_species,
         std::vector<double> parameters,
+        int num_reactions,
         uintptr_t rhs
     ) : original_floating_species_(floating_species),
         original_boundary_species_(boundary_species),
-        original_parameters_(parameters)
+        original_parameters_(parameters),
+        num_reactions_(num_reactions)
     {
         // TODO: handle errors?
         SUNContext_Create(SUN_COMM_NULL, &ctx_);
 
         cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
         y_ = N_VNew_Serial(floating_species.size(), ctx_);
-        user_data_.p = new double[boundary_species.size() + parameters.size()];
+        user_data_.p_len = boundary_species.size() + parameters.size() + num_reactions_;
+        user_data_.p = new double[user_data_.p_len];
         user_data_.rhs = (RHSFunc)rhs;
         matrix_ = SUNDenseMatrix(original_floating_species_.size(), original_floating_species_.size(), ctx_);
         linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
@@ -86,7 +93,8 @@ public:
             1 +
             original_floating_species_.size() +
             original_boundary_species_.size() +
-            original_parameters_.size();
+            original_parameters_.size() +
+            num_reactions_;
     }
 
     // Reset all variables to their default values.
@@ -134,7 +142,7 @@ public:
         }
 
         // TODO: what tolerances to set?
-        CVodeSStolerances(cvode_mem_, 1e-4, 1e-8);
+        CVodeSStolerances(cvode_mem_, 1e-8, 1e-12);
 
         double t_out = start_time;
         double t_return = 0.0;
@@ -143,6 +151,11 @@ public:
 
         if (start_time > 0.0) {
             CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
+        } else {
+            // run the rhs one time to get the reaction rates
+            double *temp = new double[original_floating_species_.size()];
+            user_data_.rhs(t_out, NV_DATA_S(y_), temp, user_data_.p);
+            delete[] temp;
         }
 
         RecordToOutputArray(t_return);
@@ -173,21 +186,14 @@ private:
 
     void RecordToOutputArray(double time) {
         int start = current_output_row_ * num_variables();
-        int col = 0;
 
-        for (int i = 0; i < original_floating_species_.size(); i++, col++) {
-            output_array_[start + col] = NV_Ith_S(y_, i);
-        }
-
-        for (int i = 0; i < original_boundary_species_.size(); i++, col++) {
-            output_array_[start + col] = user_data_.p[i];
-        }
-
-        for (int i = 0; i < original_parameters_.size(); i++, col++) {
-            output_array_[start + col] = user_data_.p[original_boundary_species_.size() + i];
-        }
-
-        output_array_[start + col] = time;
+        std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_floating_species_.size(), output_array_ + start);
+        std::copy(
+            user_data_.p,
+            user_data_.p + user_data_.p_len,
+            output_array_ + start + original_floating_species_.size()
+        );
+        output_array_[start + original_floating_species_.size() + user_data_.p_len] = time;
 
         current_output_row_ += 1;
     }
@@ -203,6 +209,7 @@ private:
 
     N_Vector y_;
     UserData user_data_;
+    const int num_reactions_;
 
     bool has_init_ = false;
     double *output_array_ = nullptr; // row-major
@@ -214,7 +221,7 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::register_type<Float64Array>("Float64Array");
 
     emscripten::class_<Model>("Model")
-        .constructor<std::vector<double>, std::vector<double>, std::vector<double>, uintptr_t>(
+        .constructor<std::vector<double>, std::vector<double>, std::vector<double>, int, uintptr_t>(
             emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
         .function("ResetAllVariables", &Model::ResetAllVariables)

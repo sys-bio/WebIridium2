@@ -47,7 +47,7 @@ export class IridiumSimulator extends Simulator {
 
     variables.push({
       type: "normal",
-      defaultDisplayName: "Time",
+      defaultDisplayName: TIME_NAME,
       name: TIME_NAME,
       category: "Time",
     });
@@ -82,6 +82,15 @@ export class IridiumSimulator extends Simulator {
         category: "Parameter",
         setName: p.name,
         defaultValue: p.initialValue,
+      });
+    }
+
+    for (const reaction of spec.reactions) {
+      variables.push({
+        type: "normal",
+        defaultDisplayName: reaction,
+        name: reaction,
+        category: "Reaction Rates",
       });
     }
 
@@ -139,6 +148,7 @@ export class IridiumSimulator extends Simulator {
       ...spec.floatingSpecies.map((v) => v.name),
       ...spec.boundarySpecies.map((v) => v.name),
       ...spec.parameters.map((v) => v.name),
+      ...spec.reactions,
       TIME_NAME,
     ];
 

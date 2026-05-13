@@ -17,7 +17,7 @@ const VariableType = {
   parameter: 2,
 } as const;
 
-type VariableType = typeof VariableType[keyof typeof VariableType];
+type VariableType = (typeof VariableType)[keyof typeof VariableType];
 
 interface InternalModel {
   spec: ModelSpec;
@@ -78,10 +78,16 @@ export class CvodeWrapper {
       ).rhs,
     );
 
-    const variableMapping = new Map<string, { type: VariableType; index: number }>();
-    for (const [i, f] of spec.floatingSpecies.entries()) variableMapping.set(f.name, { type: VariableType.floating, index: i });
-    for (const [i, b] of spec.boundarySpecies.entries()) variableMapping.set(b.name, { type: VariableType.boundary, index: i });
-    for (const [i, p] of spec.parameters.entries()) variableMapping.set(p.name, { type: VariableType.parameter, index: i });
+    const variableMapping = new Map<
+      string,
+      { type: VariableType; index: number }
+    >();
+    for (const [i, f] of spec.floatingSpecies.entries())
+      variableMapping.set(f.name, { type: VariableType.floating, index: i });
+    for (const [i, b] of spec.boundarySpecies.entries())
+      variableMapping.set(b.name, { type: VariableType.boundary, index: i });
+    for (const [i, p] of spec.parameters.entries())
+      variableMapping.set(p.name, { type: VariableType.parameter, index: i });
 
     this.#internalModel = {
       spec,
@@ -90,6 +96,7 @@ export class CvodeWrapper {
         floatingSpeciesVector,
         boundarySpeciesVector,
         parametersVector,
+        spec.reactions.length,
         funcPtr,
       ),
       rhsFuncPtr: funcPtr,

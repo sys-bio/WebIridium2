@@ -17,6 +17,7 @@ export interface ModelSpec {
   floatingSpecies: FloatingSpeciesSpec[];
   boundarySpecies: BoundarySpeciesSpec[];
   parameters: ParameterSpec[];
+  reactions: string[];
   rhsModule: WebAssembly.Module;
   funcImports: string[];
 }
