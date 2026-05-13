@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
-#include <emscripten/wire.h>
 #include <stdexcept>
 #include <vector>
 #include <emscripten.h>
@@ -48,25 +47,23 @@ public:
     //  - parameters: Same as floating species.
     //  - rhs: the RHS function
     Model(
-        std::vector<double> floating_species,
-        std::vector<double> boundary_species,
-        std::vector<double> parameters,
+        std::vector<double> y,
+        std::vector<double> p,
         int num_reactions,
         uintptr_t rhs
-    ) : original_floating_species_(floating_species),
-        original_boundary_species_(boundary_species),
-        original_parameters_(parameters),
+    ) : original_y_(y),
+        original_p_(p),
         num_reactions_(num_reactions)
     {
         // TODO: handle errors?
         SUNContext_Create(SUN_COMM_NULL, &ctx_);
 
         cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
-        y_ = N_VNew_Serial(floating_species.size(), ctx_);
-        user_data_.p_len = boundary_species.size() + parameters.size() + num_reactions_;
+        y_ = N_VNew_Serial(y.size(), ctx_);
+        user_data_.p_len = p.size() + num_reactions_;
         user_data_.p = new double[user_data_.p_len];
         user_data_.rhs = (RHSFunc)rhs;
-        matrix_ = SUNDenseMatrix(original_floating_species_.size(), original_floating_species_.size(), ctx_);
+        matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
         linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
         ResetAllVariables();
@@ -91,37 +88,28 @@ public:
         // plus 1 for the time
         return
             1 +
-            original_floating_species_.size() +
-            original_boundary_species_.size() +
-            original_parameters_.size() +
+            original_y_.size() +
+            original_p_.size() +
             num_reactions_;
     }
 
     // Reset all variables to their default values.
     void ResetAllVariables() {
-        for (int i = 0; i < original_floating_species_.size(); i++) {
-            NV_Ith_S(y_, i) = original_floating_species_[i];
+        for (int i = 0; i < original_y_.size(); i++) {
+            NV_Ith_S(y_, i) = original_y_[i];
         }
 
-        for (int i = 0; i < original_boundary_species_.size(); i++) {
-            user_data_.p[i] = original_boundary_species_[i];
-        }
-
-        for (int i = 0; i < original_parameters_.size(); i++) {
-            user_data_.p[original_boundary_species_.size() + i] = original_parameters_[i];
+        for (int i = 0; i < original_p_.size(); i++) {
+            user_data_.p[i] = original_p_[i];
         }
     }
 
-    void SetFloatingSpecies(int i, double value) {
+    void SetYValue(int i, double value) {
         NV_Ith_S(y_, i) = value;
     }
 
-    void SetBoundarySpecies(int i, double value) {
+    void SetPValue(int i, double value) {
         user_data_.p[i] = value;
-    }
-
-    void SetParameter(int i, double value) {
-        user_data_.p[original_boundary_species_.size() + i] = value;
     }
 
     // WARNING: The returned array will be invalidated the next time you call Simulate.
@@ -153,7 +141,7 @@ public:
             CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
         } else {
             // run the rhs one time to get the reaction rates
-            double *temp = new double[original_floating_species_.size()];
+            double *temp = new double[original_y_.size()];
             user_data_.rhs(t_out, NV_DATA_S(y_), temp, user_data_.p);
             delete[] temp;
         }
@@ -187,13 +175,13 @@ private:
     void RecordToOutputArray(double time) {
         int start = current_output_row_ * num_variables();
 
-        std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_floating_species_.size(), output_array_ + start);
+        std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_y_.size(), output_array_ + start);
         std::copy(
             user_data_.p,
             user_data_.p + user_data_.p_len,
-            output_array_ + start + original_floating_species_.size()
+            output_array_ + start + original_y_.size()
         );
-        output_array_[start + original_floating_species_.size() + user_data_.p_len] = time;
+        output_array_[start + original_y_.size() + user_data_.p_len] = time;
 
         current_output_row_ += 1;
     }
@@ -203,9 +191,8 @@ private:
     SUNMatrix matrix_;
     SUNLinearSolver linear_solver_;
 
-    std::vector<double> original_floating_species_;
-    std::vector<double> original_boundary_species_;
-    std::vector<double> original_parameters_;
+    std::vector<double> original_y_;
+    std::vector<double> original_p_;
 
     N_Vector y_;
     UserData user_data_;
@@ -221,12 +208,11 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::register_type<Float64Array>("Float64Array");
 
     emscripten::class_<Model>("Model")
-        .constructor<std::vector<double>, std::vector<double>, std::vector<double>, int, uintptr_t>(
+        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t>(
             emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
         .function("ResetAllVariables", &Model::ResetAllVariables)
-        .function("SetFloatingSpecies", &Model::SetFloatingSpecies)
-        .function("SetBoundarySpecies", &Model::SetBoundarySpecies)
-        .function("SetParameter", &Model::SetParameter)
+        .function("SetYValue", &Model::SetYValue)
+        .function("SetPValue", &Model::SetPValue)
         .function("SimulateTimeCourse", &Model::SimulateTimeCourse);
 }

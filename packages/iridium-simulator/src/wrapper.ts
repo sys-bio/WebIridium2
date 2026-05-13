@@ -10,18 +10,12 @@ import {
 import type { ModelSpec } from "./modelSpec.ts";
 import { builtinFunctions } from "./compile/builtinImports.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
-
-const VariableType = {
-  floating: 0,
-  boundary: 1,
-  parameter: 2,
-} as const;
-
-type VariableType = (typeof VariableType)[keyof typeof VariableType];
+import { IndexSymbolTable } from "./compile/SymbolTable.ts";
 
 interface InternalModel {
   spec: ModelSpec;
-  variableMapping: Map<string, { type: VariableType; index: number }>;
+  yIndices: IndexSymbolTable;
+  pIndices: IndexSymbolTable;
 
   /** The model on the C-side. */
   binding: Model;
@@ -43,16 +37,23 @@ export class CvodeWrapper {
   async setModel(spec: ModelSpec): Promise<void> {
     this.#disposeCurrentModel();
 
-    const floatingSpeciesVector = new this.#bindings.DoubleVector();
-    for (const v of spec.floatingSpecies)
-      floatingSpeciesVector.push_back(v.initialValue);
+    const yIndices = new IndexSymbolTable();
+    const yVector = new this.#bindings.DoubleVector();
+    for (const v of spec.floatingSpecies) {
+      yIndices.add(v.name);
+      yVector.push_back(v.initialValue);
+    }
 
-    const boundarySpeciesVector = new this.#bindings.DoubleVector();
-    for (const v of spec.boundarySpecies)
-      boundarySpeciesVector.push_back(v.initialValue);
-
-    const parametersVector = new this.#bindings.DoubleVector();
-    for (const v of spec.parameters) parametersVector.push_back(v.initialValue);
+    const pIndices = new IndexSymbolTable();
+    const pVector = new this.#bindings.DoubleVector();
+    for (const b of spec.boundarySpecies) {
+      pIndices.add(b.name);
+      pVector.push_back(b.initialValue);
+    }
+    for (const p of spec.parameters) {
+      pIndices.add(p.name);
+      pVector.push_back(p.initialValue);
+    }
 
     const instance = await WebAssembly.instantiate(spec.rhsModule, {
       [CORE_NAMESPACE]: {
@@ -78,24 +79,13 @@ export class CvodeWrapper {
       ).rhs,
     );
 
-    const variableMapping = new Map<
-      string,
-      { type: VariableType; index: number }
-    >();
-    for (const [i, f] of spec.floatingSpecies.entries())
-      variableMapping.set(f.name, { type: VariableType.floating, index: i });
-    for (const [i, b] of spec.boundarySpecies.entries())
-      variableMapping.set(b.name, { type: VariableType.boundary, index: i });
-    for (const [i, p] of spec.parameters.entries())
-      variableMapping.set(p.name, { type: VariableType.parameter, index: i });
-
     this.#internalModel = {
       spec,
-      variableMapping,
+      yIndices,
+      pIndices,
       binding: new this.#bindings.Model(
-        floatingSpeciesVector,
-        boundarySpeciesVector,
-        parametersVector,
+        yVector,
+        pVector,
         spec.reactions.length,
         funcPtr,
       ),
@@ -103,9 +93,8 @@ export class CvodeWrapper {
     };
 
     // ok to delete now since they got copied into the bindings model
-    floatingSpeciesVector.delete();
-    boundarySpeciesVector.delete();
-    parametersVector.delete();
+    yVector.delete();
+    pVector.delete();
   }
 
   #disposeCurrentModel(): void {
@@ -144,15 +133,16 @@ export class CvodeWrapper {
   setVariable(name: string, value: number): void {
     if (!this.#internalModel) return;
 
-    const variable = this.#internalModel.variableMapping.get(name);
-    if (variable === undefined) return;
-
-    if (variable.type === VariableType.floating) {
-      this.#internalModel?.binding.SetFloatingSpecies(variable.index, value);
-    } else if (variable.type === VariableType.boundary) {
-      this.#internalModel?.binding.SetBoundarySpecies(variable.index, value);
-    } else if (variable.type === VariableType.parameter) {
-      this.#internalModel?.binding.SetParameter(variable.index, value);
+    if (this.#internalModel.yIndices.has(name)) {
+      this.#internalModel.binding.SetYValue(
+        this.#internalModel.yIndices.get(name),
+        value,
+      );
+    } else {
+      this.#internalModel.binding.SetPValue(
+        this.#internalModel.pIndices.get(name),
+        value,
+      );
     }
   }
 }

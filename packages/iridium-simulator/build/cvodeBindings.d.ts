@@ -28,9 +28,8 @@ export interface DoubleVector extends ClassHandle, Iterable<number> {
 export interface Model extends ClassHandle {
   num_variables(): number;
   ResetAllVariables(): void;
-  SetFloatingSpecies(_0: number, _1: number): void;
-  SetBoundarySpecies(_0: number, _1: number): void;
-  SetParameter(_0: number, _1: number): void;
+  SetYValue(_0: number, _1: number): void;
+  SetPValue(_0: number, _1: number): void;
   SimulateTimeCourse(_0: number, _1: number, _2: number): Float64Array;
 }
 
@@ -39,7 +38,7 @@ interface EmbindModule {
     new(): DoubleVector;
   };
   Model: {
-    new(_0: DoubleVector, _1: DoubleVector, _2: DoubleVector, _3: number, _4: number): Model;
+    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number): Model;
   };
 }
 
