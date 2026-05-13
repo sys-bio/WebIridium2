@@ -36,6 +36,8 @@ import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ParameterListContext } from "./AntimonyParser";
 import { VariableContext } from "./AntimonyParser";
+import { EventContext } from "./AntimonyParser";
+import { EventAssignmentContext } from "./AntimonyParser";
 import { ModelCallContext } from "./AntimonyParser";
 
 
@@ -423,6 +425,28 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitVariable?: (ctx: VariableContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.event`.
+	 * @param ctx the parse tree
+	 */
+	enterEvent?: (ctx: EventContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.event`.
+	 * @param ctx the parse tree
+	 */
+	exitEvent?: (ctx: EventContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.eventAssignment`.
+	 * @param ctx the parse tree
+	 */
+	enterEventAssignment?: (ctx: EventAssignmentContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.eventAssignment`.
+	 * @param ctx the parse tree
+	 */
+	exitEventAssignment?: (ctx: EventAssignmentContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.modelCall`.

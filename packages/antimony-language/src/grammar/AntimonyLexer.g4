@@ -3,6 +3,7 @@ lexer grammar AntimonyTokens;
 MODEL : 'model' | 'module';
 END   : 'end';
 IN    : 'in';
+AT    : 'at';
 
 NAME            : [a-zA-Z_]([a-zA-Z0-9_])*;
 

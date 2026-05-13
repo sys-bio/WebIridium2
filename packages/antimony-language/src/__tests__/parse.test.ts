@@ -5,9 +5,9 @@ import {
   CommonTokenStream,
 } from "antlr4ts";
 import { AntimonyLexer } from "../generated/AntimonyLexer.ts";
-import { AntimonyParser } from "../generated/AntimonyParser";
+import { AntimonyParser, RootContext } from "../generated/AntimonyParser";
 
-const parse = (code: string) => {
+const parse = (code: string): RootContext => {
   const inputStream = CharStreams.fromString(code);
   const lexer = new AntimonyLexer(inputStream);
   const tokenStream = new CommonTokenStream(lexer);
@@ -35,7 +35,27 @@ const parse = (code: string) => {
   lexer.addErrorListener(errorListener);
   parser.addErrorListener(errorListener);
 
-  parser.root();
+  return parser.root();
+};
+
+const itShouldSucceedForAll = (models: Record<string, string>): void => {
+  for (const [name, code] of Object.entries(models)) {
+    it(`${name} should not error`, () => {
+      expect(() => {
+        parse(code);
+      }).not.toThrow();
+    });
+  }
+};
+
+const itShouldErrorForAll = (models: Record<string, string>): void => {
+  for (const [name, code] of Object.entries(models)) {
+    it(`${name} should error`, () => {
+      expect(() => {
+        parse(code);
+      }).toThrow();
+    });
+  }
 };
 
 describe("good models", () => {
@@ -48,13 +68,7 @@ describe("good models", () => {
     },
   );
 
-  for (const [name, code] of Object.entries(goodModels)) {
-    it(`${name} should not error`, () => {
-      expect(() => {
-        parse(code);
-      }).not.toThrow();
-    });
-  }
+  itShouldSucceedForAll(goodModels);
 });
 
 describe("examples", () => {
@@ -93,6 +107,7 @@ describe("bad models", () => {
     },
   );
 
+  itShouldErrorForAll(badModels);
   for (const [name, code] of Object.entries(badModels)) {
     it(`${name} should error`, () => {
       expect(() => {
@@ -100,4 +115,27 @@ describe("bad models", () => {
       }).toThrow();
     });
   }
+});
+
+describe("event", () => {
+  itShouldErrorForAll({
+    extraComma: "at time > 5: A = 3,",
+    noAssignment: "at time > 5:",
+    missingColon: "at time > 5 A = 3",
+    missingEnd: "at time > 5",
+    rateRule: "at time > 5: A' = 5",
+    assignmentRule: "at time > 5: A := 5",
+    incorrectFormula: "at time +: A = 3",
+    incorrectFormula2: "at time +-: A = 3",
+    incorrectFormula3: "at (time > 30: A = 3",
+  });
+
+  itShouldSucceedForAll({
+    simple: "at time > 5: A = 3",
+    simpleMultiple: "at time > 5: A = 3, B = 3, C = 5",
+    simpleParentheses: "at (time > 5): A = 3",
+    complexFormula: "at time > (A + B^2) / (k1 * k2):A = 3",
+    multiline: "at time > 5:\nA = 3",
+    noSpaces: "at time>5:A=3",
+  });
 });
