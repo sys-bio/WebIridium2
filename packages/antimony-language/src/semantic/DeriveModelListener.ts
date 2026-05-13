@@ -1,4 +1,3 @@
-import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import {
   AssignmentContext,
@@ -12,15 +11,12 @@ import type {
   AntimonyModel,
   AntimonyReactionTerm,
 } from "./model";
-import { ErrorNode } from "antlr4ts/tree/ErrorNode";
 import { getVariableName } from "./util";
 
 /**
  * Derives an array of AntimonyModel.
  */
-export class DeriveModelListener
-  implements AntimonyListener, ParseTreeListener
-{
+export class DeriveModelListener implements AntimonyListener {
   #baseModel: AntimonyModel;
   #models: Map<string, AntimonyModel>;
   #currentModel: AntimonyModel | undefined;
@@ -64,8 +60,15 @@ export class DeriveModelListener
   }
 
   enterAssignment(ctx: AssignmentContext): void {
+    const kind =
+      ctx.ASSIGNMENT().text === ":="
+        ? "rule"
+        : ctx._apostrophe
+          ? "rate"
+          : "set";
+
     this.#getOrCreateVariable(ctx.variable()).assignment = {
-      kind: "set",
+      kind: kind,
       formula: ctx.formula(),
     };
   }
@@ -85,7 +88,8 @@ export class DeriveModelListener
       products = this.#getReactionTerms(ctx.reactionFormula()._right);
     }
 
-    // TODO: what happens when two reactions have the same name
+    // TODO: throw when two reactions have the same name
+
     model.reactions.set(name, {
       name,
       reactants,
@@ -122,10 +126,5 @@ export class DeriveModelListener
       });
     }
     return terms;
-  }
-
-  visitErrorNode(_node: ErrorNode): void {
-    // TODO: do something with this
-    // right now it is just to satisfy the ParseTreeListener interface
   }
 }

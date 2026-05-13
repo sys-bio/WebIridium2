@@ -6,7 +6,8 @@ import {
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
-} from "./compile/compile.ts";
+  RHS_NAME,
+} from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import { builtinFunctions } from "./compile/builtinImports.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
@@ -69,14 +70,14 @@ export class CvodeWrapper {
     const funcPtr: number = this.#bindings.addFunction(
       (
         instance.exports as {
-          rhs: (
+          [RHS_NAME]: (
             t: number,
             yPtr: number,
             ydotPtr: number,
             y2Ptr: number,
           ) => void;
         }
-      ).rhs,
+      )[RHS_NAME],
     );
 
     this.#internalModel = {

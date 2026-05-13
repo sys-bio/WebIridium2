@@ -22,21 +22,22 @@ import type {
   ModelSpec,
   ParameterSpec,
 } from "../modelSpec";
-import { evaluateInitialValues } from "./evaluate";
+import { evaluateInitialValues, getEvaluationOrder } from "./evaluate";
 import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
 import type {
   AntimonyListener,
+  FormulaContext,
   FunctionCallContext,
   PowerContext,
 } from "antimony-language/grammar";
-import type { ParserRuleContext } from "antlr4ts";
-
-export const CORE_NAMESPACE = "core";
-export const MEMORY_IMPORT_NAME = "mem";
-export const IMPORT_NAMESPACE = "js";
-
-const RHS_NAME = "rhs";
-export const TIME_NAME = "time";
+import { type ParserRuleContext } from "antlr4ts";
+import {
+  CORE_NAMESPACE,
+  IMPORT_NAMESPACE,
+  MEMORY_IMPORT_NAME,
+  RHS_NAME,
+  TIME_NAME,
+} from "../names";
 
 const SIZEOF_DOUBLE = 8;
 const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
@@ -282,6 +283,10 @@ const compileRhs = (
 ): Emitter => {
   const emitter = new Emitter();
 
+  const ruleEvaluationOrder = getEvaluationOrder(model, "rule").filter(
+    (name) => model.variables.get(name)!.assignment?.kind === "rule",
+  );
+
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
     Y_PTR_PARAM,
@@ -326,8 +331,6 @@ const compileRhs = (
   emitter.emitUint32(model.reactions.size);
   emitter.emitByte(ValType.f64);
 
-  // calculate all the reaction rates
-
   const emitLoadVariable = (name: string): void => {
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
@@ -338,30 +341,49 @@ const compileRhs = (
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name)); // offset
+      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
     } else if (yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(Y_PTR_PARAM));
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name)); // offset
+      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
     } else {
       throw new Error(`Unbound name: ${name}`);
     }
   };
 
+  const emitFormula = (formula: FormulaContext): void => {
+    const formulaListener = new FormulaCompilerListener(
+      emitter,
+      emitLoadVariable,
+      functionTable,
+    );
+
+    ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
+  };
+
+  // calculate rules
+
+  for (const variableName of ruleEvaluationOrder) {
+    const variable = model.variables.get(variableName)!;
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
+
+    emitFormula(variable.assignment!.formula);
+
+    emitter.emitByte(OpCode.f64store);
+    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(variableName));
+  }
+
+  // calculate all the reaction rates
+
   for (const [name, reaction] of model.reactions) {
     if (reaction.rate) {
-      const formulaListener = new FormulaCompilerListener(
-        emitter,
-        emitLoadVariable,
-        functionTable,
-      );
-      ParseTreeWalker.DEFAULT.walk(
-        formulaListener as ParseTreeListener,
-        reaction.rate,
-      );
+      emitFormula(reaction.rate);
 
       emitter.emitByte(OpCode.localset);
       emitter.emitUint32(localsTable.getLocal(name));

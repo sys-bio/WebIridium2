@@ -22,6 +22,7 @@ import {
 import type { AntimonyModel } from "antimony-language/semantic";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
+import { TIME_NAME } from "../names.ts";
 
 // if they didn't have an assignment, give them this one
 const DEFAULT_INITIAL_VALUE = 1;
@@ -30,7 +31,7 @@ export const evaluateInitialValues = (
   model: AntimonyModel,
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
-  const evalOrder = getEvaluationOrder(model);
+  const evalOrder = getEvaluationOrder(model, "set");
 
   for (const name of evalOrder) {
     const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
@@ -193,12 +194,17 @@ class VariableGrabberListener implements AntimonyListener {
   }
 
   enterVariable(ctx: VariableContext): void {
-    this.#variables.add(ctx.text);
+    if (ctx.text !== TIME_NAME) {
+      this.#variables.add(ctx.text);
+    }
   }
 }
 
 // topological sort
-const getEvaluationOrder = (model: AntimonyModel): string[] => {
+export const getEvaluationOrder = (
+  model: AntimonyModel,
+  assignmentKind: "set" | "rule",
+): string[] => {
   const graph: Record<string, Set<string>> = {};
   const inDegrees: Record<string, number> = {};
 
@@ -210,7 +216,7 @@ const getEvaluationOrder = (model: AntimonyModel): string[] => {
   for (const variable of model.variables.values()) {
     if (!variable.assignment) continue;
 
-    if (variable.assignment.kind === "set") {
+    if (variable.assignment.kind === assignmentKind) {
       const variableListener = new VariableGrabberListener();
       ParseTreeWalker.DEFAULT.walk(
         variableListener as ParseTreeListener,
@@ -221,10 +227,6 @@ const getEvaluationOrder = (model: AntimonyModel): string[] => {
         inDegrees[variable.name] += 1;
         graph[neighbor].add(variable.name);
       }
-    } else {
-      throw new Error(
-        `Assignment not yet supported: ${variable.assignment.kind}`,
-      );
     }
   }
 
