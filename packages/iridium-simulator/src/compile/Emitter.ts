@@ -10,6 +10,11 @@ const INITIAL_CAPACITY = 32;
 const RESIZE_FACTOR = 2;
 
 /**
+ * Function that emits code to load variable onto the stack.
+ **/
+export type EmitLoadVariableFunction = (emitter: Emitter, name: string) => void;
+
+/**
  * Helper to generate and emit WASM bytecode.
  */
 class Emitter {

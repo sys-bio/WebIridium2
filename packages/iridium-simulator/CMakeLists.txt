@@ -27,8 +27,10 @@ set(SUNDIALS_ENABLE_FORTRAN_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(SUNDIALS)
 
-add_executable(cvodeBindings)
-target_sources(cvodeBindings PRIVATE src/bindings.cc)
+file(GLOB_RECURSE sources CONFIGURE_DEPENDS src/bindings/*.cc)
+file(GLOB_RECURSE headers CONFIGURE_DEPENDS src/bindings/*.h)
+
+add_executable(cvodeBindings ${sources} ${headers})
 
 target_compile_features(cvodeBindings PRIVATE cxx_std_20)
 target_link_options(cvodeBindings PRIVATE

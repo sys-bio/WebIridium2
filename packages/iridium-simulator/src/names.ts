@@ -1,4 +1,6 @@
 export const RHS_NAME = "rhs";
+export const ROOTS_NAME = "roots";
+
 export const TIME_NAME = "time";
 
 export const CORE_NAMESPACE = "core";

@@ -1,28 +1,16 @@
-import { parse } from "antimony-language/parse";
-import {
-  deriveModelsFromParseTree,
-  type AntimonyModel,
-  type AntimonyVariable,
-} from "antimony-language/semantic";
+import { deriveModelsFromParseTree } from "antimony-language/semantic";
 import Emitter from "./Emitter";
-import {
-  MAGIC_WORD,
-  OpCode,
-  SectionCode,
-  VERSION_WORD,
-  ValType,
-} from "./codes";
-import { LocalsSymbolTable, IndexSymbolTable } from "./SymbolTable";
+import { MAGIC_WORD, SectionCode, VERSION_WORD, ValType } from "./codes";
+import { IndexSymbolTable } from "./SymbolTable";
 import { TypeTable } from "./wasmTypes";
-import { FormulaCompilerListener } from "./FormulaCompilerListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { ModelSpec, VariableSpec } from "../modelSpec";
-import { evaluateInitialValues, getEvaluationOrder } from "./evaluate";
+import { evaluateInitialValues } from "./evaluate";
 import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
+import { parse } from "antimony-language/parse";
 import type {
   AntimonyListener,
-  FormulaContext,
   FunctionCallContext,
   PowerContext,
 } from "antimony-language/grammar";
@@ -32,91 +20,64 @@ import {
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
   RHS_NAME,
-  TIME_NAME,
 } from "../names";
-
-const SIZEOF_DOUBLE = 8;
-const DOUBLE_MEM_ALIGNMENT = 0; // TODO: what's a good number for this?
+import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
+import { createInternalModel, type InternalModel } from "./model";
 
 /** Used for testing. */
 export const compileIntermediate = (
   code: string,
 ): {
-  models: AntimonyModel[];
+  model: InternalModel;
   imports: string[];
   bytecode: Uint8Array;
 } => {
   const root = parse(code);
   const models = deriveModelsFromParseTree(root);
+  const internalModel = createInternalModel(models);
   const imports = Array.from(getImportedFunctions(root));
 
   return {
-    models,
+    model: internalModel,
     imports,
-    bytecode: compileModels(models, imports),
+    bytecode: compileModel(internalModel, imports),
   };
 };
 
 export const compile = async (code: string): Promise<ModelSpec> => {
-  const { models, imports, bytecode } = compileIntermediate(code);
+  const { model, imports, bytecode } = compileIntermediate(code);
 
-  // TODO: get the main model properly
-  const mainModel = models[0];
-
-  const initialValues = evaluateInitialValues(mainModel);
-  const floatingSpecies: VariableSpec[] = [];
-  const odes: VariableSpec[] = [];
-  const boundarySpecies: VariableSpec[] = [];
-  const parameters: VariableSpec[] = [];
-
-  for (const variable of mainModel.variables.values()) {
-    if (variable.kind === "species") {
-      if (variable.isConst) {
-        boundarySpecies.push({
-          name: variable.name,
-          initialValue: initialValues.get(variable.name) as number,
-        });
-      } else {
-        floatingSpecies.push({
-          name: variable.name,
-          initialValue: initialValues.get(variable.name) as number,
-        });
-      }
-    } else if (variable.kind === "parameter") {
-      if (variable.assignment?.kind === "rate") {
-        odes.push({
-          name: variable.name,
-          initialValue: initialValues.get(variable.name) as number,
-        });
-      } else {
-        parameters.push({
-          name: variable.name,
-          initialValue: initialValues.get(variable.name) as number,
-        });
-      }
-    } else {
-      throw new Error(`Unknown variable kind`);
-    }
-  }
+  const initialValues = evaluateInitialValues(model);
+  const floatingSpecies: VariableSpec[] = model.floatingSpecies.map((v) => ({
+    name: v.name,
+    initialValue: initialValues.get(v.name)!,
+  }));
+  const odes: VariableSpec[] = model.odes.map((v) => ({
+    name: v.name,
+    initialValue: initialValues.get(v.name)!,
+  }));
+  const boundarySpecies: VariableSpec[] = model.boundarySpecies.map((v) => ({
+    name: v.name,
+    initialValue: initialValues.get(v.name)!,
+  }));
+  const parameters: VariableSpec[] = model.parameters.map((v) => ({
+    name: v.name,
+    initialValue: initialValues.get(v.name)!,
+  }));
 
   return {
     floatingSpecies,
     odes,
     boundarySpecies,
     parameters,
-    reactions: Array.from(mainModel.reactions.keys()),
+    reactions: model.reactions.map((r) => r.name),
     rhsModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };
 };
 
-const compileModels = (
-  models: AntimonyModel[],
-  imports: string[],
-): Uint8Array => {
-  // TODO: get mainModel properly?
-  const mainModel = models[0];
-  return compileFunctions([
+const compileModel = (model: InternalModel, imports: string[]): Uint8Array => {
+  const functions: WasmFunction[] = [
     {
       kind: "compile",
       isExported: true,
@@ -124,13 +85,29 @@ const compileModels = (
       params: RHS_PARAMS,
       results: RHS_RESULTS,
       compileBody: (functionTable: IndexSymbolTable) =>
-        compileRhs(functionTable, mainModel).getOutput(),
+        compileRhs(functionTable, model).getOutput(),
     },
     ...imports.map((name) => ({
       kind: "import" as const,
       name: name,
     })),
-  ]);
+  ];
+
+  // if (model.events.length > 0) {
+  //   functions.concat([
+  //     {
+  //       kind: "compile",
+  //       isExported: true,
+  //       name: ROOTS_NAME,
+  //       params: ROOTS_PARAMS,
+  //       results: ROOTS_RESULTS,
+  //       compileBody: (functionTable: IndexSymbolTable) =>
+  //         compileRoots(functionTable, model).getOutput(),
+  //     },
+  //   ]);
+  // }
+
+  return compileFunctions(functions);
 };
 
 const getImportedFunctions = (context: ParserRuleContext): Set<string> => {
@@ -267,258 +244,4 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   module.emitSection(SectionCode.code, codeSection.getOutput());
 
   return module.getOutput();
-};
-
-const T_PARAM = "t";
-const Y_PTR_PARAM = "*y";
-const YDOT_PTR_PARAM = "*yDot";
-const P_PTR_PARAM = "*p";
-
-const RHS_PARAMS: ValType[] = [
-  ValType.f64,
-  ValType.i32,
-  ValType.i32,
-  ValType.i32,
-];
-const RHS_RESULTS: ValType[] = [ValType.i32];
-
-const compileRhs = (
-  functionTable: IndexSymbolTable,
-  model: AntimonyModel,
-): Emitter => {
-  const emitter = new Emitter();
-
-  const ruleEvaluationOrder = getEvaluationOrder(model, "rule").filter(
-    (name) => model.variables.get(name)!.assignment?.kind === "rule",
-  );
-
-  const localsTable = new LocalsSymbolTable([
-    T_PARAM,
-    Y_PTR_PARAM,
-    YDOT_PTR_PARAM,
-    P_PTR_PARAM,
-  ]);
-
-  const floatingSpecies: AntimonyVariable[] = [];
-  const odes: AntimonyVariable[] = [];
-  const boundarySpecies: AntimonyVariable[] = [];
-  const parameters: AntimonyVariable[] = [];
-  for (const variable of model.variables.values()) {
-    if (variable.kind === "species") {
-      if (variable.isConst) {
-        boundarySpecies.push(variable);
-      } else {
-        floatingSpecies.push(variable);
-      }
-    } else if (variable.kind === "parameter") {
-      if (variable.assignment?.kind === "rate") {
-        odes.push(variable);
-      } else {
-        parameters.push(variable);
-      }
-    }
-  }
-
-  const yTable = new IndexSymbolTable();
-  for (const f of floatingSpecies) {
-    yTable.add(f.name);
-  }
-  for (const o of odes) {
-    yTable.add(o.name);
-  }
-
-  const pTable = new IndexSymbolTable();
-  for (const b of boundarySpecies) {
-    pTable.add(b.name);
-  }
-  for (const p of parameters) {
-    pTable.add(p.name);
-  }
-  for (const name of model.reactions.keys()) {
-    pTable.add(name);
-  }
-
-  for (const name of model.reactions.keys()) {
-    localsTable.addLocal(name);
-  }
-
-  // we only have one type of local: f64
-  emitter.emitListHeader(1);
-
-  // specify that we want these many f64s
-  emitter.emitUint32(model.reactions.size);
-  emitter.emitByte(ValType.f64);
-
-  const emitLoadVariable = (name: string): void => {
-    if (name === TIME_NAME) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(T_PARAM));
-    } else if (pTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
-    } else if (yTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(Y_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
-    } else {
-      throw new Error(`Unbound name: ${name}`);
-    }
-  };
-
-  const emitFormula = (formula: FormulaContext): void => {
-    const formulaListener = new FormulaCompilerListener(
-      emitter,
-      emitLoadVariable,
-      functionTable,
-    );
-
-    ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
-  };
-
-  // calculate rules
-
-  for (const variableName of ruleEvaluationOrder) {
-    const variable = model.variables.get(variableName)!;
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
-
-    emitFormula(variable.assignment!.formula);
-
-    emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(variableName));
-  }
-
-  // calculate all the reaction rates
-
-  for (const [name, reaction] of model.reactions) {
-    if (reaction.rate) {
-      emitFormula(reaction.rate);
-
-      emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localsTable.getLocal(name));
-    } else {
-      // TODO: how to handle missing rate?
-      emitter.emitByte(OpCode.f64const);
-      emitter.emitUint32(0);
-
-      emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localsTable.getLocal(name));
-    }
-  }
-
-  // assign to ydot
-
-  const involvedReactions: Map<string, Map<string, number>> = new Map();
-
-  for (const reaction of model.reactions.values()) {
-    for (const reactant of reaction.reactants) {
-      const reactantMap = involvedReactions.get(reactant.name);
-      if (reactantMap) {
-        reactantMap.set(reaction.name, -reactant.stoichiometry);
-      } else {
-        involvedReactions.set(
-          reactant.name,
-          new Map([[reaction.name, -reactant.stoichiometry]]),
-        );
-      }
-    }
-
-    for (const product of reaction.products) {
-      const productMap = involvedReactions.get(product.name);
-      if (productMap) {
-        productMap.set(
-          reaction.name,
-          (productMap.get(reaction.name) ?? 0) + product.stoichiometry,
-        );
-      } else {
-        involvedReactions.set(
-          product.name,
-          new Map([[reaction.name, product.stoichiometry]]),
-        );
-      }
-    }
-  }
-
-  for (const f of floatingSpecies) {
-    const reactions = involvedReactions.get(f.name);
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
-
-    if (reactions) {
-      let isFirst = true;
-      for (const [reaction, stoichiometry] of reactions) {
-        if (stoichiometry === 0) continue;
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(reaction));
-
-        if (stoichiometry === -1) {
-          emitter.emitByte(OpCode.f64neg);
-        } else if (stoichiometry !== 1) {
-          emitter.emitByte(OpCode.f64const);
-          emitter.emitFloat64(stoichiometry);
-          emitter.emitByte(OpCode.f64mul);
-        }
-
-        if (isFirst) {
-          isFirst = false;
-        } else {
-          emitter.emitByte(OpCode.f64add);
-        }
-      }
-    } else {
-      // set to 0
-      emitter.emitByte(OpCode.f64const);
-      emitter.emitFloat64(0);
-    }
-
-    emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
-  }
-
-  // do rate rules
-  for (const ode of odes) {
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
-
-    emitFormula(ode.assignment!.formula);
-
-    emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(ode.name));
-  }
-
-  // add to reactions to p (for output)
-  for (const name of model.reactions.keys()) {
-    const index = pTable.get(name);
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getLocal(name));
-
-    emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * index);
-  }
-
-  // return success
-  emitter.emitByte(OpCode.i32const);
-  emitter.emitUint32(0);
-
-  emitter.emitByte(OpCode.end);
-
-  return emitter;
 };

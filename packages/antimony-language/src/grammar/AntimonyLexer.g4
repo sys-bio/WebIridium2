@@ -18,7 +18,7 @@ ASSIGNMENT  : '=' | ':=';
 // See this: https://tellurium.readthedocs.io/en/latest/antimony.html#interactions
 INTERACTION : '-|' | '-o' | '-(';
 DASHES      : '--';
-COMPARE     : '>=' | '<=' | '>' | '<' | '==';
+COMPARE     : '>=' | '<=' | '>' | '<' | '==' | '!=';
 LOGICAL     : '&&' | '||';
 
 NEWLINE      : [\n\r];

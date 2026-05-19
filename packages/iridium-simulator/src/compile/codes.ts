@@ -45,13 +45,23 @@ export const SectionCode = {
 export type SectionCode = (typeof SectionCode)[keyof typeof SectionCode];
 
 export const OpCode = {
+  blockNoType: 0x40,
+  if: 0x04,
+  else: 0x05,
   call: 0x10,
+  end: 0x0b,
 
   localget: 0x20,
   localset: 0x21,
 
   i32const: 0x41,
   i32add: 0x6a,
+  i32eq: 0x46,
+  i32ne: 0x47,
+  i32lt_s: 0x48,
+  i32gt_s: 0x4a,
+  i32le_s: 0x4c,
+  i32ge_s: 0x4e,
 
   f64const: 0x44,
   f64load: 0x2b,
@@ -72,7 +82,14 @@ export const OpCode = {
   f64max: 0xa5,
   f64copysign: 0xa6,
 
-  end: 0x0b,
+  f64eq: 0x61,
+  f64ne: 0x62,
+  f64lt: 0x63,
+  f64gt: 0x64,
+  f64le: 0x65,
+  f64ge: 0x66,
+
+  f64convert_u_i32: 0xb8,
 } as const;
 
 export type OpCode = (typeof OpCode)[keyof typeof OpCode];

@@ -19,19 +19,20 @@ import {
   PowerContext,
   NumberContext,
 } from "antimony-language/grammar";
-import type { AntimonyModel } from "antimony-language/semantic";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
+import type { InternalModel } from "./model.ts";
+import type { AntimonyVariable } from "antimony-language/semantic";
 
 // if they didn't have an assignment, give them this one
 const DEFAULT_INITIAL_VALUE = 1;
 
 export const evaluateInitialValues = (
-  model: AntimonyModel,
+  model: InternalModel,
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
-  const evalOrder = getEvaluationOrder(model, "set");
+  const evalOrder = getEvaluationOrder(model.variables, "set");
 
   // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
   initialValues.set(TIME_NAME, 0);
@@ -45,7 +46,10 @@ export const evaluateInitialValues = (
         variable.assignment.kind === "set" ||
         variable.assignment.kind === "rule"
       ) {
-        initialValues.set(name, evalVisitor.visit(variable.assignment.formula));
+        initialValues.set(
+          name,
+          variable.assignment.formula.accept(evalVisitor),
+        );
       } else if (variable.assignment.kind === "rate") {
         initialValues.set(name, DEFAULT_INITIAL_VALUE);
       } else {
@@ -213,18 +217,18 @@ class VariableGrabberListener implements AntimonyListener {
 
 // topological sort
 export const getEvaluationOrder = (
-  model: AntimonyModel,
+  variables: Map<string, AntimonyVariable>,
   assignmentKind: "set" | "rule",
 ): string[] => {
   const graph: Record<string, Set<string>> = {};
   const inDegrees: Record<string, number> = {};
 
-  for (const variable of model.variables.values()) {
+  for (const variable of variables.values()) {
     graph[variable.name] = new Set();
     inDegrees[variable.name] = 0;
   }
 
-  for (const variable of model.variables.values()) {
+  for (const variable of variables.values()) {
     if (!variable.assignment) continue;
 
     if (variable.assignment.kind === assignmentKind) {
@@ -262,7 +266,7 @@ export const getEvaluationOrder = (
     }
   }
 
-  if (order.length !== model.variables.size) {
+  if (order.length !== variables.size) {
     throw new Error("Cycle detected in assignments.");
   }
 

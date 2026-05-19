@@ -81,4 +81,6 @@ it("should derive reactions and parameters", () => {
       },
     },
   });
+
+  expect(models[0].events).toEqual([]);
 });

@@ -2,6 +2,7 @@ import type { AntimonyListener } from "../generated/AntimonyListener";
 import {
   AssignmentContext,
   ConstantContext,
+  EventContext,
   ReactantListContext,
   ReactionContext,
   VariableContext,
@@ -10,6 +11,7 @@ import type {
   AntimonyVariable,
   AntimonyModel,
   AntimonyReactionTerm,
+  AntimonyEventAssignment,
 } from "./model";
 import { getVariableName } from "./util";
 
@@ -27,6 +29,7 @@ export class DeriveModelListener implements AntimonyListener {
       name: "__main",
       variables: new Map(),
       reactions: new Map(),
+      events: [],
     };
     this.#models.set(this.#baseModel.name, this.#baseModel);
   }
@@ -126,5 +129,18 @@ export class DeriveModelListener implements AntimonyListener {
       });
     }
     return terms;
+  }
+
+  enterEvent(ctx: EventContext): void {
+    const assignments: AntimonyEventAssignment[] = [];
+    for (const assignment of ctx.eventAssignment()) {
+      const variable = this.#getOrCreateVariable(assignment.variable());
+      assignments.push({ name: variable.name, formula: assignment.formula() });
+    }
+
+    this.#getActiveModel().events.push({
+      assignments,
+      trigger: ctx.formula(),
+    });
   }
 }
