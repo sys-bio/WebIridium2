@@ -9,8 +9,9 @@ statementList : (statement? statementSeparator)+;
 statement : reaction
           | assignment
           | modelCall
-          | event
           ;
+//           | event
+//           ;
 
 // e.g
 // model Test(A, B)
@@ -54,8 +55,8 @@ variable : NAME #name
          | '$' variable #constant
          ;
 
-event           : AT formula ':' NEWLINE* eventAssignment (',' eventAssignment)*;
-eventAssignment : variable '=' formula;
+// event           : AT formula ':' NEWLINE* eventAssignment (',' eventAssignment)*;
+// eventAssignment : variable '=' formula;
 
 // The syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
 // as far as I can tell. Still compiles, however.

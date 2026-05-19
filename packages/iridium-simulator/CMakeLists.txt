@@ -39,6 +39,7 @@ target_link_options(cvodeBindings PRIVATE
     "-sMODULARIZE"
     "-sALLOW_TABLE_GROWTH" # we need this so we can use `addFunction`
     "-sEXPORT_ES6"
+    "-sENVIRONMENT=web,worker,node"
     "-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmMemory"
 )
 target_link_libraries(cvodeBindings PUBLIC SUNDIALS::cvode)

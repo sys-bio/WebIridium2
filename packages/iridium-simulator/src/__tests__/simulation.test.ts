@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createCvodeWrapper } from "../wrapper.ts";
 
-import defaultModel from "@/assets/examples/feedback-oscillator-model.txt?raw";
+import defaultModel from "@/assets/default.ant?raw";
 import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 

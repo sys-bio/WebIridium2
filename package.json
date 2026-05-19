@@ -16,6 +16,7 @@
     "typecheck": "npx tsc -b --noEmit",
     "preview": "vite preview",
     "test": "vitest",
+    "test-sim": "vitest --config packages/iridium-simulator/vitest.config.ts",
     "coverage": "vitest run --coverage",
     "bench": "vitest bench --config vitest.config.bench.ts"
   },

@@ -16,3 +16,7 @@ If you are building for release, add this flag to the `emcmake` command: `-DCMAK
 If your IDE is flagging errors, you might also also have to add this flag to the `emcmake` command: `-DCMAKE_EXPORT_COMPILE_COMMANDS=on`.
 This adds `compile_commands.json` to the build directory. It will help your IDE identify that you are using Emscripten plus some other stuff.
 You will probably get some errors in your IDE still, but you can just ignore them, as long as everything still compiles.
+
+# Testing
+
+You have to use `npm run test-sim`.

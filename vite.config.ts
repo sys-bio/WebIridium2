@@ -70,12 +70,9 @@ export default defineConfig({
           __dirname + "/node_modules/monaco-editor/esm/vs/editor/editor.api",
       },
     ],
-    workspace: [
-      "packages/iridium-simulator/vitest.config.ts",
-      "vite.config.ts",
-    ],
     setupFiles: ["./src/vitestSetup.ts", "@vitest/web-worker"],
     environment: "jsdom",
+    exclude: ["packages/iridium-simulator/**/*.test.{ts,js}"],
     coverage: {
       include: ["src"],
       exclude: [
