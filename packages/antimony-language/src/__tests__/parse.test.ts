@@ -124,7 +124,6 @@ describe("event", () => {
     missingColon: "at time > 5 A = 3",
     missingEnd: "at time > 5",
     rateRule: "at time > 5: A' = 5",
-    assignmentRule: "at time > 5: A := 5",
     incorrectFormula: "at time +: A = 3",
     incorrectFormula2: "at time +-: A = 3",
     incorrectFormula3: "at (time > 30: A = 3",
@@ -136,6 +135,8 @@ describe("event", () => {
     simpleParentheses: "at (time > 5): A = 3",
     complexFormula: "at time > (A + B^2) / (k1 * k2):A = 3",
     multiline: "at time > 5:\nA = 3",
+    multilines: "at time > 5:\n   \n  \t \nA = 3",
     noSpaces: "at time>5:A=3",
+    assignmentRule: "at time > 5: A := 5",
   });
 });
