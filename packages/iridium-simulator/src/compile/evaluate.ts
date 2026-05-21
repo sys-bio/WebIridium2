@@ -23,16 +23,31 @@ import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
 import type { InternalModel } from "./model.ts";
-import type { AntimonyVariable } from "antimony-language/semantic";
+import { CompileError } from "./errors.ts";
 
 // if they didn't have an assignment, give them this one
 const DEFAULT_INITIAL_VALUE = 1;
 
+/**
+ * Evaluates the initial values of a model in a topological order, setting default
+ * values for any variables without any assignment.
+ *
+ * @throws CompileError - when there is a cycle in the assignments
+ * @param model - the model to evaluate the initial values of
+ * @returns map of variable names to their initial values
+ */
 export const evaluateInitialValues = (
   model: InternalModel,
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
-  const evalOrder = getEvaluationOrder(model.variables, "set");
+  const evalOrder = getAssignmentOrder(
+    new Map(
+      Array.from(model.variables.values()).map((v) => [
+        v.name,
+        v.assignment?.kind === "set" ? v.assignment.formula : undefined,
+      ]),
+    ),
+  );
 
   // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
   initialValues.set(TIME_NAME, 0);
@@ -215,33 +230,42 @@ class VariableGrabberListener implements AntimonyListener {
   }
 }
 
-// topological sort
-export const getEvaluationOrder = (
-  variables: Map<string, AntimonyVariable>,
-  assignmentKind: "set" | "rule",
+/**
+ * Returns toplogically sorted evaluation for assignments. Assignments are represented
+ * by a map of names to (optional) formulas. If the formula for a variable is undefined,
+ * it is assumed to be default initialized and listed first. Formulas may also contain variables
+ * not listed in the assignments. In that case, these variables are assumed to already have a value
+ * and not listed in the output.
+ *
+ * @throws CompileError - if there is a cycle in the assignments
+ * @param assignments - map of variable names to (optional) assignment formulas
+ * @returns toplogically sorted assignment ordering
+ */
+export const getAssignmentOrder = (
+  assignments: Map<string, FormulaContext | undefined>,
 ): string[] => {
   const graph: Record<string, Set<string>> = {};
   const inDegrees: Record<string, number> = {};
 
-  for (const variable of variables.values()) {
-    graph[variable.name] = new Set();
-    inDegrees[variable.name] = 0;
+  for (const variable of assignments.keys()) {
+    graph[variable] = new Set();
+    inDegrees[variable] = 0;
   }
 
-  for (const variable of variables.values()) {
-    if (!variable.assignment) continue;
+  for (const [name, assignment] of assignments) {
+    if (!assignment) continue;
 
-    if (variable.assignment.kind === assignmentKind) {
-      const variableListener = new VariableGrabberListener();
-      ParseTreeWalker.DEFAULT.walk(
-        variableListener as ParseTreeListener,
-        variable.assignment.formula,
-      );
+    const variableListener = new VariableGrabberListener();
+    ParseTreeWalker.DEFAULT.walk(
+      variableListener as ParseTreeListener,
+      assignment,
+    );
 
-      for (const neighbor of variableListener.getVariables()) {
-        inDegrees[variable.name] += 1;
-        graph[neighbor].add(variable.name);
-      }
+    for (const neighbor of variableListener.getVariables()) {
+      if (Object.hasOwn(graph, neighbor)) {
+        inDegrees[name] += 1;
+        graph[neighbor].add(name);
+      } // otherwise we assume it already has an assignment
     }
   }
 
@@ -266,8 +290,8 @@ export const getEvaluationOrder = (
     }
   }
 
-  if (order.length !== variables.size) {
-    throw new Error("Cycle detected in assignments.");
+  if (order.length !== assignments.size) {
+    throw new CompileError("Cycle detected in assignments.");
   }
 
   return order;

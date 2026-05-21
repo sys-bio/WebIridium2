@@ -1,23 +1,28 @@
-export interface VariableSpec {
+export type VariableSpec = {
   name: string;
   initialValue: number;
-}
+};
+
+export type EventSpec = {
+  countRoots: number;
+  yIndices: number[];
+  pIndices: number[];
+  getDelayExport: string;
+  getAssignmentExport: string;
+};
 
 /**
  * Contains all the information needed to load and execute a model.
  * Meant to be shared between workers.
  */
-export interface ModelSpec {
+export type ModelSpec = {
   floatingSpecies: VariableSpec[];
   odes: VariableSpec[];
   boundarySpecies: VariableSpec[];
   parameters: VariableSpec[];
+  /** Name of reactions. */
   reactions: string[];
-  rhsModule: WebAssembly.Module;
-  event?: {
-    roots: number;
-    rootModule: WebAssembly.Module;
-    foundModule: WebAssembly.Module;
-  };
+  events: EventSpec[];
+  wasmModule: WebAssembly.Module;
   funcImports: string[];
-}
+};

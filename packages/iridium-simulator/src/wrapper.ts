@@ -60,7 +60,7 @@ export class CvodeWrapper {
       pVector.push_back(p.initialValue);
     }
 
-    const instance = await WebAssembly.instantiate(spec.rhsModule, {
+    const instance = await WebAssembly.instantiate(spec.wasmModule, {
       [CORE_NAMESPACE]: {
         // eslint-disable-next-line
         [MEMORY_IMPORT_NAME]: this.#bindings.wasmMemory,

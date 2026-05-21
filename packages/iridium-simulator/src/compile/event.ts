@@ -1,19 +1,25 @@
 import { AbstractParseTreeVisitor } from "antlr4ts/tree/AbstractParseTreeVisitor";
 import {
   CompareContext,
+  EventAssignmentContext,
+  FormulaContext,
   LogicalContext,
   SumContext,
   type AntimonyVisitor,
 } from "antimony-language/grammar";
 import { emitFormula } from "./formula";
-import { LocalsSymbolTable, type IndexSymbolTable } from "./SymbolTable";
+import { IndexSymbolTable, LocalsSymbolTable } from "./SymbolTable";
 import { OpCode, ValType } from "./codes";
-import Emitter, { type EmitLoadVariableFunction } from "./Emitter";
+import Emitter, {
+  createEmitLoadVariable,
+  type EmitLoadVariableFunction,
+} from "./Emitter";
 import type { AntimonyEvent } from "antimony-language/semantic";
 import { CompileError } from "./errors";
-import { TIME_NAME } from "../names";
+import { P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
 import type { InternalModel } from "./model";
-import { DOUBLE_MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
+import { getAssignmentOrder } from "./evaluate";
 
 export const ROOTS_PARAMS = [ValType.i32, ValType.i32, ValType.i32];
 export const ROOTS_RESULTS = [ValType.i32];
@@ -36,10 +42,12 @@ type EventCondition = {
 
 type InternalEvent = {
   conditions: EventCondition[];
+  assignments: Map<string, FormulaContext>;
+  delay?: FormulaContext;
 };
 
 // TODO: how do we handle != event?
-const createEventCondition = (
+const compileEventCondition = (
   ctx: CompareContext,
   emitLoadVariable: EmitLoadVariableFunction,
   functionTable: IndexSymbolTable,
@@ -100,7 +108,7 @@ class EventCompilerVisitor
 
   visitCompare(ctx: CompareContext): EventCondition[] {
     return [
-      createEventCondition(ctx, this.#emitLoadVariable, this.#functionTable),
+      compileEventCondition(ctx, this.#emitLoadVariable, this.#functionTable),
     ];
   }
 
@@ -112,7 +120,7 @@ class EventCompilerVisitor
       const child = ctx.getChild(i);
       if (child instanceof CompareContext) {
         conditions.push(
-          createEventCondition(
+          compileEventCondition(
             child,
             this.#emitLoadVariable,
             this.#functionTable,
@@ -132,6 +140,7 @@ const getTrigger = (
   functionTable: IndexSymbolTable,
 ): InternalEvent => {
   const visitor = new EventCompilerVisitor(emitLoadVariable, functionTable);
+
   const conditions = event.trigger.accept(visitor);
   if (conditions.length === 0) {
     throw new CompileError(INVALID_TRIGGER_MESSAGE, { tree: event.trigger });
@@ -141,7 +150,11 @@ const getTrigger = (
     });
   }
 
-  return { conditions };
+  return {
+    conditions,
+    assignments: event.assignments,
+    delay: event.delay,
+  };
 };
 
 export const getTriggersFromModel = (
@@ -158,26 +171,50 @@ export const getTriggersFromModel = (
   return triggers;
 };
 
-const T_PARAM = "t";
-const Y_PTR_PARAM = "*y";
-const G_PTR_PARAM = "*g";
-const P_PTR_PARAM = "*p";
+const G_PARAM = "g[]";
 
-export type CompledEventFunctions = {
+export type CompiledEvent = {
+  countRoots: number;
+  yIndices: number[];
+  pIndices: number[];
+  getDelayFn: Uint8Array;
+  getAssignmentsFn: Uint8Array;
+};
+
+export type CompiledEvents = {
   rootsFn: Uint8Array;
   checkEventsFn: Uint8Array;
-  getDelayFns: Uint8Array[];
-  assignFns: Uint8Array[];
+  events: CompiledEvent[];
 };
 
 export const compileEvents = (
   functionTable: IndexSymbolTable,
   model: InternalModel,
-): CompledEventFunctions => {
-  const [rootsFn, triggers] = compileRoots(functionTable, model);
+): CompiledEvents => {
+  const [rootsFn, events] = compileRoots(functionTable, model);
+  const checkEventsFn = compileCheckEvents(events);
+  const compiledEvents: CompiledEvent[] = [];
+
+  for (const event of events) {
+    const getDelayFn = compileGetDelay(model, event, functionTable);
+    const {
+      emitter: getAssignmentsFn,
+      yOutTable,
+      pOutTable,
+    } = compileGetAssignments(model, event, functionTable);
+    compiledEvents.push({
+      getDelayFn: getDelayFn.getOutput(),
+      getAssignmentsFn: getAssignmentsFn.getOutput(),
+      yIndices: yOutTable.values(),
+      pIndices: pOutTable.values(),
+      countRoots: event.conditions.length,
+    });
+  }
+
   return {
     rootsFn: rootsFn.getOutput(),
-    checkEventsFn: compileCheckEvents(triggers).getOutput(),
+    checkEventsFn: checkEventsFn.getOutput(),
+    events: compiledEvents,
   };
 };
 
@@ -185,41 +222,19 @@ const compileRoots = (
   functionTable: IndexSymbolTable,
   model: InternalModel,
 ): [Emitter, InternalEvent[]] => {
-  const { yTable, pTable } = model;
   const emitter = new Emitter();
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
-    Y_PTR_PARAM,
-    G_PTR_PARAM,
-    P_PTR_PARAM,
+    Y_PARAM,
+    G_PARAM,
+    P_PARAM,
   ]);
-
-  const emitLoadVariable = (emitter: Emitter, name: string): void => {
-    if (name === TIME_NAME) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(T_PARAM));
-    } else if (pTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
-    } else if (yTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(Y_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
-    } else {
-      throw new Error(`Unbound name: ${name}`);
-    }
-  };
 
   // no locals
   emitter.emitListHeader(0);
+
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
   const triggers = getTriggersFromModel(model, emitLoadVariable, functionTable);
 
@@ -230,10 +245,10 @@ const compileRoots = (
       emitter.appendBytes(bytecode);
 
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(G_PTR_PARAM));
+      emitter.emitUint32(localsTable.getParam(G_PARAM));
 
       emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+      emitter.emitUint32(MEM_ALIGNMENT);
       emitter.emitUint32(SIZEOF_DOUBLE * currentRootIndex);
 
       currentRootIndex += 1;
@@ -243,37 +258,194 @@ const compileRoots = (
   return [emitter, triggers];
 };
 
-const EVENT_OUT_PARAM = "*eventout";
-const ROOTS_PARAM = "*roots";
+const EVENT_OUT_PARAM = "eventout[]";
+const CONDITIONS_PARAM = "conditions[]";
+const ROOTS_PARAM = "roots[]";
 
-const compileCheckEvents = (triggers: InternalEvent[]): Emitter => {
+const compileCheckEvents = (events: InternalEvent[]): Emitter => {
+  // TODO: function header
+
   let currentRootIndex = 0;
   let currentEventIndex = 0;
 
   const emitter = new Emitter();
 
+  emitter.emitListHeader(0);
+
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
-    Y_PTR_PARAM,
     ROOTS_PARAM,
     EVENT_OUT_PARAM,
   ]);
 
-  for (const trigger of triggers) {
+  for (const trigger of events) {
+    const startRootIndex = currentRootIndex;
+
     for (const { direction } of trigger.conditions) {
+      // load the root
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
 
+      emitter.emitByte(OpCode.i32load);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
+      // check if the root was changed
+      emitter.emitByte(OpCode.i32const);
+      emitter.emitUint32(0);
+
+      emitter.emitByte(OpCode.i32ne);
+
+      // if so, we need to update our condition array
+      emitter.emitByte(OpCode.if);
+      emitter.emitByte(OpCode.blockNoType);
+
+      // load the root, check if its the right direction and result in the conditions array
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
+
+      emitter.emitByte(OpCode.i32load);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
       if (direction === 0) {
-        // TODO: how do we handle != ??
+        // TODO: handle this properly
+        throw new CompileError("== in event not yet supported.");
+      } else if (direction > 0) {
+        emitter.emitByte(OpCode.i32ge_s);
       } else {
+        emitter.emitByte(OpCode.i32le_s);
       }
+
+      emitter.emitByte(OpCode.i32store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
+      emitter.emitByte(OpCode.end);
 
       currentRootIndex += 1;
     }
+
+    // update the event out
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
+
+    // TODO: properly handle logical conditions instead of just AND everything
+    for (let i = startRootIndex; i < currentRootIndex; i++) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+      emitter.emitByte(OpCode.i32load);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_INT * i);
+
+      if (i !== startRootIndex) {
+        emitter.emitByte(OpCode.i32and);
+      }
+    }
+
+    emitter.emitByte(OpCode.i32store);
+    emitter.emitUint32(MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_INT * currentEventIndex);
 
     currentEventIndex += 1;
   }
 
   return emitter;
+};
+
+const compileGetDelay = (
+  model: InternalModel,
+  event: InternalEvent,
+  functionTable: IndexSymbolTable,
+): Emitter => {
+  const emitter = new Emitter();
+
+  const localsTable = new LocalsSymbolTable([T_PARAM, Y_PARAM, P_PARAM]);
+
+  emitter.emitListHeader(0);
+
+  if (event.delay) {
+    const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+    emitFormula(event.delay, emitter, emitLoadVariable, functionTable);
+  } else {
+    emitter.emitByte(OpCode.f64const);
+    emitter.emitFloat64(0);
+  }
+
+  return emitter;
+};
+
+const Y_OUT_PARAM = "y_out[]";
+const P_OUT_PARAM = "p_out[]";
+
+const compileGetAssignments = (
+  model: InternalModel,
+  event: InternalEvent,
+  functionTable: IndexSymbolTable,
+): {
+  emitter: Emitter;
+  yOutTable: IndexSymbolTable;
+  pOutTable: IndexSymbolTable;
+} => {
+  const { yTable, pTable } = model;
+
+  const emitter = new Emitter();
+
+  const localsTable = new LocalsSymbolTable([
+    T_PARAM,
+    Y_PARAM,
+    P_PARAM,
+    Y_OUT_PARAM,
+    P_OUT_PARAM,
+  ]);
+
+  const yOutTable = new IndexSymbolTable();
+  const pOutTable = new IndexSymbolTable();
+
+  emitter.emitListHeader(0);
+
+  const ordering = getAssignmentOrder(event.assignments);
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+
+  for (const name of ordering) {
+    const formula = event.assignments.get(name)!;
+
+    emitFormula(formula, emitter, emitLoadVariable, functionTable);
+
+    if (yTable.has(name)) {
+      yOutTable.add(name);
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(Y_OUT_PARAM));
+
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * yOutTable.get(name));
+    } else if (pTable.has(name)) {
+      pOutTable.add(name);
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(P_OUT_PARAM));
+
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * pOutTable.get(name));
+    } else if (name === TIME_NAME) {
+      throw new CompileError("You cannot assign to time.", {
+        tree: formula.parent,
+      });
+    } else {
+      throw new CompileError("Unbound name.", {
+        tree: (
+          formula?.parent as EventAssignmentContext | undefined
+        )?.variable?.(),
+      });
+    }
+  }
+
+  return { emitter, yOutTable, pOutTable };
 };

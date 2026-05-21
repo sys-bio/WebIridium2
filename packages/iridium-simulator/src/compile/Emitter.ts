@@ -1,10 +1,15 @@
+import { P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
 import {
   CompositeType,
   ExternType,
   LimitFlag,
+  OpCode,
   type SectionCode,
   type ValType,
 } from "./codes";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
+import type { InternalModel } from "./model";
+import type { LocalsSymbolTable } from "./SymbolTable";
 
 const INITIAL_CAPACITY = 32;
 const RESIZE_FACTOR = 2;
@@ -13,6 +18,42 @@ const RESIZE_FACTOR = 2;
  * Function that emits code to load variable onto the stack.
  **/
 export type EmitLoadVariableFunction = (emitter: Emitter, name: string) => void;
+
+/**
+ * @param model - model IR
+ * @param localsTable -
+ * List of locals of the function being emitted into. Requires a param with the name T_PARAM,
+ * a param with the name Y_PARAM, and a param with the name P_PARAM.
+ *
+ * @returns a function that can be used to emit variable load sequences
+ */
+export const createEmitLoadVariable = (
+  { yTable, pTable }: InternalModel,
+  localsTable: LocalsSymbolTable,
+): EmitLoadVariableFunction => {
+  return (emitter: Emitter, name: string): void => {
+    if (name === TIME_NAME) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(T_PARAM));
+    } else if (pTable.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(P_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
+    } else if (yTable.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(Y_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
+    } else {
+      throw new Error(`Unbound name: ${name}`);
+    }
+  };
+};
 
 /**
  * Helper to generate and emit WASM bytecode.

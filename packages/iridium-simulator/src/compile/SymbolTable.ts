@@ -36,6 +36,10 @@ export class IndexSymbolTable {
   has(item: string): boolean {
     return this.#map.has(item);
   }
+
+  values(): number[] {
+    return Array.from(this.#map.values());
+  }
 }
 
 export class LocalsSymbolTable {

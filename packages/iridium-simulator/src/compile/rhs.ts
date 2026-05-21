@@ -1,16 +1,13 @@
-import { TIME_NAME } from "../names";
 import { ValType, OpCode } from "./codes";
-import Emitter from "./Emitter";
+import Emitter, { createEmitLoadVariable } from "./Emitter";
 import { IndexSymbolTable, LocalsSymbolTable } from "./SymbolTable";
-import { getEvaluationOrder } from "./evaluate";
-import { DOUBLE_MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
+import { getAssignmentOrder } from "./evaluate";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
 import type { InternalModel } from "./model";
+import { P_PARAM, T_PARAM, Y_PARAM } from "../names";
 
-const T_PARAM = "t";
-const Y_PTR_PARAM = "*y";
-const YDOT_PTR_PARAM = "*yDot";
-const P_PTR_PARAM = "*p";
+const YDOT_PTR_PARAM = "ydot[]";
 
 export const RHS_PARAMS: ValType[] = [
   ValType.f64,
@@ -27,16 +24,19 @@ export const compileRhs = (
   const { variables, floatingSpecies, odes, reactions, yTable, pTable } = model;
   const emitter = new Emitter();
 
-  const ruleEvaluationOrder = getEvaluationOrder(
-    model.variables,
-    "rule",
-  ).filter((name) => variables.get(name)!.assignment?.kind === "rule");
+  const ruleEvaluationOrder = getAssignmentOrder(
+    new Map(
+      Array.from(model.variables.values())
+        .filter((v) => v.assignment?.kind === "rate")
+        .map((v) => [v.name, v.assignment!.formula]),
+    ),
+  );
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
-    Y_PTR_PARAM,
+    Y_PARAM,
     YDOT_PTR_PARAM,
-    P_PTR_PARAM,
+    P_PARAM,
   ]);
 
   for (const reaction of reactions) {
@@ -50,28 +50,7 @@ export const compileRhs = (
   emitter.emitUint32(reactions.length);
   emitter.emitByte(ValType.f64);
 
-  const emitLoadVariable = (emitter: Emitter, name: string): void => {
-    if (name === TIME_NAME) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(T_PARAM));
-    } else if (pTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
-    } else if (yTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(Y_PTR_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
-    } else {
-      throw new Error(`Unbound name: ${name}`);
-    }
-  };
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
   // calculate rules
 
@@ -79,7 +58,7 @@ export const compileRhs = (
     const variable = variables.get(variableName)!;
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
+    emitter.emitUint32(localsTable.getParam(P_PARAM));
 
     emitFormula(
       variable.assignment!.formula,
@@ -89,7 +68,7 @@ export const compileRhs = (
     );
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(variableName));
   }
 
@@ -179,7 +158,7 @@ export const compileRhs = (
     }
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
   }
 
@@ -196,7 +175,7 @@ export const compileRhs = (
     );
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(ode.name));
   }
 
@@ -205,13 +184,13 @@ export const compileRhs = (
     const index = pTable.get(reaction.name);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PTR_PARAM));
+    emitter.emitUint32(localsTable.getParam(P_PARAM));
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint32(localsTable.getLocal(reaction.name));
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(DOUBLE_MEM_ALIGNMENT);
+    emitter.emitUint32(MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_DOUBLE * index);
   }
 

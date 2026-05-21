@@ -7,6 +7,7 @@ export type AntimonyModel = {
   events: AntimonyEvent[];
 };
 
+// TODO: "rate" rule should be separate since you should be able to set the initial value AND the rate rule
 export type AntimonyAssignment = {
   kind: "set" | "rule" | "rate";
   formula: FormulaContext;
@@ -29,12 +30,8 @@ export type AntimonyReactionTerm = {
 
 export type AntimonyEvent = {
   trigger: FormulaContext;
-  assignments: AntimonyEventAssignment[];
-};
-
-export type AntimonyEventAssignment = {
-  name: string;
-  formula: FormulaContext;
+  assignments: Map<string, FormulaContext>;
+  delay?: FormulaContext;
 };
 
 export type AntimonyReaction = {

@@ -71,7 +71,8 @@ export const compile = async (code: string): Promise<ModelSpec> => {
     boundarySpecies,
     parameters,
     reactions: model.reactions.map((r) => r.name),
-    rhsModule: await WebAssembly.compile(bytecode),
+    events: [],
+    wasmModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };
 };

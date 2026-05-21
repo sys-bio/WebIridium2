@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <queue>
+#include <vector>
 
 // Events may have multiple roots, so len(gout) >= len(events)
 // Expresses every event condition as a root-finding problem.
@@ -9,13 +10,13 @@ using RootsFn = std::function<void(double time, double y[], double gout[], doubl
 
 // Updates which event triggers hold when CVODE indicates a root found.
 // The conditions array is to hold state about which conditions hold between root finds.
-using CheckEventsFn = std::function<void(double time, double y[], int roots[], bool conditions[], bool eventout[])>;
+using CheckEventsFn = std::function<void(double time, int roots[], int conditions[], int eventout[])>;
 
 // Generated for each event with a delay. Returns the events delay.
 using GetDelayFn = std::function<double(double time, double y[], double p[])>;
 
 // Generated for each event. Runs the events assignments.
-using AssignFn = std::function<void(double time, double y[], double p[])>;
+using GetAssignmentsFn = std::function<void(double time, double y[], double p[])>;
 
 struct EventInfo {
     bool is_persistent;
@@ -23,8 +24,10 @@ struct EventInfo {
     bool is_from_trigger;
     int num_roots;
     int priority;
+    std::vector<int> y_indices;
+    std::vector<int> p_indices;
     GetDelayFn *get_delay_fn;
-    AssignFn *assign_fn;
+    GetAssignmentsFn *get_assignments_fn;
 };
 
 struct EventState {
@@ -43,10 +46,8 @@ struct Event {
 struct EventInvocation {
     const Event &event;
     bool has_assignments;
-    int *y_indices;
-    double *y_assignments;
-    int *p_indices;
-    double *p_assignments;
+    std::vector<int> y_values;
+    std::vector<int> p_values;
 };
 
 struct QueuedEvent {

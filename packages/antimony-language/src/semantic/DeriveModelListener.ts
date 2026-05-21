@@ -3,6 +3,7 @@ import {
   AssignmentContext,
   ConstantContext,
   EventContext,
+  FormulaContext,
   ReactantListContext,
   ReactionContext,
   VariableContext,
@@ -11,7 +12,6 @@ import type {
   AntimonyVariable,
   AntimonyModel,
   AntimonyReactionTerm,
-  AntimonyEventAssignment,
 } from "./model";
 import { getVariableName } from "./util";
 
@@ -60,6 +60,10 @@ export class DeriveModelListener implements AntimonyListener {
     }
 
     return variable;
+  }
+
+  enterVariable(ctx: VariableContext): void {
+    this.#getOrCreateVariable(ctx);
   }
 
   enterAssignment(ctx: AssignmentContext): void {
@@ -132,10 +136,10 @@ export class DeriveModelListener implements AntimonyListener {
   }
 
   enterEvent(ctx: EventContext): void {
-    const assignments: AntimonyEventAssignment[] = [];
+    const assignments = new Map<string, FormulaContext>();
     for (const assignment of ctx.eventAssignment()) {
       const variable = this.#getOrCreateVariable(assignment.variable());
-      assignments.push({ name: variable.name, formula: assignment.formula() });
+      assignments.set(variable.name, assignment.formula());
     }
 
     this.#getActiveModel().events.push({

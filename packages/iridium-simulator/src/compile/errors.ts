@@ -1,7 +1,7 @@
 import type { ParseTree } from "antlr4ts/tree/ParseTree";
 
 export type CompileErrorInfo = {
-  tree: ParseTree;
+  tree?: ParseTree;
 };
 
 export class CompileError extends Error {

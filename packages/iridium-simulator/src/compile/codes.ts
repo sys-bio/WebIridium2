@@ -55,6 +55,9 @@ export const OpCode = {
   localset: 0x21,
 
   i32const: 0x41,
+  i32load: 0x28,
+  i32store: 0x36,
+
   i32add: 0x6a,
   i32eq: 0x46,
   i32ne: 0x47,
@@ -62,6 +65,9 @@ export const OpCode = {
   i32gt_s: 0x4a,
   i32le_s: 0x4c,
   i32ge_s: 0x4e,
+
+  i32and: 0x71,
+  i32or: 0x72,
 
   f64const: 0x44,
   f64load: 0x2b,
