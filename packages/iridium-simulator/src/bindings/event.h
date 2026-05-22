@@ -44,7 +44,7 @@ struct Event {
 };
 
 struct EventInvocation {
-    const Event &event;
+    const Event *event;
     bool has_assignments;
     std::vector<int> y_values;
     std::vector<int> p_values;
@@ -55,6 +55,7 @@ struct QueuedEvent {
     EventInvocation invocation;
 };
 
+
 class EventQueue {
 public:
     EventQueue() = default;
@@ -63,7 +64,7 @@ public:
     EventQueue& operator=(const EventQueue&) = delete;
 
     // Returns the time for the next event, or `-1` if there is none.
-    double GetNextEventTime();
+    double GetNextEventTime() const;
 
     // Adds an invocation for an event that should run at the given time.
     void AddEventInvocation(double time, EventInvocation event_invocation);
@@ -71,9 +72,23 @@ public:
     // Removes all EventInvocation associated with the given Event.
     void RemoveEvent(const Event &event);
 
-    // Gets and removes an event from the queue if it is available at the given time.
-    EventInvocation* GetEventInvocationIfAvailable(double time);
+    // Returns if an invocation is available to run at this time.
+    bool IsInvocationAvailable(double time) const;
+
+    // Pops and returns the most recent event invocation.
+    EventInvocation PopEventInvocation();
 
 private:
-    std::priority_queue<EventInvocation, std::vector<EventInvocation>> queue_;
+    class CompareQueuedEvent {
+    public:
+        bool operator()(const QueuedEvent &a, const QueuedEvent &b) {
+            return a.time - b.time;
+        }
+    };
+
+    std::priority_queue<
+        QueuedEvent,
+        std::vector<QueuedEvent>,
+        CompareQueuedEvent
+    > queue_;
 };

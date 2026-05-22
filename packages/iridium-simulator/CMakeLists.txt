@@ -30,16 +30,18 @@ FetchContent_MakeAvailable(SUNDIALS)
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS src/bindings/*.cc)
 file(GLOB_RECURSE headers CONFIGURE_DEPENDS src/bindings/*.h)
 
-add_executable(cvodeBindings ${sources} ${headers})
+set(target_name "cvodeBindings")
 
-target_compile_features(cvodeBindings PRIVATE cxx_std_20)
-target_link_options(cvodeBindings PRIVATE
+add_executable(${target_name} ${sources} ${headers})
+
+target_compile_features(${target_name} PUBLIC cxx_std_20) 
+target_link_options(${target_name} PRIVATE
     "-lembind"
-    "--emit-tsd=cvodeBindings.d.ts"
+    "--emit-tsd=${target_name}.d.ts"
     "-sMODULARIZE"
     "-sALLOW_TABLE_GROWTH" # we need this so we can use `addFunction`
     "-sEXPORT_ES6"
     "-sENVIRONMENT=web,worker,node"
     "-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmMemory"
 )
-target_link_libraries(cvodeBindings PUBLIC SUNDIALS::cvode)
+target_link_libraries(${target_name} PUBLIC SUNDIALS::cvode)
