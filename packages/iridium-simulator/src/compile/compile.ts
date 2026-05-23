@@ -94,19 +94,9 @@ const compileModel = (model: InternalModel, imports: string[]): Uint8Array => {
     })),
   ];
 
-  // if (model.events.length > 0) {
-  //   functions.concat([
-  //     {
-  //       kind: "compile",
-  //       isExported: true,
-  //       name: ROOTS_NAME,
-  //       params: ROOTS_PARAMS,
-  //       results: ROOTS_RESULTS,
-  //       compileBody: (functionTable: IndexSymbolTable) =>
-  //         compileRoots(functionTable, model).getOutput(),
-  //     },
-  //   ]);
-  // }
+  if (model.events.length > 0) {
+
+  }
 
   return compileFunctions(functions);
 };

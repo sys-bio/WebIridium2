@@ -16,7 +16,13 @@ using CheckEventsFn = std::function<void(double time, int roots[], int condition
 using GetDelayFn = std::function<double(double time, double y[], double p[])>;
 
 // Generated for each event. Runs the events assignments.
-using GetAssignmentsFn = std::function<void(double time, double y[], double p[])>;
+using GetAssignmentsFn = std::function<void(
+    double time,
+    double y[],
+    double p[],
+    double yout[],
+    double pout[]
+)>;
 
 struct EventInfo {
     bool is_persistent;

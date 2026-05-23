@@ -16,13 +16,42 @@ import Emitter, {
 } from "./Emitter";
 import type { AntimonyEvent } from "antimony-language/semantic";
 import { CompileError } from "./errors";
-import { P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
+import {
+  ROOTS_NAME,
+  CHECK_EVENTS_NAME,
+  P_PARAM,
+  T_PARAM,
+  TIME_NAME,
+  Y_PARAM,
+  generateSymbol,
+} from "../names";
 import type { InternalModel } from "./model";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { getAssignmentOrder } from "./evaluate";
+import type { WasmFunction } from "./compile";
 
-export const ROOTS_PARAMS = [ValType.i32, ValType.i32, ValType.i32];
-export const ROOTS_RESULTS = [ValType.i32];
+const ROOTS_PARAMS = [ValType.i32, ValType.i32, ValType.i32];
+const ROOTS_RESULTS = [ValType.i32];
+
+const CHECK_EVENTS_PARAMS = [
+  ValType.f64,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
+const CHECK_EVENTS_RESULTS: ValType[] = [];
+
+const GET_DELAY_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
+const GET_DELAY_RESULTS = [ValType.f64];
+
+const GET_ASSIGNMENTS_PARAMS = [
+  ValType.f64,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
+const GET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
 /**
  * Represents a condition that an event may be triggered under.
@@ -37,7 +66,7 @@ export const ROOTS_RESULTS = [ValType.i32];
  */
 type EventCondition = {
   direction: -1 | 0 | 1;
-  bytecode: Uint8Array;
+  comparison: CompareContext;
 };
 
 type InternalEvent = {
@@ -46,14 +75,20 @@ type InternalEvent = {
   delay?: FormulaContext;
 };
 
+const getEventConditionDirection = (ctx: CompareContext): -1 | 0 | 1 => {
+  const op = ctx._op.text;
+  return op === ">=" || op === ">" ? 1 : op === "<=" || op === "<" ? -1 : 0;
+};
+
 // TODO: how do we handle != event?
 const compileEventCondition = (
-  ctx: CompareContext,
+  condition: EventCondition,
+  emitter: Emitter,
   emitLoadVariable: EmitLoadVariableFunction,
   functionTable: IndexSymbolTable,
-): EventCondition => {
+): void => {
+  const ctx = condition.comparison;
   const op = ctx._op.text;
-  const emitter = new Emitter();
 
   // rewrite the comparison into a root problem
   const newCtx = new SumContext(ctx);
@@ -68,31 +103,17 @@ const compileEventCondition = (
     // TODO: fix this
     throw new CompileError("!= in events not yet supported.", { tree: ctx });
   }
-
-  return {
-    direction:
-      op === ">=" || op === ">" ? 1 : op === "<=" || op === "<" ? -1 : 0,
-    bytecode: emitter.getOutput(),
-  };
 };
 
 const INVALID_TRIGGER_MESSAGE =
   "Invalid event trigger. Missing comparison or equality.";
 
-class EventCompilerVisitor
+class EventConditionCollectorVisitor
   extends AbstractParseTreeVisitor<EventCondition[]>
   implements AntimonyVisitor<EventCondition[]>
 {
-  #emitLoadVariable: EmitLoadVariableFunction;
-  #functionTable: IndexSymbolTable;
-
-  constructor(
-    emitLoadVariable: EmitLoadVariableFunction,
-    functionTable: IndexSymbolTable,
-  ) {
+  constructor() {
     super();
-    this.#emitLoadVariable = emitLoadVariable;
-    this.#functionTable = functionTable;
   }
 
   defaultResult(): EventCondition[] {
@@ -108,7 +129,10 @@ class EventCompilerVisitor
 
   visitCompare(ctx: CompareContext): EventCondition[] {
     return [
-      compileEventCondition(ctx, this.#emitLoadVariable, this.#functionTable),
+      {
+        direction: getEventConditionDirection(ctx),
+        comparison: ctx,
+      },
     ];
   }
 
@@ -119,13 +143,10 @@ class EventCompilerVisitor
 
       const child = ctx.getChild(i);
       if (child instanceof CompareContext) {
-        conditions.push(
-          compileEventCondition(
-            child,
-            this.#emitLoadVariable,
-            this.#functionTable,
-          ),
-        );
+        conditions.push({
+          direction: getEventConditionDirection(child),
+          comparison: child,
+        });
       } else {
         throw new CompileError(INVALID_TRIGGER_MESSAGE, { tree: child });
       }
@@ -134,12 +155,8 @@ class EventCompilerVisitor
   }
 }
 
-const getTrigger = (
-  event: AntimonyEvent,
-  emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: IndexSymbolTable,
-): InternalEvent => {
-  const visitor = new EventCompilerVisitor(emitLoadVariable, functionTable);
+const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
+  const visitor = new EventConditionCollectorVisitor();
 
   const conditions = event.trigger.accept(visitor);
   if (conditions.length === 0) {
@@ -157,63 +174,114 @@ const getTrigger = (
   };
 };
 
-export const getTriggersFromModel = (
+export const createInternalEventsFromModel = (
   model: InternalModel,
-  emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: IndexSymbolTable,
 ): InternalEvent[] => {
-  const triggers: InternalEvent[] = [];
+  const internalEvents: InternalEvent[] = [];
 
   for (const event of model.events) {
-    triggers.push(getTrigger(event, emitLoadVariable, functionTable));
+    internalEvents.push(createInternalEvent(event));
   }
 
-  return triggers;
+  return internalEvents;
 };
 
 const G_PARAM = "g[]";
 
 export type CompiledEvent = {
   countRoots: number;
-  yIndices: number[];
-  pIndices: number[];
-  getDelayFn: Uint8Array;
-  getAssignmentsFn: Uint8Array;
-};
-
-export type CompiledEvents = {
-  rootsFn: Uint8Array;
-  checkEventsFn: Uint8Array;
-  events: CompiledEvent[];
+  yIndices: IndexSymbolTable;
+  pIndices: IndexSymbolTable;
+  getDelayFn: string;
+  getAssignmentsFn: string;
 };
 
 export const compileEvents = (
-  functionTable: IndexSymbolTable,
   model: InternalModel,
-): CompiledEvents => {
-  const [rootsFn, events] = compileRoots(functionTable, model);
-  const checkEventsFn = compileCheckEvents(events);
+): { functions: WasmFunction[]; events: CompiledEvent[] } => {
+  const events = createInternalEventsFromModel(model);
   const compiledEvents: CompiledEvent[] = [];
+  const eventFns: WasmFunction[] = [];
 
   for (const event of events) {
-    const getDelayFn = compileGetDelay(model, event, functionTable);
-    const {
-      emitter: getAssignmentsFn,
-      yOutTable,
-      pOutTable,
-    } = compileGetAssignments(model, event, functionTable);
-    compiledEvents.push({
-      getDelayFn: getDelayFn.getOutput(),
-      getAssignmentsFn: getAssignmentsFn.getOutput(),
-      yIndices: yOutTable.values(),
-      pIndices: pOutTable.values(),
+    const yIndices = new IndexSymbolTable();
+    const pIndices = new IndexSymbolTable();
+
+    for (const [name, formula] of event.assignments) {
+      if (model.yTable.has(name)) {
+        yIndices.add(name);
+      } else if (model.pTable.has(name)) {
+        pIndices.add(name);
+      } else if (name === TIME_NAME) {
+        throw new CompileError("You cannot assign to time.", {
+          tree: formula.parent,
+        });
+      } else {
+        throw new CompileError("Unbound name.", {
+          tree: (
+            formula?.parent as EventAssignmentContext | undefined
+          )?.variable?.(),
+        });
+      }
+    }
+
+    const compiledEvent: CompiledEvent = {
+      getDelayFn: generateSymbol("getDelay"),
+      getAssignmentsFn: generateSymbol("getAssignments"),
+      yIndices: yIndices,
+      pIndices: pIndices,
       countRoots: event.conditions.length,
+    };
+
+    compiledEvents.push(compiledEvent);
+
+    eventFns.push({
+      kind: "compile",
+      isExported: true,
+      name: compiledEvent.getDelayFn,
+      params: GET_DELAY_PARAMS,
+      results: GET_DELAY_RESULTS,
+      compileBody: (functionTable) =>
+        compileGetDelay(model, event, functionTable).getOutput(),
+    });
+
+    eventFns.push({
+      kind: "compile",
+      isExported: true,
+      name: compiledEvent.getAssignmentsFn,
+      params: GET_ASSIGNMENTS_PARAMS,
+      results: GET_ASSIGNMENTS_RESULTS,
+      compileBody: (functionTable) =>
+        compileGetAssignments(
+          model,
+          event,
+          compiledEvent,
+          functionTable,
+        ).getOutput(),
     });
   }
 
   return {
-    rootsFn: rootsFn.getOutput(),
-    checkEventsFn: checkEventsFn.getOutput(),
+    functions: [
+      {
+        kind: "compile",
+        isExported: true,
+        name: ROOTS_NAME,
+        params: ROOTS_PARAMS,
+        results: ROOTS_RESULTS,
+        compileBody: (functionTable) =>
+          compileRoots(functionTable, model, events).getOutput(),
+      },
+      {
+        kind: "compile",
+        isExported: true,
+        name: CHECK_EVENTS_NAME,
+        params: CHECK_EVENTS_PARAMS,
+        results: CHECK_EVENTS_RESULTS,
+        compileBody: (_functionTable) => compileCheckEvents(events).getOutput(),
+      },
+      ...eventFns,
+    ],
     events: compiledEvents,
   };
 };
@@ -221,7 +289,8 @@ export const compileEvents = (
 const compileRoots = (
   functionTable: IndexSymbolTable,
   model: InternalModel,
-): [Emitter, InternalEvent[]] => {
+  events: InternalEvent[],
+): Emitter => {
   const emitter = new Emitter();
 
   const localsTable = new LocalsSymbolTable([
@@ -236,13 +305,16 @@ const compileRoots = (
 
   const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
-  const triggers = getTriggersFromModel(model, emitLoadVariable, functionTable);
-
   let currentRootIndex = 0;
 
-  for (const trigger of triggers) {
-    for (const { bytecode } of trigger.conditions) {
-      emitter.appendBytes(bytecode);
+  for (const event of events) {
+    for (const condition of event.conditions) {
+      compileEventCondition(
+        condition,
+        emitter,
+        emitLoadVariable,
+        functionTable,
+      );
 
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(G_PARAM));
@@ -255,7 +327,7 @@ const compileRoots = (
     }
   }
 
-  return [emitter, triggers];
+  return emitter;
 };
 
 const EVENT_OUT_PARAM = "eventout[]";
@@ -385,13 +457,10 @@ const P_OUT_PARAM = "p_out[]";
 const compileGetAssignments = (
   model: InternalModel,
   event: InternalEvent,
+  compiledEvent: CompiledEvent,
   functionTable: IndexSymbolTable,
-): {
-  emitter: Emitter;
-  yOutTable: IndexSymbolTable;
-  pOutTable: IndexSymbolTable;
-} => {
-  const { yTable, pTable } = model;
+): Emitter => {
+  const { yIndices, pIndices } = compiledEvent;
 
   const emitter = new Emitter();
 
@@ -403,9 +472,6 @@ const compileGetAssignments = (
     P_OUT_PARAM,
   ]);
 
-  const yOutTable = new IndexSymbolTable();
-  const pOutTable = new IndexSymbolTable();
-
   emitter.emitListHeader(0);
 
   const ordering = getAssignmentOrder(event.assignments);
@@ -416,30 +482,26 @@ const compileGetAssignments = (
 
     emitFormula(formula, emitter, emitLoadVariable, functionTable);
 
-    if (yTable.has(name)) {
-      yOutTable.add(name);
-
+    if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(Y_OUT_PARAM));
 
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yOutTable.get(name));
-    } else if (pTable.has(name)) {
-      pOutTable.add(name);
-
+      emitter.emitUint32(SIZEOF_DOUBLE * yIndices.get(name));
+    } else if (pIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(P_OUT_PARAM));
 
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pOutTable.get(name));
+      emitter.emitUint32(SIZEOF_DOUBLE * pIndices.get(name));
     } else if (name === TIME_NAME) {
       throw new CompileError("You cannot assign to time.", {
         tree: formula.parent,
       });
     } else {
-      throw new CompileError("Unbound name.", {
+      throw new CompileError("Unexpected assignment.", {
         tree: (
           formula?.parent as EventAssignmentContext | undefined
         )?.variable?.(),
@@ -447,5 +509,5 @@ const compileGetAssignments = (
     }
   }
 
-  return { emitter, yOutTable, pOutTable };
+  return emitter;
 };
