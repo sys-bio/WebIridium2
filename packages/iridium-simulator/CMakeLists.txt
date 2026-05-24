@@ -44,4 +44,13 @@ target_link_options(${target_name} PRIVATE
     "-sENVIRONMENT=web,worker,node"
     "-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmMemory"
 )
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_link_options(${target_name} PRIVATE
+        "-sASSERTIONS"
+        "-sDISABLE_EXCEPTION_CATCHING=0"
+        "-g3"
+    )
+endif()
+
 target_link_libraries(${target_name} PUBLIC SUNDIALS::cvode)

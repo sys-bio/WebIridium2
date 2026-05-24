@@ -95,8 +95,8 @@ export const compile = async (code: string): Promise<ModelSpec> => {
     reactions: model.reactions.map((r) => r.name),
     events: events.map((e) => ({
       ...e,
-      yIndices: e.yIndices.values(),
-      pIndices: e.pIndices.values(),
+      yIndices: e.yIndices.keys().map((y) => model.yTable.get(y)),
+      pIndices: e.pIndices.keys().map((p) => model.pTable.get(p)),
     })),
     wasmModule: await WebAssembly.compile(bytecode),
     funcImports: imports,

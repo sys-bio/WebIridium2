@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <vector>
 
@@ -12,14 +11,13 @@
 #include "sundials/sundials_nvector.h"
 
 #include "event.h"
-#include "wasm.h"
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
-typedef int(*RHSFunc)(double t, double y[], double ydot[], double p[]);
+using RHSFunc = int(double t, double y[], double ydot[], double p[]);
 
 struct UserData {
-    RHSFunc rhs;
+    RHSFunc *rhs;
     // Concatentating [ boundary species | parameters | reaction rates]
     // Everything after the parameters is just for recording. It should NOT be set.
     double *p;

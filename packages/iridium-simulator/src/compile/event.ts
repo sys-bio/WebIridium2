@@ -30,8 +30,8 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./compile";
 
-const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
-const ROOTS_RESULTS = [ValType.i32];
+const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
+const ROOTS_RESULTS: ValType[] = [];
 
 const CHECK_EVENTS_PARAMS = [
   ValType.f64,
@@ -327,10 +327,6 @@ const compileRoots = (
       currentRootIndex += 1;
     }
   }
-
-  // return success
-  emitter.emitByte(OpCode.i32const);
-  emitter.emitUint32(0);
 
   emitter.emitByte(OpCode.end);
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createCvodeWrapper } from "../wrapper.ts";
 
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "@/assets/examples/tau-doyle-integral-controller.txt?raw";
 import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 
@@ -60,12 +60,12 @@ describe("simulating basic model", () => {
   it("should match expected output", async () => {
     const wrapper = await createCvodeWrapper();
     const spec = await compile(defaultModel);
-    const numPoints = 200;
+    const numPoints = 500;
 
     await wrapper.setModel(spec);
 
     console.log(
-      resultToString(spec, numPoints, wrapper.simulate(0, 20, numPoints)),
+      resultToString(spec, numPoints, wrapper.simulate(0, 100, numPoints)),
     );
   });
 });

@@ -37,8 +37,8 @@ export class IndexSymbolTable {
     return this.#map.has(item);
   }
 
-  values(): number[] {
-    return Array.from(this.#map.values());
+  keys(): string[] {
+    return Array.from(this.#map.keys());
   }
 }
 

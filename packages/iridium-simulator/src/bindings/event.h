@@ -6,23 +6,23 @@
 
 // Events may have multiple roots, so len(gout) >= len(events)
 // Expresses every event condition as a root-finding problem.
-using RootsFn = std::function<void(double time, double y[], double gout[], double p[])>;
+using RootsFn = void(double time, double y[], double gout[], double p[]);
 
 // Updates which event triggers hold when CVODE indicates a root found.
 // The conditions array is to hold state about which conditions hold between root finds.
-using CheckEventsFn = std::function<void(double time, int roots[], int conditions[], int eventout[])>;
+using CheckEventsFn = void(double time, int roots[], int conditions[], int eventout[]);
 
 // Generated for each event with a delay. Returns the events delay.
-using GetDelayFn = std::function<double(double time, double y[], double p[])>;
+using GetDelayFn = double(double time, double y[], double p[]);
 
 // Generated for each event. Runs the events assignments.
-using GetAssignmentsFn = std::function<void(
+using GetAssignmentsFn = void(
     double time,
     double y[],
     double p[],
     double yout[],
     double pout[]
-)>;
+);
 
 struct EventInfo {
     bool is_persistent;

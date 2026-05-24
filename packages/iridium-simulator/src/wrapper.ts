@@ -1,12 +1,18 @@
 import "./env.d.ts";
 
 import createBindings from "../build/cvodeBindings.js";
-import type { MainModule, Model } from "../build/cvodeBindings.d.ts";
+import type {
+  EventParams,
+  MainModule,
+  Model,
+} from "../build/cvodeBindings.d.ts";
 import {
+  CHECK_EVENTS_NAME,
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
   RHS_NAME,
+  ROOTS_NAME,
 } from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import { builtinFunctions } from "./compile/builtinImports.ts";
@@ -20,7 +26,9 @@ interface InternalModel {
 
   /** The model on the C-side. */
   binding: Model;
-  rhsFuncPtr: number;
+
+  /** Pointers to clean up later. */
+  funcPtrs: number[];
 }
 
 export class CvodeWrapper {
@@ -70,19 +78,61 @@ export class CvodeWrapper {
       ),
     });
 
-    // eslint-disable-next-line
-    const funcPtr: number = this.#bindings.addFunction(
-      (
-        instance.exports as {
-          [RHS_NAME]: (
-            t: number,
-            yPtr: number,
-            ydotPtr: number,
-            y2Ptr: number,
-          ) => void;
+    const funcPtrs: number[] = [];
+
+    const rhsPtr = this.#bindings.addFunction(instance.exports[RHS_NAME]) as number;
+
+    let eventParams: EventParams | undefined;
+
+    funcPtrs.push(rhsPtr);
+
+    if (spec.events.length > 0) {
+      const rootsPtr = this.#bindings.addFunction(instance.exports[ROOTS_NAME]) as number;
+      const checkEventsPtr = this.#bindings.addFunction(
+        instance.exports[CHECK_EVENTS_NAME],
+      ) as number;
+      const eventInfo = new this.#bindings.EventInfoVector();
+
+      for (const event of spec.events) {
+        const getAssignmentsPtr = this.#bindings.addFunction(
+          instance.exports[event.getAssignmentsExport],
+        ) as number;
+        const getDelayPtr = this.#bindings.addFunction(
+          instance.exports[event.getDelayExport],
+        ) as number;
+
+        const yIndices = new this.#bindings.IntVector();
+        for (const index of event.yIndices.values()) {
+          yIndices.push_back(index);
         }
-      )[RHS_NAME],
-    );
+
+        const pIndices = new this.#bindings.IntVector();
+        for (const index of event.pIndices.values()) {
+          pIndices.push_back(index);
+        }
+
+        eventInfo.push_back({
+          num_roots: event.countRoots,
+          y_indices: yIndices,
+          p_indices: pIndices,
+          get_assignments_fn: getAssignmentsPtr,
+          get_delay_fn: getDelayPtr,
+          is_from_trigger: false,
+          is_persistent: false,
+          is_t0: false,
+          priority: 0,
+        });
+
+        funcPtrs.push(getAssignmentsPtr);
+        funcPtrs.push(getDelayPtr);
+      }
+
+      eventParams = {
+        event_info: eventInfo,
+        roots_fn: rootsPtr,
+        check_events_fn: checkEventsPtr,
+      };
+    }
 
     this.#internalModel = {
       spec,
@@ -92,9 +142,10 @@ export class CvodeWrapper {
         yVector,
         pVector,
         spec.reactions.length,
-        funcPtr,
+        rhsPtr,
+        eventParams,
       ),
-      rhsFuncPtr: funcPtr,
+      funcPtrs,
     };
 
     // ok to delete now since they got copied into the bindings model
@@ -104,7 +155,9 @@ export class CvodeWrapper {
 
   #disposeCurrentModel(): void {
     if (this.#internalModel) {
-      this.#bindings.removeFunction(this.#internalModel.rhsFuncPtr);
+      for (const ptr of this.#internalModel.funcPtrs) {
+        this.#bindings.removeFunction(ptr);
+      }
       this.#internalModel.binding.delete();
     }
   }
