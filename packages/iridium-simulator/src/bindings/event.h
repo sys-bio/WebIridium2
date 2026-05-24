@@ -32,25 +32,12 @@ struct EventInfo {
     int priority;
     std::vector<int> y_indices;
     std::vector<int> p_indices;
-    GetDelayFn *get_delay_fn;
-    GetAssignmentsFn *get_assignments_fn;
-};
-
-struct EventState {
-    // conditions[i] = 1 means the condition has been triggered.
-    // conditions[i] = 0 means the condition has not been triggered.
-    // This is `num_roots` long.
-    bool *conditions;
-    bool *is_triggered;
-};
-
-struct Event {
-    EventInfo info;
-    EventState state;
+    uintptr_t get_delay_fn;
+    uintptr_t get_assignments_fn;
 };
 
 struct EventInvocation {
-    const Event *event;
+    const EventInfo *event_info;
     bool has_assignments;
     std::vector<int> y_values;
     std::vector<int> p_values;
@@ -76,7 +63,7 @@ public:
     void AddEventInvocation(double time, EventInvocation event_invocation);
 
     // Removes all EventInvocation associated with the given Event.
-    void RemoveEvent(const Event &event);
+    void RemoveEvent(const EventInfo &event_info);
 
     // Returns if an invocation is available to run at this time.
     bool IsInvocationAvailable(double time) const;

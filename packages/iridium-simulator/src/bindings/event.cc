@@ -16,7 +16,7 @@ void EventQueue::AddEventInvocation(
     queue_.emplace(time, event_invocation);
 }
 
-void EventQueue::RemoveEvent(const Event &event) {
+void EventQueue::RemoveEvent(const EventInfo &event) {
     throw std::runtime_error("not implemented");
 }
 

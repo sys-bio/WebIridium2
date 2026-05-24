@@ -17,14 +17,6 @@ export interface ClassHandle {
   [Symbol.dispose](): void;
   clone(): this;
 }
-export interface DoubleVector extends ClassHandle, Iterable<number> {
-  push_back(_0: number): void;
-  resize(_0: number, _1: number): void;
-  size(): number;
-  get(_0: number): number | undefined;
-  set(_0: number, _1: number): boolean;
-}
-
 export interface Model extends ClassHandle {
   num_variables(): number;
   ResetAllVariables(): void;
@@ -33,12 +25,60 @@ export interface Model extends ClassHandle {
   SimulateTimeCourse(_0: number, _1: number, _2: number): Float64Array;
 }
 
+export interface DoubleVector extends ClassHandle, Iterable<number> {
+  push_back(_0: number): void;
+  resize(_0: number, _1: number): void;
+  size(): number;
+  get(_0: number): number | undefined;
+  set(_0: number, _1: number): boolean;
+}
+
+export interface IntVector extends ClassHandle, Iterable<number> {
+  push_back(_0: number): void;
+  resize(_0: number, _1: number): void;
+  size(): number;
+  get(_0: number): number | undefined;
+  set(_0: number, _1: number): boolean;
+}
+
+export type EventInfo = {
+  is_persistent: boolean,
+  is_t0: boolean,
+  is_from_trigger: boolean,
+  num_roots: number,
+  priority: number,
+  y_indices: IntVector,
+  p_indices: IntVector,
+  get_delay_fn: number,
+  get_assignments_fn: number
+};
+
+export interface EventInfoVector extends ClassHandle, Iterable<EventInfo> {
+  push_back(_0: EventInfo): void;
+  resize(_0: number, _1: EventInfo): void;
+  size(): number;
+  get(_0: number): EventInfo | undefined;
+  set(_0: number, _1: EventInfo): boolean;
+}
+
+export type EventParams = {
+  event_info: EventInfoVector,
+  roots_fn: number,
+  check_events_fn: number
+};
+
 interface EmbindModule {
+  Model: {
+    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number, _4?: EventParams): Model;
+  };
   DoubleVector: {
     new(): DoubleVector;
   };
-  Model: {
-    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number): Model;
+  IntVector: {
+    new(): IntVector;
+  };
+  EventInfoVector: {
+    new(): EventInfoVector;
   };
 }
 

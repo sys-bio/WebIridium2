@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <vector>
 
 #include <emscripten/val.h>
@@ -8,7 +10,9 @@
 #include "sundials/sundials_matrix.h"
 #include "sundials/sundials_types.h"
 #include "sundials/sundials_nvector.h"
-#include "nvector/nvector_serial.h"
+
+#include "event.h"
+#include "wasm.h"
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
@@ -20,6 +24,14 @@ struct UserData {
     // Everything after the parameters is just for recording. It should NOT be set.
     double *p;
     size_t p_len;
+
+    RootsFn *roots;
+};
+
+struct EventParams {
+    std::vector<EventInfo> event_info;
+    uintptr_t roots_fn;
+    uintptr_t check_events_fn;
 };
 
 class Model {
@@ -33,7 +45,8 @@ public:
         std::vector<double> y,
         std::vector<double> p,
         int num_reactions,
-        uintptr_t rhs
+        uintptr_t rhs,
+        std::optional<EventParams> event_params
     );
 
     ~Model();
@@ -80,4 +93,7 @@ private:
     bool has_init_ = false;
     double *output_array_ = nullptr; // row-major
     int current_output_row_ = -1;
+
+    std::optional<EventParams> event_params_;
+    int num_roots_;
 };
