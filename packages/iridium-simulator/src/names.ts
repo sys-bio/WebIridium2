@@ -21,5 +21,5 @@ let symbolCounter = 0;
  * @returns a unique symbol name (in the current thread)
  */
 export const generateSymbol = (baseName: string): string => {
-  return `__reserved_${baseName}_${symbolCounter++}`;
+  return `__gen_${baseName}_${symbolCounter++}`;
 };

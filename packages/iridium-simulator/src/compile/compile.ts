@@ -5,7 +5,7 @@ import { IndexSymbolTable } from "./SymbolTable";
 import { TypeTable } from "./wasmTypes";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import type { ModelSpec, VariableSpec } from "../modelSpec";
+import type { ModelSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
 import { parse } from "antimony-language/parse";
@@ -23,6 +23,7 @@ import {
 } from "../names";
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { createInternalModel, type InternalModel } from "./model";
+import { compileEvents, type CompiledEvent } from "./event";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -30,54 +31,13 @@ export const compileIntermediate = (
 ): {
   model: InternalModel;
   imports: string[];
+  events: CompiledEvent[];
   bytecode: Uint8Array;
 } => {
   const root = parse(code);
-  const models = deriveModelsFromParseTree(root);
-  const internalModel = createInternalModel(models);
+  const internalModel = createInternalModel(deriveModelsFromParseTree(root));
   const imports = Array.from(getImportedFunctions(root));
 
-  return {
-    model: internalModel,
-    imports,
-    bytecode: compileModel(internalModel, imports),
-  };
-};
-
-export const compile = async (code: string): Promise<ModelSpec> => {
-  const { model, imports, bytecode } = compileIntermediate(code);
-
-  const initialValues = evaluateInitialValues(model);
-  const floatingSpecies: VariableSpec[] = model.floatingSpecies.map((v) => ({
-    name: v.name,
-    initialValue: initialValues.get(v.name)!,
-  }));
-  const odes: VariableSpec[] = model.odes.map((v) => ({
-    name: v.name,
-    initialValue: initialValues.get(v.name)!,
-  }));
-  const boundarySpecies: VariableSpec[] = model.boundarySpecies.map((v) => ({
-    name: v.name,
-    initialValue: initialValues.get(v.name)!,
-  }));
-  const parameters: VariableSpec[] = model.parameters.map((v) => ({
-    name: v.name,
-    initialValue: initialValues.get(v.name)!,
-  }));
-
-  return {
-    floatingSpecies,
-    odes,
-    boundarySpecies,
-    parameters,
-    reactions: model.reactions.map((r) => r.name),
-    events: [],
-    wasmModule: await WebAssembly.compile(bytecode),
-    funcImports: imports,
-  };
-};
-
-const compileModel = (model: InternalModel, imports: string[]): Uint8Array => {
   const functions: WasmFunction[] = [
     {
       kind: "compile",
@@ -86,7 +46,7 @@ const compileModel = (model: InternalModel, imports: string[]): Uint8Array => {
       params: RHS_PARAMS,
       results: RHS_RESULTS,
       compileBody: (functionTable: IndexSymbolTable) =>
-        compileRhs(functionTable, model).getOutput(),
+        compileRhs(functionTable, internalModel).getOutput(),
     },
     ...imports.map((name) => ({
       kind: "import" as const,
@@ -94,11 +54,53 @@ const compileModel = (model: InternalModel, imports: string[]): Uint8Array => {
     })),
   ];
 
-  if (model.events.length > 0) {
-
+  let events: CompiledEvent[] = [];
+  if (internalModel.events.length > 0) {
+    const { functions: eventFunctions, events: compiledEvents } =
+      compileEvents(internalModel);
+    functions.push(...eventFunctions);
+    events = compiledEvents;
   }
 
-  return compileFunctions(functions);
+  return {
+    model: internalModel,
+    imports,
+    events,
+    bytecode: compileFunctions(functions),
+  };
+};
+
+export const compile = async (code: string): Promise<ModelSpec> => {
+  const { model, imports, events, bytecode } = compileIntermediate(code);
+
+  const initialValues = evaluateInitialValues(model);
+
+  return {
+    floatingSpecies: model.floatingSpecies.map((v) => ({
+      name: v.name,
+      initialValue: initialValues.get(v.name)!,
+    })),
+    odes: model.odes.map((v) => ({
+      name: v.name,
+      initialValue: initialValues.get(v.name)!,
+    })),
+    boundarySpecies: model.boundarySpecies.map((v) => ({
+      name: v.name,
+      initialValue: initialValues.get(v.name)!,
+    })),
+    parameters: model.parameters.map((v) => ({
+      name: v.name,
+      initialValue: initialValues.get(v.name)!,
+    })),
+    reactions: model.reactions.map((r) => r.name),
+    events: events.map((e) => ({
+      ...e,
+      yIndices: e.yIndices.values(),
+      pIndices: e.pIndices.values(),
+    })),
+    wasmModule: await WebAssembly.compile(bytecode),
+    funcImports: imports,
+  };
 };
 
 const getImportedFunctions = (context: ParserRuleContext): Set<string> => {

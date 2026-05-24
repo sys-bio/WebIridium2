@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "@/assets/examples/tau-doyle-integral-controller.txt?raw";
 import { compileIntermediate } from "../compile/compile";
 import { writeFileSync } from "node:fs";
 

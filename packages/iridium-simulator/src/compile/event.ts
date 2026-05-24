@@ -30,7 +30,7 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./compile";
 
-const ROOTS_PARAMS = [ValType.i32, ValType.i32, ValType.i32];
+const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
 const ROOTS_RESULTS = [ValType.i32];
 
 const CHECK_EVENTS_PARAMS = [
@@ -91,13 +91,14 @@ const compileEventCondition = (
   const op = ctx._op.text;
 
   // rewrite the comparison into a root problem
-  const newCtx = new SumContext(ctx);
-  newCtx._op = {
+  const subtractionCtx = new SumContext(ctx);
+  subtractionCtx._op = {
     ...ctx._op,
     text: "-",
   };
+  subtractionCtx.children = ctx.children;
 
-  emitFormula(newCtx, emitter, emitLoadVariable, functionTable);
+  emitFormula(subtractionCtx, emitter, emitLoadVariable, functionTable);
 
   if (op === "!=") {
     // TODO: fix this
@@ -192,8 +193,8 @@ export type CompiledEvent = {
   countRoots: number;
   yIndices: IndexSymbolTable;
   pIndices: IndexSymbolTable;
-  getDelayFn: string;
-  getAssignmentsFn: string;
+  getDelayExport: string;
+  getAssignmentsExport: string;
 };
 
 export const compileEvents = (
@@ -226,8 +227,8 @@ export const compileEvents = (
     }
 
     const compiledEvent: CompiledEvent = {
-      getDelayFn: generateSymbol("getDelay"),
-      getAssignmentsFn: generateSymbol("getAssignments"),
+      getDelayExport: generateSymbol("getDelay"),
+      getAssignmentsExport: generateSymbol("getAssignments"),
       yIndices: yIndices,
       pIndices: pIndices,
       countRoots: event.conditions.length,
@@ -238,7 +239,7 @@ export const compileEvents = (
     eventFns.push({
       kind: "compile",
       isExported: true,
-      name: compiledEvent.getDelayFn,
+      name: compiledEvent.getDelayExport,
       params: GET_DELAY_PARAMS,
       results: GET_DELAY_RESULTS,
       compileBody: (functionTable) =>
@@ -248,7 +249,7 @@ export const compileEvents = (
     eventFns.push({
       kind: "compile",
       isExported: true,
-      name: compiledEvent.getAssignmentsFn,
+      name: compiledEvent.getAssignmentsExport,
       params: GET_ASSIGNMENTS_PARAMS,
       results: GET_ASSIGNMENTS_RESULTS,
       compileBody: (functionTable) =>
@@ -309,15 +310,15 @@ const compileRoots = (
 
   for (const event of events) {
     for (const condition of event.conditions) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(G_PARAM));
+
       compileEventCondition(
         condition,
         emitter,
         emitLoadVariable,
         functionTable,
       );
-
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(G_PARAM));
 
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint32(MEM_ALIGNMENT);
@@ -326,6 +327,12 @@ const compileRoots = (
       currentRootIndex += 1;
     }
   }
+
+  // return success
+  emitter.emitByte(OpCode.i32const);
+  emitter.emitUint32(0);
+
+  emitter.emitByte(OpCode.end);
 
   return emitter;
 };
@@ -347,6 +354,7 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
     ROOTS_PARAM,
+    CONDITIONS_PARAM,
     EVENT_OUT_PARAM,
   ]);
 
@@ -382,6 +390,9 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
       emitter.emitByte(OpCode.i32load);
       emitter.emitUint32(MEM_ALIGNMENT);
       emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
+      emitter.emitByte(OpCode.i32const);
+      emitter.emitUint32(0);
 
       if (direction === 0) {
         // TODO: handle this properly
@@ -426,9 +437,12 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
     currentEventIndex += 1;
   }
 
+  emitter.emitByte(OpCode.end);
+
   return emitter;
 };
 
+// TODO: if the delay is 0, compilation should be omitted completely
 const compileGetDelay = (
   model: InternalModel,
   event: InternalEvent,
@@ -447,6 +461,8 @@ const compileGetDelay = (
     emitter.emitByte(OpCode.f64const);
     emitter.emitFloat64(0);
   }
+
+  emitter.emitByte(OpCode.end);
 
   return emitter;
 };
@@ -480,22 +496,12 @@ const compileGetAssignments = (
   for (const name of ordering) {
     const formula = event.assignments.get(name)!;
 
-    emitFormula(formula, emitter, emitLoadVariable, functionTable);
-
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(Y_OUT_PARAM));
-
-      emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yIndices.get(name));
     } else if (pIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(P_OUT_PARAM));
-
-      emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pIndices.get(name));
     } else if (name === TIME_NAME) {
       throw new CompileError("You cannot assign to time.", {
         tree: formula.parent,
@@ -507,7 +513,21 @@ const compileGetAssignments = (
         )?.variable?.(),
       });
     }
+
+    emitFormula(formula, emitter, emitLoadVariable, functionTable);
+
+    if (yIndices.has(name)) {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * yIndices.get(name));
+    } else if (pIndices.has(name)) {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_DOUBLE * pIndices.get(name));
+    }
   }
+
+  emitter.emitByte(OpCode.end);
 
   return emitter;
 };
