@@ -52,7 +52,7 @@ const itShouldErrorForAll = (models: Record<string, string>): void => {
   for (const [name, code] of Object.entries(models)) {
     it(`${name} should error`, () => {
       expect(() => {
-        parse(code);
+        console.log(parse(code).toStringTree(AntimonyParser.ruleNames));
       }).toThrow();
     });
   }
@@ -108,13 +108,6 @@ describe("bad models", () => {
   );
 
   itShouldErrorForAll(badModels);
-  for (const [name, code] of Object.entries(badModels)) {
-    it(`${name} should error`, () => {
-      expect(() => {
-        parse(code);
-      }).toThrow();
-    });
-  }
 });
 
 describe("event", () => {
@@ -166,5 +159,39 @@ describe("declaration", () => {
     ruleAssign: "species a := 5",
     multipleAssign: "species a := 5, b = 5, c = 10.3e+3",
     multipleAssignAndDeclare: "species a = 5, b, c, d = 10",
+  });
+});
+
+describe("annotation", () => {
+  itShouldErrorForAll({
+    extraComma: `A is "test",`,
+    unterminatedString: `A is "hey;`,
+    unterminatedString2: "A is ```hey",
+    backtickEmpty: "A is ``````",
+    backtickDouble: "A is ````",
+    backtickDouble2: "A is ``hey``",
+    backtickSingle: "A is `hey`",
+    missingItem: `A "test"`,
+    missingString: `A is `,
+    missingString2: "A is A",
+    extraDot: `A. is "test"`,
+    extraDot2: `A is. "test"`,
+  });
+
+  itShouldSucceedForAll({
+    single: `A is "test"`,
+    single2: `A hasPart "test"`,
+    invalidItem: `A invalidItem "test"`,
+    single4: `A is "test"`,
+    multiple: `A is "test", "test2"`,
+    multiple3: `A is "test", "test2", "test3"`,
+    multipleMultiline: `A is "test",\n    "test2"`,
+    backtick: "A is ```test```",
+    backtick2: "A is ```test\n\ttest```",
+    backtickInsideBacktick: "A is ````` ```",
+    backtickMultiple: "A is ```test\n```,```test\n```,```test\n```",
+    backtickEmpty2: "A is ``",
+    subItem: `A creator.name "test"`,
+    subItemMultiple: `A creator.name "test", "test"`,
   });
 });

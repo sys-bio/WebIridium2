@@ -4,6 +4,14 @@
 
 import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 
+import { UnitGroupContext } from "./AntimonyParser";
+import { UnitNumberContext } from "./AntimonyParser";
+import { UnitNameContext } from "./AntimonyParser";
+import { UnitPositiveContext } from "./AntimonyParser";
+import { UnitNegativeContext } from "./AntimonyParser";
+import { UnitPowerContext } from "./AntimonyParser";
+import { UnitProductContext } from "./AntimonyParser";
+import { UnitSumContext } from "./AntimonyParser";
 import { DeclarationAssignmentContext } from "./AntimonyParser";
 import { DeclarationNameContext } from "./AntimonyParser";
 import { NameContext } from "./AntimonyParser";
@@ -20,6 +28,8 @@ import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
+import { AnnotationNameContext } from "./AntimonyParser";
+import { AnnotationSubItemContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
 import { StatementSeparatorContext } from "./AntimonyParser";
 import { TopLevelStatementContext } from "./AntimonyParser";
@@ -27,21 +37,29 @@ import { StatementListContext } from "./AntimonyParser";
 import { StatementContext } from "./AntimonyParser";
 import { ModelContext } from "./AntimonyParser";
 import { ExportListContext } from "./AntimonyParser";
+import { FormulaContext } from "./AntimonyParser";
+import { FunctionCallContext } from "./AntimonyParser";
+import { ParameterListContext } from "./AntimonyParser";
+import { VariableContext } from "./AntimonyParser";
+import { InCompartmentContext } from "./AntimonyParser";
 import { ReactionContext } from "./AntimonyParser";
 import { ReactionNameContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
-import { InCompartmentContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
-import { FormulaContext } from "./AntimonyParser";
-import { FunctionCallContext } from "./AntimonyParser";
-import { ParameterListContext } from "./AntimonyParser";
-import { VariableContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { AnnotationContext } from "./AntimonyParser";
+import { VariableAnnotationContext } from "./AntimonyParser";
+import { ModelAnnotationContext } from "./AntimonyParser";
+import { AnnotationBodyContext } from "./AntimonyParser";
+import { AnnotationItemContext } from "./AntimonyParser";
+import { StringContext } from "./AntimonyParser";
+import { UnitDeclarationContext } from "./AntimonyParser";
+import { UnitFormulaContext } from "./AntimonyParser";
 import { ModelCallContext } from "./AntimonyParser";
 
 
@@ -53,6 +71,70 @@ import { ModelCallContext } from "./AntimonyParser";
  * operations with no return type.
  */
 export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
+	/**
+	 * Visit a parse tree produced by the `unitGroup`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitGroup?: (ctx: UnitGroupContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitNumber`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitNumber?: (ctx: UnitNumberContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitName`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitName?: (ctx: UnitNameContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitPositive`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitPositive?: (ctx: UnitPositiveContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitNegative`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitNegative?: (ctx: UnitNegativeContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitPower`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitPower?: (ctx: UnitPowerContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitProduct`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitProduct?: (ctx: UnitProductContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `unitSum`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitSum?: (ctx: UnitSumContext) => Result;
+
 	/**
 	 * Visit a parse tree produced by the `declarationAssignment`
 	 * labeled alternative in `AntimonyParser.declarationTerm`.
@@ -182,6 +264,22 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitLogical?: (ctx: LogicalContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by the `annotationName`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotationName?: (ctx: AnnotationNameContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `annotationSubItem`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotationSubItem?: (ctx: AnnotationSubItemContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `AntimonyParser.root`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -231,6 +329,41 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitExportList?: (ctx: ExportListContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitFormula?: (ctx: FormulaContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.functionCall`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitFunctionCall?: (ctx: FunctionCallContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.parameterList`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitParameterList?: (ctx: ParameterListContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitVariable?: (ctx: VariableContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.inCompartment`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitInCompartment?: (ctx: InCompartmentContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `AntimonyParser.reaction`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -266,13 +399,6 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitReactant?: (ctx: ReactantContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `AntimonyParser.inCompartment`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitInCompartment?: (ctx: InCompartmentContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by `AntimonyParser.assignment`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -294,34 +420,6 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitDeclarationTerm?: (ctx: DeclarationTermContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitFormula?: (ctx: FormulaContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `AntimonyParser.functionCall`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitFunctionCall?: (ctx: FunctionCallContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `AntimonyParser.parameterList`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitParameterList?: (ctx: ParameterListContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `AntimonyParser.variable`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitVariable?: (ctx: VariableContext) => Result;
-
-	/**
 	 * Visit a parse tree produced by `AntimonyParser.event`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -334,6 +432,62 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEventAssignment?: (ctx: EventAssignmentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.annotation`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotation?: (ctx: AnnotationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.variableAnnotation`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitVariableAnnotation?: (ctx: VariableAnnotationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.modelAnnotation`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitModelAnnotation?: (ctx: ModelAnnotationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.annotationBody`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotationBody?: (ctx: AnnotationBodyContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotationItem?: (ctx: AnnotationItemContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.string`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitString?: (ctx: StringContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.unitDeclaration`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitDeclaration?: (ctx: UnitDeclarationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitUnitFormula?: (ctx: UnitFormulaContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.modelCall`.

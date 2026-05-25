@@ -4,6 +4,14 @@
 
 import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 
+import { UnitGroupContext } from "./AntimonyParser";
+import { UnitNumberContext } from "./AntimonyParser";
+import { UnitNameContext } from "./AntimonyParser";
+import { UnitPositiveContext } from "./AntimonyParser";
+import { UnitNegativeContext } from "./AntimonyParser";
+import { UnitPowerContext } from "./AntimonyParser";
+import { UnitProductContext } from "./AntimonyParser";
+import { UnitSumContext } from "./AntimonyParser";
 import { DeclarationAssignmentContext } from "./AntimonyParser";
 import { DeclarationNameContext } from "./AntimonyParser";
 import { NameContext } from "./AntimonyParser";
@@ -20,6 +28,8 @@ import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
+import { AnnotationNameContext } from "./AntimonyParser";
+import { AnnotationSubItemContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
 import { StatementSeparatorContext } from "./AntimonyParser";
 import { TopLevelStatementContext } from "./AntimonyParser";
@@ -27,21 +37,29 @@ import { StatementListContext } from "./AntimonyParser";
 import { StatementContext } from "./AntimonyParser";
 import { ModelContext } from "./AntimonyParser";
 import { ExportListContext } from "./AntimonyParser";
+import { FormulaContext } from "./AntimonyParser";
+import { FunctionCallContext } from "./AntimonyParser";
+import { ParameterListContext } from "./AntimonyParser";
+import { VariableContext } from "./AntimonyParser";
+import { InCompartmentContext } from "./AntimonyParser";
 import { ReactionContext } from "./AntimonyParser";
 import { ReactionNameContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
-import { InCompartmentContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
-import { FormulaContext } from "./AntimonyParser";
-import { FunctionCallContext } from "./AntimonyParser";
-import { ParameterListContext } from "./AntimonyParser";
-import { VariableContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { AnnotationContext } from "./AntimonyParser";
+import { VariableAnnotationContext } from "./AntimonyParser";
+import { ModelAnnotationContext } from "./AntimonyParser";
+import { AnnotationBodyContext } from "./AntimonyParser";
+import { AnnotationItemContext } from "./AntimonyParser";
+import { StringContext } from "./AntimonyParser";
+import { UnitDeclarationContext } from "./AntimonyParser";
+import { UnitFormulaContext } from "./AntimonyParser";
 import { ModelCallContext } from "./AntimonyParser";
 
 
@@ -50,6 +68,110 @@ import { ModelCallContext } from "./AntimonyParser";
  * `AntimonyParser`.
  */
 export interface AntimonyListener extends ParseTreeListener {
+	/**
+	 * Enter a parse tree produced by the `unitGroup`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitGroup?: (ctx: UnitGroupContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitGroup`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitGroup?: (ctx: UnitGroupContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitNumber`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitNumber?: (ctx: UnitNumberContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitNumber`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitNumber?: (ctx: UnitNumberContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitName`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitName?: (ctx: UnitNameContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitName`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitName?: (ctx: UnitNameContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitPositive`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitPositive?: (ctx: UnitPositiveContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitPositive`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitPositive?: (ctx: UnitPositiveContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitNegative`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitNegative?: (ctx: UnitNegativeContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitNegative`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitNegative?: (ctx: UnitNegativeContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitPower`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitPower?: (ctx: UnitPowerContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitPower`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitPower?: (ctx: UnitPowerContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitProduct`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitProduct?: (ctx: UnitProductContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitProduct`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitProduct?: (ctx: UnitProductContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `unitSum`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitSum?: (ctx: UnitSumContext) => void;
+	/**
+	 * Exit a parse tree produced by the `unitSum`
+	 * labeled alternative in `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitSum?: (ctx: UnitSumContext) => void;
+
 	/**
 	 * Enter a parse tree produced by the `declarationAssignment`
 	 * labeled alternative in `AntimonyParser.declarationTerm`.
@@ -259,6 +381,32 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitLogical?: (ctx: LogicalContext) => void;
 
 	/**
+	 * Enter a parse tree produced by the `annotationName`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotationName?: (ctx: AnnotationNameContext) => void;
+	/**
+	 * Exit a parse tree produced by the `annotationName`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotationName?: (ctx: AnnotationNameContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `annotationSubItem`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotationSubItem?: (ctx: AnnotationSubItemContext) => void;
+	/**
+	 * Exit a parse tree produced by the `annotationSubItem`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotationSubItem?: (ctx: AnnotationSubItemContext) => void;
+
+	/**
 	 * Enter a parse tree produced by `AntimonyParser.root`.
 	 * @param ctx the parse tree
 	 */
@@ -336,6 +484,61 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitExportList?: (ctx: ExportListContext) => void;
 
 	/**
+	 * Enter a parse tree produced by `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterFormula?: (ctx: FormulaContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitFormula?: (ctx: FormulaContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.functionCall`.
+	 * @param ctx the parse tree
+	 */
+	enterFunctionCall?: (ctx: FunctionCallContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.functionCall`.
+	 * @param ctx the parse tree
+	 */
+	exitFunctionCall?: (ctx: FunctionCallContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.parameterList`.
+	 * @param ctx the parse tree
+	 */
+	enterParameterList?: (ctx: ParameterListContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.parameterList`.
+	 * @param ctx the parse tree
+	 */
+	exitParameterList?: (ctx: ParameterListContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 */
+	enterVariable?: (ctx: VariableContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.variable`.
+	 * @param ctx the parse tree
+	 */
+	exitVariable?: (ctx: VariableContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.inCompartment`.
+	 * @param ctx the parse tree
+	 */
+	enterInCompartment?: (ctx: InCompartmentContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.inCompartment`.
+	 * @param ctx the parse tree
+	 */
+	exitInCompartment?: (ctx: InCompartmentContext) => void;
+
+	/**
 	 * Enter a parse tree produced by `AntimonyParser.reaction`.
 	 * @param ctx the parse tree
 	 */
@@ -391,17 +594,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitReactant?: (ctx: ReactantContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `AntimonyParser.inCompartment`.
-	 * @param ctx the parse tree
-	 */
-	enterInCompartment?: (ctx: InCompartmentContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.inCompartment`.
-	 * @param ctx the parse tree
-	 */
-	exitInCompartment?: (ctx: InCompartmentContext) => void;
-
-	/**
 	 * Enter a parse tree produced by `AntimonyParser.assignment`.
 	 * @param ctx the parse tree
 	 */
@@ -435,50 +627,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitDeclarationTerm?: (ctx: DeclarationTermContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	enterFormula?: (ctx: FormulaContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.formula`.
-	 * @param ctx the parse tree
-	 */
-	exitFormula?: (ctx: FormulaContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `AntimonyParser.functionCall`.
-	 * @param ctx the parse tree
-	 */
-	enterFunctionCall?: (ctx: FunctionCallContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.functionCall`.
-	 * @param ctx the parse tree
-	 */
-	exitFunctionCall?: (ctx: FunctionCallContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `AntimonyParser.parameterList`.
-	 * @param ctx the parse tree
-	 */
-	enterParameterList?: (ctx: ParameterListContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.parameterList`.
-	 * @param ctx the parse tree
-	 */
-	exitParameterList?: (ctx: ParameterListContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `AntimonyParser.variable`.
-	 * @param ctx the parse tree
-	 */
-	enterVariable?: (ctx: VariableContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.variable`.
-	 * @param ctx the parse tree
-	 */
-	exitVariable?: (ctx: VariableContext) => void;
-
-	/**
 	 * Enter a parse tree produced by `AntimonyParser.event`.
 	 * @param ctx the parse tree
 	 */
@@ -499,6 +647,94 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEventAssignment?: (ctx: EventAssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.annotation`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotation?: (ctx: AnnotationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.annotation`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotation?: (ctx: AnnotationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.variableAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	enterVariableAnnotation?: (ctx: VariableAnnotationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.variableAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	exitVariableAnnotation?: (ctx: VariableAnnotationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.modelAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	enterModelAnnotation?: (ctx: ModelAnnotationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.modelAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	exitModelAnnotation?: (ctx: ModelAnnotationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.annotationBody`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotationBody?: (ctx: AnnotationBodyContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.annotationBody`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotationBody?: (ctx: AnnotationBodyContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotationItem?: (ctx: AnnotationItemContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotationItem?: (ctx: AnnotationItemContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.string`.
+	 * @param ctx the parse tree
+	 */
+	enterString?: (ctx: StringContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.string`.
+	 * @param ctx the parse tree
+	 */
+	exitString?: (ctx: StringContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.unitDeclaration`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitDeclaration?: (ctx: UnitDeclarationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.unitDeclaration`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitDeclaration?: (ctx: UnitDeclarationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	enterUnitFormula?: (ctx: UnitFormulaContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.unitFormula`.
+	 * @param ctx the parse tree
+	 */
+	exitUnitFormula?: (ctx: UnitFormulaContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.modelCall`.
