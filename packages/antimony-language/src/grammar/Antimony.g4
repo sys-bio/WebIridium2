@@ -65,8 +65,9 @@ declarationTerm : assignment #declarationAssignment
 event           : AT formula ':' NEWLINE* eventAssignment (',' eventAssignment)*;
 eventAssignment : variable ASSIGNMENT formula;
 
-annotation         : variableAnnotation | modelAnnotation;
+annotation         : variableAnnotation | hasAnnotation | modelAnnotation;
 variableAnnotation : variable annotationBody;
+hasAnnotation      : variable HAS unitFormula;
 modelAnnotation    : MODEL NAME? annotationBody;
 annotationBody     : annotationItem string (',' NEWLINE? string)*;
 annotationItem     : NAME #annotationName
@@ -79,6 +80,7 @@ unitDeclaration    : UNIT NAME (ASSIGNMENT unitFormula)?;
 unitFormula        : '(' unitFormula ')' #unitGroup
                    | NUMBER unit=NAME? #unitNumber
                    | NAME #unitName
+                   | string #unitName
                    | '+' unitFormula #unitPositive
                    | '-' unitFormula #unitNegative
                    // | 'exp' unitFormula #exp // does not seem to actually be valid, but it was in the old grammars

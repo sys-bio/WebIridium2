@@ -54,6 +54,7 @@ import { EventContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
+import { HasAnnotationContext } from "./AntimonyParser";
 import { ModelAnnotationContext } from "./AntimonyParser";
 import { AnnotationBodyContext } from "./AntimonyParser";
 import { AnnotationItemContext } from "./AntimonyParser";
@@ -446,6 +447,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitVariableAnnotation?: (ctx: VariableAnnotationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.hasAnnotation`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitHasAnnotation?: (ctx: HasAnnotationContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.modelAnnotation`.

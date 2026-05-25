@@ -176,6 +176,8 @@ describe("annotation", () => {
     missingString2: "A is A",
     extraDot: `A. is "test"`,
     extraDot2: `A is. "test"`,
+    hasNothing: "A has",
+    hasOperator: "A has +",
   });
 
   itShouldSucceedForAll({
@@ -193,5 +195,9 @@ describe("annotation", () => {
     backtickEmpty2: "A is ``",
     subItem: `A creator.name "test"`,
     subItemMultiple: `A creator.name "test", "test"`,
+    has: "A has test",
+    has2: "A has 1 meter / second^2",
+    has3: "A has ```unit```",
+    has4: `A has "unit"`,
   });
 });

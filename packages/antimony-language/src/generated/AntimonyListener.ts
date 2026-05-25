@@ -54,6 +54,7 @@ import { EventContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
+import { HasAnnotationContext } from "./AntimonyParser";
 import { ModelAnnotationContext } from "./AntimonyParser";
 import { AnnotationBodyContext } from "./AntimonyParser";
 import { AnnotationItemContext } from "./AntimonyParser";
@@ -669,6 +670,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitVariableAnnotation?: (ctx: VariableAnnotationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.hasAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	enterHasAnnotation?: (ctx: HasAnnotationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.hasAnnotation`.
+	 * @param ctx the parse tree
+	 */
+	exitHasAnnotation?: (ctx: HasAnnotationContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.modelAnnotation`.

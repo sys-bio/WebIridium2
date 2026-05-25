@@ -5,6 +5,7 @@ END   : 'end';
 IN    : 'in';
 AT    : 'at';
 UNIT  : 'unit';
+HAS   : 'has';
 
 CONST_MODIFIER : 'var' | 'const';
 DECL_WORD      : 'species'
