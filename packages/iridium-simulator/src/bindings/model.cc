@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 #include "model.h"
@@ -22,6 +23,8 @@ static int delegating_roots(double t, N_Vector y, double *gout, UserData *data) 
     data->roots(t, NV_DATA_S(y), gout, data->p);
     return 0;
 }
+
+static double const epsilon = std::numeric_limits<double>::epsilon();
 
 Model::Model(
     std::vector<double> y,
@@ -108,7 +111,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     }
 
     // TODO: what tolerances to set?
-    CVodeSStolerances(cvode_mem_, 1e-8, 1e-12);
+    // I got these ones from roadrunner
+    CVodeSStolerances(cvode_mem_, 1e-6, 1e-12);
 
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
@@ -140,9 +144,12 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     for (int i = 0; i < num_steps; i++) {
         t_out += time_step;
 
-        while (t_return < t_out) {
-            int flag = CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
-            if (flag == CV_ROOT_RETURN) {
+        while (t_out - t_return >= epsilon) {
+            int result = CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
+
+            if (result == CV_SUCCESS) {
+                break;
+            } else if (result == CV_ROOT_RETURN) {
                 CVodeGetRootInfo(cvode_mem_, roots_found.data());
 
                 std::vector<WasmBool> triggered_events(num_roots_);
@@ -186,6 +193,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
                 }
             } else {
                 // TODO: error handling?
+                break;
             }
         }
 

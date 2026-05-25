@@ -1,4 +1,5 @@
 export type VariableSpec = {
+  kind: "floating" | "boundary" | "parameter" | "compartment";
   name: string;
   initialValue: number;
 };
@@ -16,10 +17,8 @@ export type EventSpec = {
  * Meant to be shared between workers.
  */
 export type ModelSpec = {
-  floatingSpecies: VariableSpec[];
-  odes: VariableSpec[];
-  boundarySpecies: VariableSpec[];
-  parameters: VariableSpec[];
+  y: VariableSpec[];
+  p: VariableSpec[];
   /** Name of reactions. */
   reactions: string[];
   events: EventSpec[];

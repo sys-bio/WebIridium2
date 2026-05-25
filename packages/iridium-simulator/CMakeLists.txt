@@ -10,6 +10,10 @@ FetchContent_Declare(
     GIT_TAG v7.7.0
 )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(SUNDIALS_LOGGING_LEVEL 0 CACHE STRING "" FORCE)
+endif()
+
 set(SUNDIALS_PRECISION "double" CACHE STRING "" FORCE)
 set(SUNDIALS_INDEX_SIZE 32 CACHE STRING "" FORCE)
 
@@ -40,6 +44,7 @@ target_link_options(${target_name} PRIVATE
     "--emit-tsd=${target_name}.d.ts"
     "-sMODULARIZE"
     "-sALLOW_TABLE_GROWTH" # we need this so we can use `addFunction`
+    "-sALLOW_MEMORY_GROWTH" # for super large models
     "-sEXPORT_ES6"
     "-sENVIRONMENT=web,worker,node"
     "-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmMemory"

@@ -6,6 +6,8 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
 import type { InternalModel } from "./model";
 import { P_PARAM, T_PARAM, Y_PARAM } from "../names";
+import type { AntimonyVariable } from "antimony-language/semantic";
+import { CompileError } from "./errors";
 
 const YDOT_PTR_PARAM = "ydot[]";
 
@@ -21,16 +23,28 @@ export const compileRhs = (
   functionTable: IndexSymbolTable,
   model: InternalModel,
 ): Emitter => {
-  const { variables, floatingSpecies, odes, reactions, yTable, pTable } = model;
+  const { variables, yVars, reactions, yTable, pTable } = model;
   const emitter = new Emitter();
 
-  const ruleEvaluationOrder = getAssignmentOrder(
-    new Map(
-      Array.from(model.variables.values())
-        .filter((v) => v.assignment?.kind === "rate")
-        .map((v) => [v.name, v.assignment!.formula]),
-    ),
+  const floatingSpecies: AntimonyVariable[] = [];
+  const odes: AntimonyVariable[] = [];
+  for (const variable of yVars) {
+    if (variable.kind === "species") {
+      if (!variable.isConst) {
+        floatingSpecies.push(variable);
+      }
+    } else {
+      odes.push(variable);
+    }
+  }
+
+  const ruleVariables = Array.from(model.variables.values()).filter(
+    (v) => v.assignment?.kind === "rule",
   );
+  const ruleMap = new Map(
+    ruleVariables.map((v) => [v.name, v.assignment!.formula]),
+  );
+  const ruleEvaluationOrder = getAssignmentOrder(ruleMap);
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
@@ -130,6 +144,18 @@ export const compileRhs = (
     emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
 
     if (reactions) {
+      if (f.assignment?.kind === "rate") {
+        throw new CompileError(
+          "Species cannot simultaneously be defined by rate rule and reaction.",
+          { tree: f.assignment.formula },
+        );
+      } else if (ruleMap.has(f.name)) {
+        throw new CompileError(
+          "Species cannot simultaneously be defined by assignment rule and reaction.",
+          { tree: f.assignment!.formula },
+        );
+      }
+
       let isFirst = true;
       for (const [reaction, stoichiometry] of reactions) {
         if (stoichiometry === 0) continue;
@@ -150,6 +176,13 @@ export const compileRhs = (
         } else {
           emitter.emitByte(OpCode.f64add);
         }
+      }
+
+      if (isFirst) {
+        // This will happen if the species was only involved in one reaction and that
+        // reaction had stoichiometry of 0
+        emitter.emitByte(OpCode.f64const);
+        emitter.emitFloat64(0);
       }
     } else {
       // set to 0

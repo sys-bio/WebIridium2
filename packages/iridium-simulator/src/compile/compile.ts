@@ -8,10 +8,10 @@ import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { ModelSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import { parse } from "antimony-language/parse";
-import type {
-  AntimonyListener,
-  FunctionCallContext,
-  PowerContext,
+import {
+  type AntimonyListener,
+  type FunctionCallContext,
+  type PowerContext,
 } from "antimony-language/grammar";
 import { type ParserRuleContext } from "antlr4ts";
 import {
@@ -86,22 +86,36 @@ export const compile = async (code: string): Promise<ModelSpec> => {
   const initialValues = evaluateInitialValues(model);
 
   return {
-    floatingSpecies: model.floatingSpecies.map((v) => ({
-      name: v.name,
-      initialValue: initialValues.get(v.name)!,
-    })),
-    odes: model.odes.map((v) => ({
-      name: v.name,
-      initialValue: initialValues.get(v.name)!,
-    })),
-    boundarySpecies: model.boundarySpecies.map((v) => ({
-      name: v.name,
-      initialValue: initialValues.get(v.name)!,
-    })),
-    parameters: model.parameters.map((v) => ({
-      name: v.name,
-      initialValue: initialValues.get(v.name)!,
-    })),
+    y: model.yVars.map((y) => {
+      if (y.kind === "species") {
+        return {
+          kind: "floating",
+          name: y.name,
+          initialValue: initialValues.get(y.name)!,
+        };
+      } else {
+        return {
+          kind: y.kind,
+          name: y.name,
+          initialValue: initialValues.get(y.name)!,
+        };
+      }
+    }),
+    p: model.pVars.map((p) => {
+      if (p.kind === "species") {
+        return {
+          kind: p.isConst ? "boundary" : "floating",
+          name: p.name,
+          initialValue: initialValues.get(p.name)!,
+        };
+      } else {
+        return {
+          kind: p.kind,
+          name: p.name,
+          initialValue: initialValues.get(p.name)!,
+        };
+      }
+    }),
     reactions: model.reactions.map((r) => r.name),
     events: events.map((e) => ({
       ...e,

@@ -16,6 +16,13 @@ import type {
   IridiumTimeCourseAction,
   IridiumTimeCourseResult,
 } from "@/workers/IridiumSimulatorWorker";
+import type { VariableSpec } from "iridium-simulator/src/modelSpec";
+
+const categoryNamesFromVariableKind = {
+  floating: "Floating Species",
+  boundary: "Boundary Species",
+  compartment: "Compartment",
+} as const;
 
 /** Adapter for the custom packages/iridium-simulator. */
 export class IridiumSimulator extends Simulator {
@@ -52,47 +59,36 @@ export class IridiumSimulator extends Simulator {
       category: "Time",
     });
 
-    for (const f of spec.floatingSpecies) {
+    const getVariableCategory = (
+      v: VariableSpec,
+      parameterName: string,
+    ): string => {
+      if (v.kind === "parameter") {
+        return parameterName;
+      } else {
+        return categoryNamesFromVariableKind[v.kind];
+      }
+    };
+
+    for (const yVar of spec.y) {
       variables.push({
         type: "settable",
-        defaultDisplayName: f.name,
-        name: f.name,
-        category: "Floating Species",
-        setName: f.name,
-        defaultValue: f.initialValue,
+        defaultDisplayName: yVar.name,
+        name: yVar.name,
+        category: getVariableCategory(yVar, "ODEs"),
+        setName: yVar.name,
+        defaultValue: yVar.initialValue,
       });
     }
 
-    for (const o of spec.odes) {
+    for (const pVar of spec.p) {
       variables.push({
         type: "settable",
-        defaultDisplayName: o.name,
-        name: o.name,
-        category: "ODEs",
-        setName: o.name,
-        defaultValue: o.initialValue,
-      });
-    }
-
-    for (const b of spec.boundarySpecies) {
-      variables.push({
-        type: "settable",
-        defaultDisplayName: b.name,
-        name: b.name,
-        category: "Boundary Species",
-        setName: b.name,
-        defaultValue: b.initialValue,
-      });
-    }
-
-    for (const p of spec.parameters) {
-      variables.push({
-        type: "settable",
-        defaultDisplayName: p.name,
-        name: p.name,
-        category: "Parameter",
-        setName: p.name,
-        defaultValue: p.initialValue,
+        defaultDisplayName: pVar.name,
+        name: pVar.name,
+        category: getVariableCategory(pVar, "Parameters"),
+        setName: pVar.name,
+        defaultValue: pVar.initialValue,
       });
     }
 
@@ -156,10 +152,8 @@ export class IridiumSimulator extends Simulator {
     let col = 0;
 
     const titles = [
-      ...spec.floatingSpecies.map((v) => v.name),
-      ...spec.odes.map((v) => v.name),
-      ...spec.boundarySpecies.map((v) => v.name),
-      ...spec.parameters.map((v) => v.name),
+      ...spec.y.map((v) => v.name),
+      ...spec.p.map((v) => v.name),
       ...spec.reactions,
       TIME_NAME,
     ];

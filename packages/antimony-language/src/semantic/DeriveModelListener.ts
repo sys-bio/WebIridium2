@@ -104,6 +104,10 @@ export class DeriveModelListener implements AntimonyListener {
       model.variables.set(variable.name, variable);
     }
 
+    if (variableCtx instanceof ConstantContext) {
+      variable.isConst = true;
+    }
+
     return variable;
   }
 

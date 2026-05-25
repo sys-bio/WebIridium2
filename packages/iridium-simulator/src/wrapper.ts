@@ -51,22 +51,14 @@ export class CvodeWrapper {
 
     const yIndices = new IndexSymbolTable();
     const yVector = new this.#bindings.DoubleVector();
-    for (const v of spec.floatingSpecies) {
-      yIndices.add(v.name);
-      yVector.push_back(v.initialValue);
-    }
-    for (const v of spec.odes) {
-      yIndices.add(v.name);
-      yVector.push_back(v.initialValue);
+    for (const y of spec.y) {
+      yIndices.add(y.name);
+      yVector.push_back(y.initialValue);
     }
 
     const pIndices = new IndexSymbolTable();
     const pVector = new this.#bindings.DoubleVector();
-    for (const b of spec.boundarySpecies) {
-      pIndices.add(b.name);
-      pVector.push_back(b.initialValue);
-    }
-    for (const p of spec.parameters) {
+    for (const p of spec.p) {
       pIndices.add(p.name);
       pVector.push_back(p.initialValue);
     }

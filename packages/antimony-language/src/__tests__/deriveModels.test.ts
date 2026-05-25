@@ -95,3 +95,16 @@ describe("declarations", () => {
     );
   });
 });
+
+describe("$ modifier", () => {
+  it("should set const to true", () => {
+    expectModel(
+      "species A;$A ->;;A=5",
+      model({
+        variables: {
+          A: species.const(),
+        },
+      }),
+    );
+  });
+});

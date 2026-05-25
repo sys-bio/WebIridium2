@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createCvodeWrapper } from "../wrapper.ts";
 
-import defaultModel from "@/assets/examples/tau-doyle-integral-controller.txt?raw";
+// import defaultModel from "@/features/__benches__/smallbone_xlarge.ant?raw";
+import defaultModel from "@/assets/default.ant?raw";
 import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 
@@ -12,18 +13,13 @@ const resultToString = (
 ): string => {
   const builder: string[] = [];
 
-  for (const floating of spec.floatingSpecies) {
-    builder.push(floating.name);
+  for (const y of spec.y) {
+    builder.push(y.name);
     builder.push(",");
   }
 
-  for (const boundary of spec.boundarySpecies) {
-    builder.push(boundary.name);
-    builder.push(",");
-  }
-
-  for (const parameter of spec.parameters) {
-    builder.push(parameter.name);
+  for (const p of spec.p) {
+    builder.push(p.name);
     builder.push(",");
   }
 
@@ -34,12 +30,7 @@ const resultToString = (
 
   builder.push("Time\n");
 
-  const cols =
-    spec.floatingSpecies.length +
-    spec.boundarySpecies.length +
-    spec.parameters.length +
-    spec.reactions.length +
-    1;
+  const cols = spec.y.length + spec.p.length + spec.reactions.length + 1;
 
   for (let y = 0; y < numPoints; y++) {
     for (let x = 0; x < cols; x++) {
@@ -57,15 +48,19 @@ const resultToString = (
 };
 
 describe("simulating basic model", () => {
-  it("should match expected output", async () => {
-    const wrapper = await createCvodeWrapper();
-    const spec = await compile(defaultModel);
-    const numPoints = 500;
+  it(
+    "should match expected output",
+    async () => {
+      const wrapper = await createCvodeWrapper();
+      const spec = await compile(defaultModel);
+      const numPoints = 500;
 
-    await wrapper.setModel(spec);
+      await wrapper.setModel(spec);
 
-    console.log(
-      resultToString(spec, numPoints, wrapper.simulate(0, 100, numPoints)),
-    );
-  });
+      console.log(
+        resultToString(spec, numPoints, wrapper.simulate(0, 100, numPoints)),
+      );
+    },
+    { timeout: 100000 },
+  );
 });

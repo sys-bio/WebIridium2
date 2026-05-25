@@ -11,10 +11,8 @@ import { IndexSymbolTable } from "./SymbolTable";
  */
 export type InternalModel = {
   variables: Map<string, AntimonyVariable>;
-  floatingSpecies: AntimonyVariable[];
-  odes: AntimonyVariable[];
-  boundarySpecies: AntimonyVariable[];
-  parameters: AntimonyVariable[];
+  yVars: AntimonyVariable[];
+  pVars: AntimonyVariable[];
   reactions: AntimonyReaction[];
   events: AntimonyEvent[];
   yTable: IndexSymbolTable;
@@ -25,43 +23,41 @@ export const createInternalModel = (models: AntimonyModel[]): InternalModel => {
   // TODO: combine all the models into one
   const mainModel = models[0];
 
-  const floatingSpecies: AntimonyVariable[] = [];
-  const odes: AntimonyVariable[] = [];
-  const boundarySpecies: AntimonyVariable[] = [];
-  const parameters: AntimonyVariable[] = [];
+  const yVars: AntimonyVariable[] = [];
+  const pVars: AntimonyVariable[] = [];
 
   for (const variable of mainModel.variables.values()) {
     if (variable.kind === "species") {
       if (variable.isConst) {
-        boundarySpecies.push(variable);
+        pVars.push(variable);
       } else {
-        floatingSpecies.push(variable);
+        if (variable.assignment?.kind === "rule") {
+          pVars.push(variable);
+        } else {
+          yVars.push(variable);
+        }
       }
     } else if (variable.kind === "parameter") {
       if (variable.assignment?.kind === "rate") {
-        odes.push(variable);
+        yVars.push(variable);
       } else {
-        parameters.push(variable);
+        pVars.push(variable);
       }
+    } else if (variable.kind === "compartment") {
+      pVars.push(variable);
     } else {
       throw new Error(`Unknown variable kind`);
     }
   }
 
   const yTable = new IndexSymbolTable();
-  for (const f of floatingSpecies) {
-    yTable.add(f.name);
-  }
-  for (const o of odes) {
-    yTable.add(o.name);
+  for (const variable of yVars) {
+    yTable.add(variable.name);
   }
 
   const pTable = new IndexSymbolTable();
-  for (const b of boundarySpecies) {
-    pTable.add(b.name);
-  }
-  for (const p of parameters) {
-    pTable.add(p.name);
+  for (const variable of pVars) {
+    pTable.add(variable.name);
   }
   for (const name of mainModel.reactions.keys()) {
     pTable.add(name);
@@ -69,10 +65,8 @@ export const createInternalModel = (models: AntimonyModel[]): InternalModel => {
 
   return {
     variables: mainModel.variables,
-    floatingSpecies,
-    odes,
-    boundarySpecies,
-    parameters,
+    yVars,
+    pVars,
     reactions: Array.from(mainModel.reactions.values()),
     events: mainModel.events,
     yTable,

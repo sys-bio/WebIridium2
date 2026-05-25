@@ -15,10 +15,7 @@ const simulators: Record<string, new () => Simulator> = {
 
 const simulatorModels: Record<string, Record<string, string>> = {
   copasi: testModels,
-  iridium: {
-    "default model": testModels["default model"],
-    "kholodenko medium": testModels["kholodenko medium"],
-  },
+  iridium: testModels,
   libsbmlsim: {
     "default model": testModels["default model"],
     "kholodenko medium": testModels["kholodenko medium"],
