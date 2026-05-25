@@ -357,7 +357,7 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
   for (const trigger of events) {
     const startRootIndex = currentRootIndex;
 
-    for (const { direction } of trigger.conditions) {
+    for (const { direction, comparison: ctx } of trigger.conditions) {
       // load the root
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
@@ -392,7 +392,9 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
 
       if (direction === 0) {
         // TODO: handle this properly
-        throw new CompileError("== in event not yet supported.");
+        throw new CompileError("== in event not yet supported.", {
+          tree: ctx,
+        });
       } else if (direction > 0) {
         emitter.emitByte(OpCode.i32ge_s);
       } else {

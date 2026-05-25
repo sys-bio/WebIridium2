@@ -13,7 +13,7 @@ export type AntimonyAssignment = {
   formula: FormulaContext;
 };
 
-export type VariableKind = "species" | "parameter";
+export type VariableKind = "species" | "parameter" | "compartment";
 
 // TODO: units
 export type AntimonyVariable = {

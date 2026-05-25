@@ -1,7 +1,10 @@
+import { SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import {
   AssignmentContext,
   ConstantContext,
+  DeclarationContext,
+  DeclarationNameContext,
   EventContext,
   FormulaContext,
   ReactantListContext,
@@ -12,8 +15,20 @@ import type {
   AntimonyVariable,
   AntimonyModel,
   AntimonyReactionTerm,
+  VariableKind,
 } from "./model";
 import { getVariableName } from "./util";
+
+type DeclarationState = {
+  kind: VariableKind;
+  isConst: boolean;
+};
+
+const ALLOWED_DECLARATIONS = new Set<VariableKind>([
+  "species",
+  "parameter",
+  "compartment",
+]);
 
 /**
  * Derives an array of AntimonyModel.
@@ -22,6 +37,7 @@ export class DeriveModelListener implements AntimonyListener {
   #baseModel: AntimonyModel;
   #models: Map<string, AntimonyModel>;
   #currentModel: AntimonyModel | undefined;
+  #currentDeclaration: DeclarationState | undefined;
 
   constructor() {
     this.#models = new Map();
@@ -52,14 +68,51 @@ export class DeriveModelListener implements AntimonyListener {
 
     if (!variable) {
       variable = {
-        kind: "parameter",
+        kind: this.#currentDeclaration?.kind ?? "parameter",
         name: name,
-        isConst: variableCtx instanceof ConstantContext,
+        isConst:
+          variableCtx instanceof ConstantContext ||
+          (this.#currentDeclaration?.isConst ?? false),
       };
       model.variables.set(variable.name, variable);
     }
 
     return variable;
+  }
+
+  enterDeclaration(ctx: DeclarationContext): void {
+    let isConst = false;
+    let kind: VariableKind = "parameter";
+
+    const constModifier = ctx.CONST_MODIFIER();
+    if (constModifier) {
+      isConst = constModifier.text === "const";
+    }
+
+    const declWord = ctx.DECL_WORD();
+    if (declWord) {
+      if (!ALLOWED_DECLARATIONS.has(declWord.text as VariableKind)) {
+        throw new SemanticError(`${declWord.text} is not supported.`, {
+          tree: ctx,
+        });
+      }
+      kind = declWord.text as VariableKind;
+    }
+
+    this.#currentDeclaration = { kind, isConst };
+  }
+
+  exitDeclaration(_ctx: DeclarationContext): void {
+    this.#currentDeclaration = undefined;
+  }
+
+  enterDeclarationName(ctx: DeclarationNameContext): void {
+    if (!this.#currentDeclaration) return;
+
+    // TODO: is it always OK to re-assign?
+    const variable = this.#getOrCreateVariable(ctx.variable());
+    variable.kind = this.#currentDeclaration.kind;
+    variable.isConst = this.#currentDeclaration.isConst;
   }
 
   enterVariable(ctx: VariableContext): void {
@@ -125,6 +178,13 @@ export class DeriveModelListener implements AntimonyListener {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
       const variable = this.#getOrCreateVariable(reactant.variable());
+      // TODO: How does the original antimony handle this? We should do the same.
+      if (variable.kind === "compartment") {
+        throw new SemanticError("Cannot use compartment in reaction.", {
+          tree: reactant,
+        });
+      }
+
       variable.kind = "species";
 
       terms.push({

@@ -1,14 +1,11 @@
-import type { ParseTree } from "antlr4ts/tree/ParseTree";
+import { ParseTreeError } from "antimony-language/errors";
 
-export type CompileErrorInfo = {
-  tree?: ParseTree;
-};
+/**
+ * Represents a compile error that occurs at a specific point.
+ */
+export class CompileError extends ParseTreeError {}
 
-export class CompileError extends Error {
-  info?: CompileErrorInfo;
-
-  constructor(message: string, info?: CompileErrorInfo) {
-    super(message);
-    this.info = info;
-  }
-}
+/**
+ * Represents a compile error that occurs for the whole model.
+ */
+export class CompileModelError extends Error {}

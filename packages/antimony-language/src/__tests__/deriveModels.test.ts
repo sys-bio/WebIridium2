@@ -1,86 +1,97 @@
-import { it, expect } from "vitest";
+import { it, expect, describe } from "vitest";
 import { deriveModels } from "../semantic/semantic";
+
+import {
+  model,
+  species,
+  parameter,
+  reaction,
+  compartment,
+  type TestModel,
+} from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
 
-it("should derive reactions and parameters", () => {
-  const models = deriveModels(defaultModel);
+const expectModels = (code: string, models: TestModel[]): void => {
+  const derived = deriveModels(code);
 
-  expect(models).toHaveLength(1);
+  expect(derived).toHaveLength(models.length);
 
-  const variables = Object.fromEntries(models[0].variables);
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    if (model.variables) {
+      expect(Object.fromEntries(derived[i].variables)).toMatchObject(
+        model.variables,
+      );
+    }
+    if (model.reactions) {
+      expect(Object.fromEntries(derived[i].reactions)).toMatchObject(
+        model.reactions,
+      );
+    }
+  }
+};
 
-  expect(variables).toMatchObject({
-    A: {
-      kind: "species",
-      isConst: false,
-      assignment: {
-        kind: "set",
-        formula: {
-          text: "10",
-        },
+const expectModel = (code: string, model: TestModel): void => {
+  expectModels(code, [model]);
+};
+
+it("should derive reactions and parameters for default model", () => {
+  expectModel(
+    defaultModel,
+    model({
+      variables: {
+        A: species("10"),
+        B: species("0"),
+        C: species("0"),
+        k1: parameter("0.35"),
+        k2: parameter("0.2"),
       },
-    },
-    B: {
-      kind: "species",
-      isConst: false,
-      assignment: {
-        kind: "set",
-        formula: {
-          text: "0",
-        },
+      reactions: {
+        _J0: reaction({ A: 1 }, { B: 1 }, "k1*A"),
+        _J1: reaction({ B: 1 }, { C: 1 }, "k2*B"),
       },
-    },
-    C: {
-      kind: "species",
-      isConst: false,
-      assignment: {
-        kind: "set",
-        formula: {
-          text: "0",
+    }),
+  );
+});
+
+describe("declarations", () => {
+  it("should add variables", () => {
+    expectModel(
+      "species A, B, C",
+      model({
+        variables: {
+          A: species(),
+          B: species(),
+          C: species(),
         },
-      },
-    },
-    k1: {
-      kind: "parameter",
-      isConst: false,
-      assignment: {
-        kind: "set",
-        formula: {
-          text: "0.35",
-        },
-      },
-    },
-    k2: {
-      kind: "parameter",
-      isConst: false,
-      assignment: {
-        kind: "set",
-        formula: {
-          text: "0.2",
-        },
-      },
-    },
+      }),
+    );
   });
 
-  const reactions = Object.fromEntries(models[0].reactions);
-
-  expect(reactions).toMatchObject({
-    _J0: {
-      reactants: [{ name: "A", stoichiometry: 1 }],
-      products: [{ name: "B", stoichiometry: 1 }],
-      rate: {
-        text: "k1*A",
-      },
-    },
-    _J1: {
-      reactants: [{ name: "B", stoichiometry: 1 }],
-      products: [{ name: "C", stoichiometry: 1 }],
-      rate: {
-        text: "k2*B",
-      },
-    },
+  it("should make variables const", () => {
+    expectModel(
+      "const species A, B\nspecies C",
+      model({
+        variables: {
+          A: species.const(),
+          B: species.const(),
+          C: species(),
+        },
+      }),
+    );
   });
 
-  expect(models[0].events).toEqual([]);
+  it("should derive variable kind", () => {
+    expectModel(
+      "const species A;var B;compartment C",
+      model({
+        variables: {
+          A: species.const(),
+          B: parameter(),
+          C: compartment(),
+        },
+      }),
+    );
+  });
 });

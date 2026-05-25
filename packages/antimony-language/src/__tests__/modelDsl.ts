@@ -1,0 +1,137 @@
+/**
+ * Simple DSL for expressing partial models as represented in semantic/model.ts.
+ * Meant to be used for testing with expect().toMatchObject.
+ */
+
+export type TestModel = {
+  variables?: Record<string, any>;
+  reactions?: Record<string, any>;
+};
+
+export const model = ({ variables, reactions }: TestModel): TestModel => {
+  if (variables) {
+    for (const [name, variable] of Object.entries(variables)) {
+      // eslint-disable-next-line
+      variable.name = name;
+    }
+  }
+
+  if (reactions) {
+    for (const [name, reaction] of Object.entries(reactions)) {
+      // eslint-disable-next-line
+      reaction.name = name;
+    }
+  }
+
+  return { variables, reactions };
+};
+
+/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
+
+type FuncWithModifiers<
+  Func extends (this: {}, ...args: any[]) => any,
+  Modifiers extends Record<
+    string,
+    (state: ThisParameterType<Func>) => ThisParameterType<Func>
+  >,
+> = OmitThisParameter<Func> & {
+  [key in keyof Modifiers]: FuncWithModifiers<Func, Modifiers>;
+};
+
+const funcWithModifiers = <
+  Func extends (this: {}, ...args: any) => any,
+  Modifiers extends Record<
+    string,
+    (state: ThisParameterType<Func>) => ThisParameterType<Func>
+  >,
+>(
+  modifiers: Modifiers,
+  func: Func,
+): FuncWithModifiers<Func, Modifiers> => {
+  const proxy: ProxyHandler<any> = {
+    apply(target, _thisArg, argArray) {
+      return func.apply(target, argArray);
+    },
+    get(target, property, _receiver) {
+      if (typeof property === "string" && Object.hasOwn(modifiers, property)) {
+        return new Proxy(
+          Object.assign(function () {}, modifiers[property](target)),
+          proxy,
+        );
+      } else {
+        throw new Error(`Invalid modifier: ${String(property)}.`);
+      }
+    },
+  };
+  return new Proxy(function () {}, proxy);
+};
+
+/* eslint-enable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
+
+type VariableState = {
+  const?: boolean;
+  assignmentType?: "set" | "rate" | "rule";
+};
+
+const variableModifiers = {
+  const: (state: VariableState): VariableState => ({ ...state, const: true }),
+  rate: (state: VariableState): VariableState => ({
+    ...state,
+    assignmentType: "rate",
+  }),
+  rule: (state: VariableState): VariableState => ({
+    ...state,
+    assignmentType: "rule",
+  }),
+};
+
+const createVariableFunc = (kind: string) => {
+  return funcWithModifiers(
+    variableModifiers,
+    function (this: VariableState, formula?: string) {
+      if (formula) {
+        return {
+          kind,
+          isConst: this.const ?? false,
+          assignment: {
+            kind: "set",
+            formula: {
+              text: formula,
+            },
+          },
+        };
+      }
+
+      return {
+        kind,
+        isConst: this.const ?? false,
+      };
+    },
+  );
+};
+
+export const species = createVariableFunc("species");
+
+export const parameter = createVariableFunc("parameter");
+
+export const compartment = createVariableFunc("compartment");
+
+export const reaction = (
+  reactants: Record<string, number>,
+  products: Record<string, number>,
+  rate: string,
+) => {
+  return {
+    reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
+      name,
+      stoichiometry,
+    })),
+    products: Object.entries(products).map(([name, stoichiometry]) => ({
+      name,
+      stoichiometry,
+    })),
+    rate: {
+      text: rate,
+    },
+  };
+};

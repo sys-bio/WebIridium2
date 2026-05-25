@@ -2,17 +2,23 @@ import { describe, bench, vi } from "vitest";
 vi.unmock("@/features/workers");
 import { Simulator } from "@/features/simulation/Simulator.ts";
 import { CopasiSimulator } from "@/features/simulation/CopasiSimulator";
+import { IridiumSimulator } from "../simulation/IridiumSimulator.ts";
 import { LibSbmlSimSimulator } from "../simulation/LibSbmlSimSimulator.ts";
 
 import { testModels } from "./testModels.ts";
 
 const simulators: Record<string, new () => Simulator> = {
   copasi: CopasiSimulator,
+  iridium: IridiumSimulator,
   libsbmlsim: LibSbmlSimSimulator,
 };
 
 const simulatorModels: Record<string, Record<string, string>> = {
   copasi: testModels,
+  iridium: {
+    "default model": testModels["default model"],
+    "kholodenko medium": testModels["kholodenko medium"],
+  },
   libsbmlsim: {
     "default model": testModels["default model"],
     "kholodenko medium": testModels["kholodenko medium"],

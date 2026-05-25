@@ -16,9 +16,9 @@ DECL_WORD      : 'species'
                | 'reaction'
                ;
 
-NAME            : [a-zA-Z_]([a-zA-Z0-9_])*;
+NAME : [a-zA-Z_]([a-zA-Z0-9_])*;
 
-NUMBER          : [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?;
+NUMBER                   : [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?;
 // It is allowed to just put something like '10.'
 fragment NUMBER_FRACTION : '.' [0-9]*;
 fragment NUMBER_EXPONENT : ('e' | 'E') ('-' | '+')? [0-9]+;
@@ -35,7 +35,7 @@ LOGICAL     : '&&' | '||';
 STRING                   : '"' (~["\\\r\n] | ESCAPE_SEQUENCE)* '"';
 fragment ESCAPE_SEQUENCE : '\\' .;
 
-// It is + because that is how it is in the original grammar
+// It is "+" because that is how it is in the original grammar (you can't have an empty one)
 // `` is special case for empty striing. ```` does not work.
 // Also, notably, LONG_STRING does not support escapes of any form.
 LONG_STRING : ('```' .+? '```') | '``';

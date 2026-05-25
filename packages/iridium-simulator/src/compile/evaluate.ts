@@ -23,7 +23,7 @@ import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
 import type { InternalModel } from "./model.ts";
-import { CompileError } from "./errors.ts";
+import { CompileModelError } from "./errors.ts";
 
 // if they didn't have an assignment, give them this one
 const DEFAULT_INITIAL_VALUE = 1;
@@ -291,7 +291,7 @@ export const getAssignmentOrder = (
   }
 
   if (order.length !== assignments.size) {
-    throw new CompileError("Cycle detected in assignments.");
+    throw new CompileModelError("Cycle detected in assignments.");
   }
 
   return order;
