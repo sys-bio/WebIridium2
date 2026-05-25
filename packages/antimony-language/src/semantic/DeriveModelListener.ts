@@ -7,8 +7,10 @@ import {
   DeclarationNameContext,
   EventContext,
   FormulaContext,
+  NameContext,
   ReactantListContext,
   ReactionContext,
+  SubvariableContext,
   VariableContext,
 } from "../generated/AntimonyParser";
 import type {
@@ -17,7 +19,6 @@ import type {
   AntimonyReactionTerm,
   VariableKind,
 } from "./model";
-import { getVariableName } from "./util";
 
 type DeclarationState = {
   kind: VariableKind;
@@ -29,6 +30,21 @@ const ALLOWED_DECLARATIONS = new Set<VariableKind>([
   "parameter",
   "compartment",
 ]);
+
+const getVariableName = (variableCtx: VariableContext): string[] => {
+  if (variableCtx instanceof NameContext) {
+    return [variableCtx.NAME().text];
+  } else if (variableCtx instanceof SubvariableContext) {
+    return [
+      ...getVariableName(variableCtx.variable()),
+      variableCtx.NAME().text,
+    ];
+  } else if (variableCtx instanceof ConstantContext) {
+    return getVariableName(variableCtx.variable());
+  } else {
+    throw new Error(`unknown variable type: ${variableCtx.text}`);
+  }
+};
 
 /**
  * Derives an array of AntimonyModel.
@@ -63,7 +79,18 @@ export class DeriveModelListener implements AntimonyListener {
 
   #getOrCreateVariable(variableCtx: VariableContext): AntimonyVariable {
     const model = this.#getActiveModel();
-    const name = getVariableName(variableCtx);
+    const fullName = getVariableName(variableCtx);
+
+    if (fullName.length > 1) {
+      // TODO: actually do this properly instead of making fake throwaway variable
+      return {
+        kind: "parameter",
+        isConst: false,
+        name: fullName.slice(1).join("."),
+      };
+    }
+
+    const name = fullName[0];
     let variable = model.variables.get(name);
 
     if (!variable) {

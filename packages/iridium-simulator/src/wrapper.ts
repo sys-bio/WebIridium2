@@ -15,7 +15,10 @@ import {
   ROOTS_NAME,
 } from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
-import { builtinFunctions } from "./compile/builtinImports.ts";
+import {
+  builtinFunctions,
+  type ImportedFunction,
+} from "./compile/functions.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 import { IndexSymbolTable } from "./compile/SymbolTable.ts";
 
@@ -74,7 +77,10 @@ export class CvodeWrapper {
         [MEMORY_IMPORT_NAME]: this.#bindings.wasmMemory,
       },
       [IMPORT_NAMESPACE]: Object.fromEntries(
-        spec.funcImports.map((name) => [name, builtinFunctions[name].js]),
+        spec.funcImports.map((name) => [
+          name,
+          (builtinFunctions[name] as ImportedFunction).js,
+        ]),
       ),
     });
 

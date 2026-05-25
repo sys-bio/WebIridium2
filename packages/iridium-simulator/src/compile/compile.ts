@@ -1,13 +1,12 @@
 import { deriveModelsFromParseTree } from "antimony-language/semantic";
 import Emitter from "./Emitter";
-import { MAGIC_WORD, SectionCode, VERSION_WORD, ValType } from "./codes";
+import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { IndexSymbolTable } from "./SymbolTable";
 import { TypeTable } from "./wasmTypes";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { ModelSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
-import { builtinFunctions, POW_RESERVED_NAME } from "./builtinImports";
 import { parse } from "antimony-language/parse";
 import type {
   AntimonyListener,
@@ -24,6 +23,14 @@ import {
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { createInternalModel, type InternalModel } from "./model";
 import { compileEvents, type CompiledEvent } from "./event";
+import {
+  builtinFunctions,
+  POW_RESERVED_NAME,
+  type CompiledFunction,
+  type ImportedFunction,
+  type WasmFunction,
+} from "./functions";
+import { CompileInvariantError, CompileModelError } from "./errors";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -36,7 +43,7 @@ export const compileIntermediate = (
 } => {
   const root = parse(code);
   const internalModel = createInternalModel(deriveModelsFromParseTree(root));
-  const imports = Array.from(getImportedFunctions(root));
+  const referencedFunctions = Array.from(getReferencedFunctions(root));
 
   const functions: WasmFunction[] = [
     {
@@ -48,10 +55,13 @@ export const compileIntermediate = (
       compileBody: (functionTable: IndexSymbolTable) =>
         compileRhs(functionTable, internalModel).getOutput(),
     },
-    ...imports.map((name) => ({
-      kind: "import" as const,
-      name: name,
-    })),
+    ...referencedFunctions.map((name) => {
+      if (Object.hasOwn(builtinFunctions, name)) {
+        return builtinFunctions[name];
+      } else {
+        throw new CompileModelError(`Unbound function: ${name}`);
+      }
+    }),
   ];
 
   let events: CompiledEvent[] = [];
@@ -64,7 +74,7 @@ export const compileIntermediate = (
 
   return {
     model: internalModel,
-    imports,
+    imports: referencedFunctions,
     events,
     bytecode: compileFunctions(functions),
   };
@@ -103,47 +113,34 @@ export const compile = async (code: string): Promise<ModelSpec> => {
   };
 };
 
-const getImportedFunctions = (context: ParserRuleContext): Set<string> => {
-  const imported = new Set<string>();
-  const listener = new GetImportedListener(imported);
+const getReferencedFunctions = (context: ParserRuleContext): Set<string> => {
+  const referenced = new Set<string>();
+  const listener = new GetReferencedListener(referenced);
   ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, context);
-  return imported;
+  return referenced;
 };
 
-class GetImportedListener implements AntimonyListener {
-  #imported: Set<string>;
+class GetReferencedListener implements AntimonyListener {
+  #referenced: Set<string>;
 
   constructor(imported: Set<string>) {
-    this.#imported = imported;
+    this.#referenced = imported;
   }
 
   enterFunctionCall(ctx: FunctionCallContext): void {
     const name = ctx.NAME().text;
-    if (Object.hasOwn(builtinFunctions, name)) {
-      this.#imported.add(name);
+    if (
+      Object.hasOwn(builtinFunctions, name) &&
+      builtinFunctions[name].kind !== "inline"
+    ) {
+      this.#referenced.add(name);
     }
   }
 
   enterPower(_ctx: PowerContext): void {
-    this.#imported.add(POW_RESERVED_NAME);
+    this.#referenced.add(POW_RESERVED_NAME);
   }
 }
-
-export type ImportedFunction = {
-  kind: "import";
-  name: string;
-};
-
-export type CompiledFunction = {
-  kind: "compile";
-  isExported: boolean;
-  name: string;
-  params: ValType[];
-  results: ValType[];
-  compileBody: (functionTable: IndexSymbolTable) => Uint8Array;
-};
-
-export type WasmFunction = ImportedFunction | CompiledFunction;
 
 /** Compiles a list of functions into a WebAssembly module. */
 export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
@@ -156,11 +153,15 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   for (const func of funcs) {
     if (func.kind === "import") {
       importedFunctions.push(func);
-    } else {
+    } else if (func.kind === "compile") {
       compiledFunctions.push(func);
       if (func.isExported) {
         exportedFunctions.push(func);
       }
+    } else if (func.kind === "inline") {
+      throw new CompileInvariantError(
+        `Attempt to compile inline function: ${func.name}`,
+      );
     }
   }
 
@@ -184,14 +185,10 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   for (const func of importedFunctions) {
     functionTable.add(func.name);
 
-    const definition = builtinFunctions[func.name];
-    const funcTypeIndex = typeTable.addFunc(
-      definition.params,
-      definition.results,
-    );
+    const funcTypeIndex = typeTable.addFunc(func.params, func.results);
 
     importSection.emitName(IMPORT_NAMESPACE);
-    importSection.emitName(definition.name);
+    importSection.emitName(func.name);
     importSection.emitExternFunctionType(funcTypeIndex);
   }
 

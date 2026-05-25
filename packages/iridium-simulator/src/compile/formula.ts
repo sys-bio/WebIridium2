@@ -2,9 +2,13 @@ import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import {
   CompareContext,
+  ConstantContext,
   FormulaContext,
   LogicalContext,
+  NameContext,
+  SubvariableContext,
   SumContext,
+  VariableContext,
   type AntimonyListener,
   type FunctionCallContext,
   type NegativeContext,
@@ -14,15 +18,34 @@ import {
   type ProductContext,
   type VarContext,
 } from "antimony-language/grammar";
-import { getVariableName } from "antimony-language/semantic/util";
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
 import type { IndexSymbolTable } from "./SymbolTable";
-import { POW_RESERVED_NAME } from "./builtinImports";
+import { POW_RESERVED_NAME } from "./functions";
 import type { EmitLoadVariableFunction } from "./Emitter";
+import {
+  builtinFunctions,
+  inlineFunctions,
+  type InlineFunction,
+} from "./functions";
+import { CompileError } from "./errors";
 
 const TODO = () => {
   throw new Error("TODO");
+};
+
+export const getVariableName = (variableCtx: VariableContext): string => {
+  if (variableCtx instanceof NameContext) {
+    return variableCtx.NAME().text;
+  } else if (variableCtx instanceof SubvariableContext) {
+    throw new CompileError("Subvariables not yet supported here.", {
+      tree: variableCtx,
+    });
+  } else if (variableCtx instanceof ConstantContext) {
+    return getVariableName(variableCtx.variable());
+  } else {
+    throw new Error(`unknown variable type: ${variableCtx.text}`);
+  }
 };
 
 export const emitFormula = (
@@ -56,9 +79,14 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitFunctionCall(_ctx: FunctionCallContext): void {
-    const functionIndex = this.#functionTable.get(_ctx.NAME().text);
-    this.emitter.emitByte(OpCode.call);
-    this.emitter.emitUint32(functionIndex);
+    const name = _ctx.NAME().text;
+    if (inlineFunctions.has(name)) {
+      (builtinFunctions[name] as InlineFunction).emit(this.emitter);
+    } else {
+      const functionIndex = this.#functionTable.get(_ctx.NAME().text);
+      this.emitter.emitByte(OpCode.call);
+      this.emitter.emitUint32(functionIndex);
+    }
   }
 
   exitNumber(ctx: NumberContext): void {
