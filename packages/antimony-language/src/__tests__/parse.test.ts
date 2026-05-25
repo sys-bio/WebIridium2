@@ -140,3 +140,31 @@ describe("event", () => {
     assignmentRule: "at time > 5: A := 5",
   });
 });
+
+describe("declaration", () => {
+  itShouldErrorForAll({
+    plainName: "a",
+    extraComma: "var a,",
+    extraComma2: "var a,b,",
+    extraComma3: "var ,",
+    varConst: "var const a",
+    varConst2: "var const species a",
+  });
+
+  itShouldSucceedForAll({
+    species: "species a",
+    formula: "formula a",
+    compartment: "compartment a",
+    gene: "gene a",
+    dna: "dna a",
+    operator: "operator a",
+    const: "const species a",
+    var: "var species a",
+    assign: "var species a = 5",
+    assign2: "species a = 5",
+    rateAssign: "species a' = 5",
+    ruleAssign: "species a := 5",
+    multipleAssign: "species a := 5, b = 5, c = 10.3e+3",
+    multipleAssignAndDeclare: "species a = 5, b, c, d = 10",
+  });
+});

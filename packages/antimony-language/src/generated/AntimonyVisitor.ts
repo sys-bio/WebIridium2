@@ -4,6 +4,8 @@
 
 import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 
+import { DeclarationAssignmentContext } from "./AntimonyParser";
+import { DeclarationNameContext } from "./AntimonyParser";
 import { NameContext } from "./AntimonyParser";
 import { SubvariableContext } from "./AntimonyParser";
 import { ConstantContext } from "./AntimonyParser";
@@ -32,6 +34,8 @@ import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { InCompartmentContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
+import { DeclarationContext } from "./AntimonyParser";
+import { DeclarationTermContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ParameterListContext } from "./AntimonyParser";
@@ -49,6 +53,22 @@ import { ModelCallContext } from "./AntimonyParser";
  * operations with no return type.
  */
 export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
+	/**
+	 * Visit a parse tree produced by the `declarationAssignment`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitDeclarationAssignment?: (ctx: DeclarationAssignmentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by the `declarationName`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitDeclarationName?: (ctx: DeclarationNameContext) => Result;
+
 	/**
 	 * Visit a parse tree produced by the `name`
 	 * labeled alternative in `AntimonyParser.variable`.
@@ -258,6 +278,20 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitAssignment?: (ctx: AssignmentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.declaration`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitDeclaration?: (ctx: DeclarationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitDeclarationTerm?: (ctx: DeclarationTermContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.formula`.

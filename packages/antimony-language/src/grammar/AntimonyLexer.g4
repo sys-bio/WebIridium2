@@ -5,6 +5,16 @@ END   : 'end';
 IN    : 'in';
 AT    : 'at';
 
+CONST_MODIFIER : 'var' | 'const';
+DECL_WORD      : 'species'
+               | 'formula'
+               | 'compartment'
+               | 'gene'
+               | 'dna'
+               | 'operator'
+               | 'reaction'
+               ;
+
 NAME            : [a-zA-Z_]([a-zA-Z0-9_])*;
 
 NUMBER          : [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?;
@@ -20,6 +30,9 @@ INTERACTION : '-|' | '-o' | '-(';
 DASHES      : '--';
 COMPARE     : '>=' | '<=' | '>' | '<' | '==' | '!=';
 LOGICAL     : '&&' | '||';
+
+STRING                   : '"' (~["\\\r\n] | ESCAPE_SEQUENCE)* '"';
+fragment ESCAPE_SEQUENCE : '\\' .;
 
 NEWLINE      : [\n\r];
 WHITESPACE   : [ \t\r\u000C] -> channel(HIDDEN);

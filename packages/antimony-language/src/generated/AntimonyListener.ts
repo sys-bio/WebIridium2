@@ -4,6 +4,8 @@
 
 import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 
+import { DeclarationAssignmentContext } from "./AntimonyParser";
+import { DeclarationNameContext } from "./AntimonyParser";
 import { NameContext } from "./AntimonyParser";
 import { SubvariableContext } from "./AntimonyParser";
 import { ConstantContext } from "./AntimonyParser";
@@ -32,6 +34,8 @@ import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { InCompartmentContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
+import { DeclarationContext } from "./AntimonyParser";
+import { DeclarationTermContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ParameterListContext } from "./AntimonyParser";
@@ -46,6 +50,32 @@ import { ModelCallContext } from "./AntimonyParser";
  * `AntimonyParser`.
  */
 export interface AntimonyListener extends ParseTreeListener {
+	/**
+	 * Enter a parse tree produced by the `declarationAssignment`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	enterDeclarationAssignment?: (ctx: DeclarationAssignmentContext) => void;
+	/**
+	 * Exit a parse tree produced by the `declarationAssignment`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	exitDeclarationAssignment?: (ctx: DeclarationAssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `declarationName`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	enterDeclarationName?: (ctx: DeclarationNameContext) => void;
+	/**
+	 * Exit a parse tree produced by the `declarationName`
+	 * labeled alternative in `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	exitDeclarationName?: (ctx: DeclarationNameContext) => void;
+
 	/**
 	 * Enter a parse tree produced by the `name`
 	 * labeled alternative in `AntimonyParser.variable`.
@@ -381,6 +411,28 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitAssignment?: (ctx: AssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.declaration`.
+	 * @param ctx the parse tree
+	 */
+	enterDeclaration?: (ctx: DeclarationContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.declaration`.
+	 * @param ctx the parse tree
+	 */
+	exitDeclaration?: (ctx: DeclarationContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	enterDeclarationTerm?: (ctx: DeclarationTermContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.declarationTerm`.
+	 * @param ctx the parse tree
+	 */
+	exitDeclarationTerm?: (ctx: DeclarationTermContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.formula`.

@@ -8,6 +8,7 @@ topLevelStatement : model | statement;
 statementList : (statement? statementSeparator)+;
 statement : reaction
           | assignment
+          | declaration
           | modelCall
           | event
           ;
@@ -31,6 +32,11 @@ reactant : NUMBER? variable;
 inCompartment : IN variable;
 
 assignment : variable inCompartment? apostrophe='\''? op=ASSIGNMENT formula;
+
+declaration : ((CONST_MODIFIER DECL_WORD) | DECL_WORD | CONST_MODIFIER) declarationTerm (',' declarationTerm)*;
+declarationTerm : ASSIGNMENT #declarationAssignment
+                | variable #declarationName
+                ;
 
 formula : '(' formula ')' #group
         | NUMBER #number

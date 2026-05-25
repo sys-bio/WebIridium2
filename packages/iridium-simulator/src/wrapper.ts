@@ -80,14 +80,18 @@ export class CvodeWrapper {
 
     const funcPtrs: number[] = [];
 
-    const rhsPtr = this.#bindings.addFunction(instance.exports[RHS_NAME]) as number;
+    const rhsPtr = this.#bindings.addFunction(
+      instance.exports[RHS_NAME],
+    ) as number;
 
     let eventParams: EventParams | undefined;
 
     funcPtrs.push(rhsPtr);
 
     if (spec.events.length > 0) {
-      const rootsPtr = this.#bindings.addFunction(instance.exports[ROOTS_NAME]) as number;
+      const rootsPtr = this.#bindings.addFunction(
+        instance.exports[ROOTS_NAME],
+      ) as number;
       const checkEventsPtr = this.#bindings.addFunction(
         instance.exports[CHECK_EVENTS_NAME],
       ) as number;
