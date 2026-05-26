@@ -94,6 +94,14 @@ void Model::SetPValue(int i, double value) {
     user_data_.p[i] = value;
 }
 
+void Model::SetAbsoluteTolerance(double value) {
+    abs_tol = value;
+}
+
+void Model::SetRelativeTolerance(double value) {
+    rel_tol = value;
+}
+
 Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int num_points) {
     if (start_time < 0) throw std::invalid_argument("required: start_time > 0");
     if (start_time >= end_time) throw std::invalid_argument("required: start_time < end_time");
@@ -112,7 +120,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     // TODO: what tolerances to set?
     // I got these ones from roadrunner
-    CVodeSStolerances(cvode_mem_, 1e-6, 1e-12);
+    CVodeSStolerances(cvode_mem_, rel_tol, abs_tol);
 
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);

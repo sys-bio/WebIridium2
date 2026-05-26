@@ -1,0 +1,9 @@
+[project]
+name = "test-data"
+version = "0.1.0"
+description = "script to generate test data"
+requires-python = ">=3.13"
+dependencies = [
+    "antimony==3.0.0",
+    "libroadrunner==2.8.0",
+]

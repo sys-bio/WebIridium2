@@ -13,10 +13,10 @@ void EventQueue::AddEventInvocation(
     double time,
     EventInvocation event_invocation
 ) {
-    queue_.emplace(time, event_invocation);
+    queue_.emplace(event_invocation);
 }
 
-void EventQueue::RemoveEvent(const EventInfo &event) {
+void EventQueue::RemoveInvocationsOf(const EventInfo &event) {
     throw std::runtime_error("not implemented");
 }
 
@@ -29,7 +29,7 @@ bool EventQueue::IsInvocationAvailable(double time) const {
 }
 
 EventInvocation EventQueue::PopEventInvocation() {
-    const QueuedEvent &got = queue_.top();
+    const EventInvocation &got = queue_.top();
     queue_.pop();
-    return got.invocation;
+    return got;
 }

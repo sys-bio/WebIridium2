@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <queue>
 #include <vector>
 
@@ -38,16 +37,11 @@ struct EventInfo {
 
 struct EventInvocation {
     const EventInfo *event_info;
+    double time;
     bool has_assignments;
     std::vector<int> y_values;
     std::vector<int> p_values;
 };
-
-struct QueuedEvent {
-    double time;
-    EventInvocation invocation;
-};
-
 
 class EventQueue {
 public:
@@ -63,7 +57,7 @@ public:
     void AddEventInvocation(double time, EventInvocation event_invocation);
 
     // Removes all EventInvocation associated with the given Event.
-    void RemoveEvent(const EventInfo &event_info);
+    void RemoveInvocationsOf(const EventInfo &event_info);
 
     // Returns if an invocation is available to run at this time.
     bool IsInvocationAvailable(double time) const;
@@ -74,14 +68,18 @@ public:
 private:
     class CompareQueuedEvent {
     public:
-        bool operator()(const QueuedEvent &a, const QueuedEvent &b) {
-            return a.time - b.time;
+        bool operator()(const EventInvocation &a, const EventInvocation &b) {
+            if (a.time == b.time) {
+                return a.event_info->priority > b.event_info->priority;
+            } else {
+                return a.time < b.time;
+            }
         }
     };
 
     std::priority_queue<
-        QueuedEvent,
-        std::vector<QueuedEvent>,
+        EventInvocation,
+        std::vector<EventInvocation>,
         CompareQueuedEvent
     > queue_;
 };

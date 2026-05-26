@@ -2,7 +2,9 @@ import "./env.d.ts";
 
 import createBindings from "../build/cvodeBindings.js";
 import type {
+  EventInfoVector,
   EventParams,
+  IntVector,
   MainModule,
   Model,
 } from "../build/cvodeBindings.d.ts";
@@ -37,6 +39,9 @@ interface InternalModel {
 export class CvodeWrapper {
   #bindings: MainModule;
   #internalModel: InternalModel | undefined;
+
+  #absoluteTolerance: number = 1e-12;
+  #relativeTolerance: number = 1e-6;
 
   constructor(bindings: MainModule) {
     this.#bindings = bindings;
@@ -77,6 +82,7 @@ export class CvodeWrapper {
     });
 
     const funcPtrs: number[] = [];
+    const vectorsToDestroy: (IntVector | EventInfoVector)[] = [];
 
     const rhsPtr = this.#bindings.addFunction(
       instance.exports[RHS_NAME],
@@ -127,6 +133,9 @@ export class CvodeWrapper {
 
         funcPtrs.push(getAssignmentsPtr);
         funcPtrs.push(getDelayPtr);
+
+        vectorsToDestroy.push(yIndices);
+        vectorsToDestroy.push(pIndices);
       }
 
       eventParams = {
@@ -134,6 +143,8 @@ export class CvodeWrapper {
         roots_fn: rootsPtr,
         check_events_fn: checkEventsPtr,
       };
+
+      vectorsToDestroy.push(eventInfo);
     }
 
     this.#internalModel = {
@@ -150,9 +161,14 @@ export class CvodeWrapper {
       funcPtrs,
     };
 
+    this.#updateBindingSettings();
+
     // ok to delete now since they got copied into the bindings model
     yVector.delete();
     pVector.delete();
+    for (const vector of vectorsToDestroy) {
+      vector.delete();
+    }
   }
 
   #disposeCurrentModel(): void {
@@ -204,6 +220,23 @@ export class CvodeWrapper {
         value,
       );
     }
+  }
+
+  #updateBindingSettings(): void {
+    if (this.#internalModel) {
+      this.#internalModel.binding.SetAbsoluteTolerance(this.#absoluteTolerance);
+      this.#internalModel.binding.SetRelativeTolerance(this.#relativeTolerance);
+    }
+  }
+
+  setAbsoluteTolerance(value: number): void {
+    this.#absoluteTolerance = value;
+    this.#updateBindingSettings();
+  }
+
+  setRelativeTolerance(value: number): void {
+    this.#relativeTolerance = value;
+    this.#updateBindingSettings();
   }
 }
 

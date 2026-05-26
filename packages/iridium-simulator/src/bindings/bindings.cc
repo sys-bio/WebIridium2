@@ -20,6 +20,8 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .function("ResetAllVariables", &Model::ResetAllVariables)
         .function("SetYValue", &Model::SetYValue)
         .function("SetPValue", &Model::SetPValue)
+        .function("SetAbsoluteTolerance", &Model::SetAbsoluteTolerance)
+        .function("SetRelativeTolerance", &Model::SetRelativeTolerance)
         .function("SimulateTimeCourse", &Model::SimulateTimeCourse);
     
     emscripten::value_object<EventInfo>("EventInfo")

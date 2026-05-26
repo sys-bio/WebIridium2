@@ -6,61 +6,150 @@ import defaultModel from "@/assets/default.ant?raw";
 import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
 
-const resultToString = (
-  spec: ModelSpec,
+const simulate = async (
+  model: string,
+  startTime: number,
+  endTime: number,
   numPoints: number,
-  result: Float64Array,
-): string => {
-  const builder: string[] = [];
+  absoluteTolerance?: number,
+  relativeTolerance?: number,
+): Promise<[ModelSpec, Float64Array]> => {
+  const wrapper = await createCvodeWrapper();
+  const spec = await compile(model);
 
-  for (const y of spec.y) {
-    builder.push(y.name);
-    builder.push(",");
+  await wrapper.setModel(spec);
+
+  if (absoluteTolerance) {
+    wrapper.setAbsoluteTolerance(absoluteTolerance);
   }
 
-  for (const p of spec.p) {
-    builder.push(p.name);
-    builder.push(",");
+  if (relativeTolerance) {
+    wrapper.setRelativeTolerance(relativeTolerance);
   }
 
-  for (const reaction of spec.reactions) {
-    builder.push(reaction);
-    builder.push(",");
-  }
-
-  builder.push("Time\n");
-
-  const cols = spec.y.length + spec.p.length + spec.reactions.length + 1;
-
-  for (let y = 0; y < numPoints; y++) {
-    for (let x = 0; x < cols; x++) {
-      builder.push(result[x + cols * y].toString());
-      if (x < cols - 1) {
-        builder.push(",");
-      }
-    }
-    if (y < numPoints - 1) {
-      builder.push("\n");
-    }
-  }
-
-  return builder.join("");
+  return [spec, wrapper.simulate(startTime, endTime, numPoints)];
 };
 
 describe("simulating basic model", () => {
-  it(
-    "should match expected output",
-    async () => {
-      const wrapper = await createCvodeWrapper();
-      const spec = await compile(defaultModel);
-      const numPoints = 500;
+  it("should not error", async () => {
+    await expect(
+      (async () => {
+        return await simulate(defaultModel, 0, 100, 200);
+      })(),
+    ).resolves.toBeDefined();
+  });
+});
 
-      await wrapper.setModel(spec);
+describe("simulation results", () => {
+  const simulationFiles = import.meta.glob("./results/*.ant", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
 
-      console.log(
-        resultToString(spec, numPoints, wrapper.simulate(0, 100, numPoints)),
+  const simulationResults = import.meta.glob("./results/*.csv", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
+
+  type TestParams = {
+    startTime: number;
+    endTime: number;
+    numberOfPoints: number;
+    absoluteTolerance: number;
+    relativeTolerance: number;
+  };
+
+  type ResultsObject = Record<string, number[]>;
+
+  const paramRegex = /([A-Za-z]+)=([0-9.e+-]+)/g;
+  const parseTestParams = (code: string): TestParams => {
+    const params: Record<string, string> = {};
+
+    for (const match of code.matchAll(paramRegex)) {
+      params[match[1]] = match[2];
+    }
+
+    return {
+      startTime: Number(params["start"]),
+      endTime: Number(params["end"]),
+      numberOfPoints: Number(params["points"]),
+      absoluteTolerance: Number(params["atol"]),
+      relativeTolerance: Number(params["rtol"]),
+    };
+  };
+
+  const getResultsFromCsv = (csv: string): ResultsObject => {
+    const results: ResultsObject = {};
+    const lines = csv.split("\n");
+    const columnNames = [];
+
+    for (const name of lines[0].split(",")) {
+      results[name] = [];
+      columnNames.push(name);
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(",");
+      for (let j = 0; j < values.length; j++) {
+        results[columnNames[j]].push(Number(values[j]));
+      }
+    }
+
+    return results;
+  };
+
+  const getResultsFromArray = (
+    spec: ModelSpec,
+    numPoints: number,
+    array: Float64Array,
+  ): ResultsObject => {
+    const results: ResultsObject = {};
+
+    let i = 0;
+    const rowLength = spec.y.length + spec.p.length + spec.reactions.length + 1;
+
+    for (const y of spec.y) {
+      if (y.kind === "floating") {
+        const column = [];
+        for (let j = 0; j < numPoints; j++) {
+          column.push(array[j * rowLength + i]);
+        }
+        results[y.name] = column;
+      }
+
+      i += 1;
+    }
+
+    return results;
+  };
+
+  for (const [fileName, code] of Object.entries(simulationFiles)) {
+    const modelName = fileName.replace(".ant", "");
+    it(`should simulate ${modelName} correctly`, async () => {
+      const csv = simulationResults[modelName + ".csv"] as string;
+      expect(csv).toBeDefined();
+
+      const params = parseTestParams(code as string);
+
+      const [spec, array] = await simulate(
+        code as string,
+        params.startTime,
+        params.endTime,
+        params.numberOfPoints,
+        params.absoluteTolerance,
+        params.relativeTolerance,
       );
-    },
-    { timeout: 100000 },
-  );
+
+      const csvResults = getResultsFromCsv(csv);
+      for (const [name, values] of Object.entries(
+        getResultsFromArray(spec, params.numberOfPoints, array),
+      )) {
+        for (let i = 0; i < values.length; i++) {
+          expect(csvResults[name][i]).toBeCloseTo(values[i], 4);
+        }
+      }
+    });
+  }
 });

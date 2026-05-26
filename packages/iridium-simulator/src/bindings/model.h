@@ -68,6 +68,10 @@ public:
 
     void SetPValue(int i, double value);
 
+    void SetAbsoluteTolerance(double value);
+
+    void SetRelativeTolerance(double value);
+
     // WARNING: The returned array will be invalidated the next time you call Simulate.
     Float64Array SimulateTimeCourse(double start_time, double end_time, int num_points);
 
@@ -94,4 +98,8 @@ private:
 
     std::optional<EventParams> event_params_;
     int num_roots_;
+
+    // Should be set by the wrapper
+    double abs_tol = 1;
+    double rel_tol = 1;
 };
