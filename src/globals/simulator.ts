@@ -31,7 +31,7 @@ export const getSimulatorName = (simulator: Simulator): string => {
   throw new Error(`Unknown simulator: ${simulator.constructor.name}`);
 };
 
-const _simulatorNameAtom = atom("COPASI");
+const _simulatorNameAtom = atom("Iridium (Preview)");
 
 export const simulatorAtom = atom((get) => {
   return new SIMULATOR_CONSTRUCTORS[get(_simulatorNameAtom)]();
