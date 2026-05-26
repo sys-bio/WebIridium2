@@ -23,6 +23,7 @@ const X_AXIS_LABEL_ROTATE45_MIN = 12;
 const X_AXIS_LABEL_ROTATE90_MIN = 20;
 
 const PADDING = 50; // hard-coded but whatever
+const MIN_RANGE = 1e-12; // Minimum range to display on auto-scale. Should be small enough
 
 const calculatePlotBounds = (...values: number[][]): [number, number] => {
   const flat = values.flat();
@@ -51,7 +52,7 @@ export const calculatePlotBoundsNice = (
     return [0, 10];
   }
 
-  const range = max - min;
+  const range = Math.max(MIN_RANGE, max - min);
   const targetStepSize = range / ticks;
   const magnitude = 10 ** Math.floor(Math.log10(targetStepSize));
   let magnitudeMsd = Math.round(targetStepSize / magnitude);
@@ -63,7 +64,7 @@ export const calculatePlotBoundsNice = (
 
   return [
     Math.floor(min / stepSize) * stepSize,
-    Math.ceil(max / stepSize) * stepSize,
+    Math.ceil((min + range) / stepSize) * stepSize,
   ];
 };
 
@@ -271,8 +272,11 @@ export const generatePlotParameters = (
 
   const axisLabelMaxDecimals =
     rangeMaxY - rangeMinY < 0.05
-      ? Math.abs(Math.floor(Math.log10(rangeMaxY - rangeMinY))) + 2
+      ? Math.abs(
+          Math.floor(Math.log10(Math.max(MIN_RANGE, rangeMaxY - rangeMinY))),
+        ) + 2
       : 2;
+  console.log(axisLabelMaxDecimals, rangeMinY, rangeMaxY);
   const axisLabelFormatter = (value: number): string => {
     return formatWithMaxDecimals(value, axisLabelMaxDecimals);
   };
