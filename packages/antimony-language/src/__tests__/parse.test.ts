@@ -110,6 +110,20 @@ describe("bad models", () => {
   itShouldErrorForAll(badModels);
 });
 
+describe("assignment", () => {
+  itShouldErrorForAll({
+    space: "A B = 5",
+  });
+
+  itShouldSucceedForAll({
+    basic: "A = 5",
+    rule: "A := 5",
+    ruleSpace: "A: =5",
+    rate: "A' = 5",
+    rate2: "A '= 5",
+  });
+});
+
 describe("event", () => {
   itShouldErrorForAll({
     extraComma: "at time > 5: A = 3,",

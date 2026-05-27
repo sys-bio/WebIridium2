@@ -27,7 +27,7 @@ fragment NUMBER_FRACTION : '.' [0-9]*;
 fragment NUMBER_EXPONENT : ('e' | 'E') ('-' | '+')? [0-9]+;
 
 ARROW       : '->' | '=>';
-ASSIGNMENT  : '=' | ':=';
+
 // These are pretty much arrows, but they also have some different semantics (not sure what exactly)
 // See this: https://tellurium.readthedocs.io/en/latest/antimony.html#interactions
 INTERACTION : '-|' | '-o' | '-(';

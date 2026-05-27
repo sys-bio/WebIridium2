@@ -26,6 +26,15 @@ export const model = ({ variables, reactions }: TestModel): TestModel => {
   return { variables, reactions };
 };
 
+/** Convenience function for making test model that only consists of variables. */
+export const variables = (variables: Exclude<TestModel["variables"], undefined>): TestModel => {
+  for (const [name, variable] of Object.entries(variables)) {
+    // eslint-disable-next-line
+    variable.name = name;
+  }
+  return { variables };
+};
+
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
 
 type FuncWithModifiers<
@@ -88,17 +97,23 @@ const variableModifiers = {
 const createVariableFunc = (kind: string) => {
   return funcWithModifiers(
     variableModifiers,
-    function (this: VariableState, formula?: string) {
-      if (formula) {
+    function (this: VariableState, formulaOrRule?: string, rate?: string) {
+      if (formulaOrRule) {
         return {
           kind,
           isConst: this.const ?? false,
-          assignment: {
-            kind: "set",
-            formula: {
-              text: formula,
-            },
-          },
+          assignment:
+            this.assignmentType === "rule" ? {
+              kind: "rule",
+              rule: { text: formulaOrRule },
+            } : this.assignmentType === "rate" ? {
+              kind: "rate",
+              initial: { text: formulaOrRule },
+              rate: { text: rate },
+            } : {
+              kind: "set",
+              initial: { text: formulaOrRule }
+            }
         };
       }
 

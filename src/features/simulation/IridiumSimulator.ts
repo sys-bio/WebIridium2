@@ -71,25 +71,43 @@ export class IridiumSimulator extends Simulator {
     };
 
     for (const yVar of spec.y) {
-      variables.push({
-        type: "settable",
-        defaultDisplayName: yVar.name,
-        name: yVar.name,
-        category: getVariableCategory(yVar, "ODEs"),
-        setName: yVar.name,
-        defaultValue: yVar.initialValue,
-      });
+      if (yVar.initialValue) {
+        variables.push({
+          type: "settable",
+          defaultDisplayName: yVar.name,
+          name: yVar.name,
+          category: getVariableCategory(yVar, "ODEs"),
+          setName: yVar.name,
+          defaultValue: yVar.initialValue,
+        });
+      } else {
+        variables.push({
+          type: "normal",
+          defaultDisplayName: yVar.name,
+          name: yVar.name,
+          category: getVariableCategory(yVar, "ODEs"),
+        });
+      }
     }
 
     for (const pVar of spec.p) {
-      variables.push({
-        type: "settable",
-        defaultDisplayName: pVar.name,
-        name: pVar.name,
-        category: getVariableCategory(pVar, "Parameters"),
-        setName: pVar.name,
-        defaultValue: pVar.initialValue,
-      });
+      if (pVar.initialValue) {
+        variables.push({
+          type: "settable",
+          defaultDisplayName: pVar.name,
+          name: pVar.name,
+          category: getVariableCategory(pVar, "Parameters"),
+          setName: pVar.name,
+          defaultValue: pVar.initialValue,
+        });
+      } else {
+        variables.push({
+          type: "normal",
+          defaultDisplayName: pVar.name,
+          name: pVar.name,
+          category: getVariableCategory(pVar, "Parameters"),
+        });
+      }
     }
 
     for (const reaction of spec.reactions) {

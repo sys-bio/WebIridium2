@@ -1,7 +1,7 @@
 export type VariableSpec = {
   kind: "floating" | "boundary" | "parameter" | "compartment";
   name: string;
-  initialValue: number;
+  initialValue?: number;
 };
 
 export type EventSpec = {

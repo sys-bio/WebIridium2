@@ -55,7 +55,7 @@ reactionFormula : left=reactantList? ARROW right=reactantList
 reactantList : reactant ('+' reactant)*;
 reactant : NUMBER? variable;
 
-assignment : variable inCompartment? apostrophe='\''? op=ASSIGNMENT formula;
+assignment : variable inCompartment? mod=('\'' | ':')? '=' formula;
 
 declaration     : ((CONST_MODIFIER DECL_WORD) | DECL_WORD | CONST_MODIFIER) declarationTerm (',' declarationTerm)*;
 declarationTerm : assignment #declarationAssignment
@@ -63,7 +63,7 @@ declarationTerm : assignment #declarationAssignment
                 ;
 
 event           : AT formula ':' NEWLINE* eventAssignment (',' eventAssignment)*;
-eventAssignment : variable ASSIGNMENT formula;
+eventAssignment : variable '=' formula;
 
 annotation         : variableAnnotation | hasAnnotation | modelAnnotation;
 variableAnnotation : variable annotationBody;
@@ -75,7 +75,7 @@ annotationItem     : NAME #annotationName
                    ;
 string             : STRING | LONG_STRING;
 
-unitDeclaration    : UNIT NAME (ASSIGNMENT unitFormula)?;
+unitDeclaration    : UNIT NAME ('=' unitFormula)?;
 // TODO: merge with normal formula? but i think having it separate is more clear.
 unitFormula        : '(' unitFormula ')' #unitGroup
                    | NUMBER unit=NAME? #unitNumber

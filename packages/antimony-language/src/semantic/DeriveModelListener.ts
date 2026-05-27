@@ -151,17 +151,47 @@ export class DeriveModelListener implements AntimonyListener {
   }
 
   enterAssignment(ctx: AssignmentContext): void {
-    const kind =
-      ctx.ASSIGNMENT().text === ":="
-        ? "rule"
-        : ctx._apostrophe
-          ? "rate"
-          : "set";
+    const variable = this.#getOrCreateVariable(ctx.variable());
+    const mod = ctx._mod?.text;
+    if (mod === ":") {
+      if (variable.assignment?.kind === "rate") {
+        throw new SemanticError("Variable defined by rate assignment cannot simultaneously be defined by rule assignment.", {
+          tree: ctx,
+        });
+      }
 
-    this.#getOrCreateVariable(ctx.variable()).assignment = {
-      kind: kind,
-      formula: ctx.formula(),
-    };
+      variable.assignment = {
+        kind: "rule",
+        rule: ctx.formula(),
+      };
+    } else if (mod === "'") {
+      if (variable.assignment?.kind === "rule") {
+        throw new SemanticError("Variable defined by rule assignment cannot simultaneously be defined by rate assignment.", {
+          tree: ctx,
+        });
+      }
+
+      variable.assignment = {
+        kind: "rate",
+        rate: ctx.formula(),
+        initial: variable?.assignment?.initial,
+      };
+    } else {
+      if (variable.assignment?.kind === "rule") {
+        throw new SemanticError("Cannot set initial value on variable defined by rule assignment.", {
+          tree: ctx,
+        });
+      }
+
+      if (!variable.assignment) {
+        variable.assignment = {
+          kind: "set",
+          initial: ctx.formula(),
+        };
+      } else {
+        variable.assignment.initial = ctx.formula();
+      }
+    }
   }
 
   enterReaction(ctx: ReactionContext): void {

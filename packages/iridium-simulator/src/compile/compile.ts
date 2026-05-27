@@ -91,13 +91,13 @@ export const compile = async (code: string): Promise<ModelSpec> => {
         return {
           kind: "floating",
           name: y.name,
-          initialValue: initialValues.get(y.name)!,
+          initialValue: initialValues.get(y.name),
         };
       } else {
         return {
           kind: y.kind,
           name: y.name,
-          initialValue: initialValues.get(y.name)!,
+          initialValue: initialValues.get(y.name),
         };
       }
     }),
@@ -106,13 +106,13 @@ export const compile = async (code: string): Promise<ModelSpec> => {
         return {
           kind: p.isConst ? "boundary" : "floating",
           name: p.name,
-          initialValue: initialValues.get(p.name)!,
+          initialValue: initialValues.get(p.name),
         };
       } else {
         return {
           kind: p.kind,
           name: p.name,
-          initialValue: initialValues.get(p.name)!,
+          initialValue: initialValues.get(p.name),
         };
       }
     }),

@@ -6,7 +6,7 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
 import type { InternalModel } from "./model";
 import { P_PARAM, T_PARAM, Y_PARAM } from "../names";
-import type { AntimonyVariable } from "antimony-language/semantic";
+import type { AntimonyRateAssignment, AntimonyRuleAssignment, AntimonyVariable } from "antimony-language/semantic";
 import { CompileError } from "./errors";
 
 const YDOT_PTR_PARAM = "ydot[]";
@@ -42,7 +42,7 @@ export const compileRhs = (
     (v) => v.assignment?.kind === "rule",
   );
   const ruleMap = new Map(
-    ruleVariables.map((v) => [v.name, v.assignment!.formula]),
+    ruleVariables.map((v) => [v.name, (v.assignment as AntimonyRuleAssignment).rule]),
   );
   const ruleEvaluationOrder = getAssignmentOrder(ruleMap);
 
@@ -75,7 +75,7 @@ export const compileRhs = (
     emitter.emitUint32(localsTable.getParam(P_PARAM));
 
     emitFormula(
-      variable.assignment!.formula,
+      (variable.assignment as AntimonyRuleAssignment).rule,
       emitter,
       emitLoadVariable,
       functionTable,
@@ -147,12 +147,12 @@ export const compileRhs = (
       if (f.assignment?.kind === "rate") {
         throw new CompileError(
           "Species cannot simultaneously be defined by rate rule and reaction.",
-          { tree: f.assignment.formula },
+          { tree: f.assignment.rate.parent },
         );
       } else if (ruleMap.has(f.name)) {
         throw new CompileError(
           "Species cannot simultaneously be defined by assignment rule and reaction.",
-          { tree: f.assignment!.formula },
+          { tree: (f.assignment as AntimonyRuleAssignment).rule.parent },
         );
       }
 
@@ -201,7 +201,7 @@ export const compileRhs = (
     emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
 
     emitFormula(
-      ode.assignment!.formula,
+      (ode.assignment as AntimonyRateAssignment).rate,
       emitter,
       emitLoadVariable,
       functionTable,

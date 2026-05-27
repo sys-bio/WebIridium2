@@ -8,9 +8,32 @@ import {
   reaction,
   compartment,
   type TestModel,
+  variables,
 } from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
+import { ParserRuleContext } from "antlr4ts";
+import { SemanticError } from "../errors.ts";
+
+/**
+ * Strip parse contexts only to their text value. Otherwise
+ * Vitest will explode when it toMatchObject on the contexts.
+ */
+const stripContextsOnlyToText = (obj: Record<string, unknown>): object => {
+  if (obj instanceof ParserRuleContext) {
+    return {
+      text: obj.text,
+    };
+  }
+
+  for (let key in obj) {
+    if (typeof obj[key] === "object" && obj !== null) {
+      obj[key] = stripContextsOnlyToText(obj[key] as Record<string, unknown>);
+    }
+  }
+
+  return obj;
+};
 
 const expectModels = (code: string, models: TestModel[]): void => {
   const derived = deriveModels(code);
@@ -20,12 +43,12 @@ const expectModels = (code: string, models: TestModel[]): void => {
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     if (model.variables) {
-      expect(Object.fromEntries(derived[i].variables)).toMatchObject(
+      expect(stripContextsOnlyToText(Object.fromEntries(derived[i].variables))).toMatchObject(
         model.variables,
       );
     }
     if (model.reactions) {
-      expect(Object.fromEntries(derived[i].reactions)).toMatchObject(
+      expect(stripContextsOnlyToText(Object.fromEntries(derived[i].reactions))).toMatchObject(
         model.reactions,
       );
     }
@@ -53,6 +76,86 @@ it("should derive reactions and parameters for default model", () => {
       },
     }),
   );
+});
+
+describe("assignments", () => {
+  it("should set initial assignment", () => {
+    expectModel(
+      "A = 5",
+      variables({
+        A: parameter("5"),
+      }),
+    );
+  });
+
+  it("should use latest assignment", () => {
+    expectModel(
+      "A = 3;A=5;A=4",
+      variables({
+        A: parameter("4"),
+      }),
+    );
+  });
+
+  it("should set rate assignment", () => {
+    expectModel(
+      "A' = 5",
+      variables({
+        A: parameter.rate(undefined, "5"),
+      }),
+    );
+  });
+
+  it("should set rate and initial assignment", () => {
+    expectModel(
+      "A' = Z\nA = 3",
+      variables({
+        A: parameter.rate("3", "Z"),
+      }),
+    );
+  });
+
+  it("should inherit initial assignment when setting rate", () => {
+    expectModel(
+      "A = Z\nA '= 3",
+      variables({
+        A: parameter.rate("Z", "3"),
+      }),
+    );
+  });
+
+  it("should set rule assignment", () => {
+    expectModel(
+      "A := 5*time",
+      variables({
+        A: parameter.rule("5*time"),
+      }),
+    );
+  });
+
+  it("should error when trying to set rate then rule", () => {
+    expect(() => {
+      deriveModels("A'=5; A:=5");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to set rule then rate", () => {
+    expect(() => {
+      deriveModels("A:=5; A'=5");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to set rule then initial", () => {
+    expect(() => {
+      deriveModels("A:=5; A=5");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should not error when trying to set initial then rule", () => {
+    expect(() => {
+      deriveModels("A=5; A:=5");
+    }).not.toThrowError(SemanticError);
+  });
 });
 
 describe("declarations", () => {
@@ -90,6 +193,17 @@ describe("declarations", () => {
           A: species.const(),
           B: parameter(),
           C: compartment(),
+        },
+      }),
+    );
+  });
+
+  it("should assign", () => {
+    expectModel(
+      "const species A = 5",
+      model({
+        variables: {
+          A: species.const("5"),
         },
       }),
     );

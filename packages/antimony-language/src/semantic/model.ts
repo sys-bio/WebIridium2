@@ -7,11 +7,10 @@ export type AntimonyModel = {
   events: AntimonyEvent[];
 };
 
-// TODO: "rate" rule should be separate since you should be able to set the initial value AND the rate rule
-export type AntimonyAssignment = {
-  kind: "set" | "rule" | "rate";
-  formula: FormulaContext;
-};
+export type AntimonySetAssignment = { kind: "set"; initial: FormulaContext };
+export type AntimonyRuleAssignment = { kind: "rule"; rule: FormulaContext };
+export type AntimonyRateAssignment = { kind: "rate"; rate: FormulaContext; initial?: FormulaContext };
+export type AntimonyAssignment = AntimonySetAssignment | AntimonyRuleAssignment | AntimonyRateAssignment;
 
 export type VariableKind = "species" | "parameter" | "compartment";
 

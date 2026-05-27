@@ -42,37 +42,28 @@ export const evaluateInitialValues = (
   const initialValues: Map<string, number> = new Map();
   const evalOrder = getAssignmentOrder(
     new Map(
-      Array.from(model.variables.values()).map((v) => [
+      Array.from(model.variables.values()).filter(v => v.assignment?.kind !== "rule").map((v) => [
         v.name,
-        v.assignment?.kind === "set" ? v.assignment.formula : undefined,
+        v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
       ]),
     ),
   );
 
   // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
+  // UPDATE(05-26-2026): I think this should be fine because even when you set the initial time, the simulation
+  //                     should still start at 0. No other reasonable behavior imo.
   initialValues.set(TIME_NAME, 0);
 
   for (const name of evalOrder) {
     const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
     const variable = model.variables.get(name)!;
 
-    if (variable.assignment) {
-      if (
-        variable.assignment.kind === "set" ||
-        variable.assignment.kind === "rule"
-      ) {
-        initialValues.set(
-          name,
-          variable.assignment.formula.accept(evalVisitor),
-        );
-      } else if (variable.assignment.kind === "rate") {
-        initialValues.set(name, DEFAULT_INITIAL_VALUE);
-      } else {
-        throw new Error("Unknown variable assignment.");
-      }
-    } else {
-      initialValues.set(name, DEFAULT_INITIAL_VALUE);
-    }
+    if (variable?.assignment?.kind === "rule") continue;
+
+    initialValues.set(
+      name,
+      variable.assignment?.initial?.accept(evalVisitor) ?? DEFAULT_INITIAL_VALUE,
+    );
   }
 
   return initialValues;

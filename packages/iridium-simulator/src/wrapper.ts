@@ -58,14 +58,14 @@ export class CvodeWrapper {
     const yVector = new this.#bindings.DoubleVector();
     for (const y of spec.y) {
       yIndices.add(y.name);
-      yVector.push_back(y.initialValue);
+      yVector.push_back(y.initialValue ?? 0);
     }
 
     const pIndices = new IndexSymbolTable();
     const pVector = new this.#bindings.DoubleVector();
     for (const p of spec.p) {
       pIndices.add(p.name);
-      pVector.push_back(p.initialValue);
+      pVector.push_back(p.initialValue ?? 0);
     }
 
     const instance = await WebAssembly.instantiate(spec.wasmModule, {
