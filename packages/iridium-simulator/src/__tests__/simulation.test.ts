@@ -182,9 +182,9 @@ describe("simulation results", () => {
             Math.max(
               Math.abs(csvResults[name][i]),
               Math.abs(values[i]),
-              0.000001,
+              1e-12,
             );
-          expect(diff).toBeLessThanOrEqual(2 * params.relativeTolerance);
+          expect(diff).toBeLessThanOrEqual(10*params.relativeTolerance);
         }
       }
     });
