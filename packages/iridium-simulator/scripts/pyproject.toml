@@ -6,4 +6,5 @@ requires-python = ">=3.13"
 dependencies = [
     "antimony==3.0.0",
     "libroadrunner==2.8.0",
+    "matplotlib>=3.10.9",
 ]

@@ -100,6 +100,6 @@ private:
     int num_roots_;
 
     // Should be set by the wrapper
-    double abs_tol = 1;
-    double rel_tol = 1;
+    double abs_tol_ = 1;
+    double rel_tol_ = 1;
 };

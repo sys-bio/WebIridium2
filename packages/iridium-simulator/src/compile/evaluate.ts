@@ -3,7 +3,6 @@
 import { AbstractParseTreeVisitor } from "antlr4ts/tree/AbstractParseTreeVisitor";
 import {
   type AntimonyListener,
-  VariableContext,
   type AntimonyVisitor,
   LogicalContext,
   FormulaContext,
@@ -28,7 +27,8 @@ import { CompileModelError } from "./errors.ts";
 import { getVariableName } from "./formula.ts";
 
 // if they didn't have an assignment, give them this one
-const DEFAULT_INITIAL_VALUE = 1;
+// annoyingly, COPASI uses 1, RoadRunner uses 0
+const DEFAULT_INITIAL_VALUE = 0;
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -44,10 +44,12 @@ export const evaluateInitialValues = (
   const initialValues: Map<string, number> = new Map();
   const evalOrder = getAssignmentOrder(
     new Map(
-      Array.from(model.variables.values()).filter(v => v.assignment?.kind !== "rule").map((v) => [
-        v.name,
-        v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
-      ]),
+      Array.from(model.variables.values())
+        .filter((v) => v.assignment?.kind !== "rule")
+        .map((v) => [
+          v.name,
+          v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
+        ]),
     ),
   );
 
@@ -64,7 +66,8 @@ export const evaluateInitialValues = (
 
     initialValues.set(
       name,
-      variable.assignment?.initial?.accept(evalVisitor) ?? DEFAULT_INITIAL_VALUE,
+      variable.assignment?.initial?.accept(evalVisitor) ??
+        DEFAULT_INITIAL_VALUE,
     );
   }
 
@@ -257,7 +260,7 @@ export const getAssignmentOrder = (
 
     for (const neighbor of variableListener.getVariables()) {
       if (allowSelfCycle && neighbor === name) continue;
-      
+
       if (Object.hasOwn(graph, neighbor)) {
         inDegrees[name] += 1;
         graph[neighbor].add(name);

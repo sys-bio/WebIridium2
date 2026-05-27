@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 //import defaultModel from "@/features/__benches__/steve_medium.ant?raw";
 //import defaultModel from "@/assets/default.ant?raw"
-import defaultModel from "@/assets/examples/jana-wolf-glycolytic-model.txt?raw";
+import defaultModel from "@/assets/examples/BIOMD0000000833.ant?raw";
 import { compileIntermediate } from "../compile/compile";
 import { writeFileSync } from "node:fs";
 

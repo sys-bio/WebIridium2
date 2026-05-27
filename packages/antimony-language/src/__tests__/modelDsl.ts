@@ -27,7 +27,9 @@ export const model = ({ variables, reactions }: TestModel): TestModel => {
 };
 
 /** Convenience function for making test model that only consists of variables. */
-export const variables = (variables: Exclude<TestModel["variables"], undefined>): TestModel => {
+export const variables = (
+  variables: Exclude<TestModel["variables"], undefined>,
+): TestModel => {
   for (const [name, variable] of Object.entries(variables)) {
     // eslint-disable-next-line
     variable.name = name;
@@ -103,17 +105,21 @@ const createVariableFunc = (kind: string) => {
           kind,
           isConst: this.const ?? false,
           assignment:
-            this.assignmentType === "rule" ? {
-              kind: "rule",
-              rule: { text: formulaOrRule },
-            } : this.assignmentType === "rate" ? {
-              kind: "rate",
-              initial: { text: formulaOrRule },
-              rate: { text: rate },
-            } : {
-              kind: "set",
-              initial: { text: formulaOrRule }
-            }
+            this.assignmentType === "rule"
+              ? {
+                  kind: "rule",
+                  rule: { text: formulaOrRule },
+                }
+              : this.assignmentType === "rate"
+                ? {
+                    kind: "rate",
+                    initial: { text: formulaOrRule },
+                    rate: { text: rate },
+                  }
+                : {
+                    kind: "set",
+                    initial: { text: formulaOrRule },
+                  },
         };
       }
 

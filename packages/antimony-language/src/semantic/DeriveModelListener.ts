@@ -168,9 +168,12 @@ export class DeriveModelListener implements AntimonyListener {
     const mod = ctx._mod?.text;
     if (mod === ":") {
       if (variable.assignment?.kind === "rate") {
-        throw new SemanticError("Variable defined by rate assignment cannot simultaneously be defined by rule assignment.", {
-          tree: ctx,
-        });
+        throw new SemanticError(
+          "Variable defined by rate assignment cannot simultaneously be defined by rule assignment.",
+          {
+            tree: ctx,
+          },
+        );
       }
 
       variable.assignment = {
@@ -179,9 +182,12 @@ export class DeriveModelListener implements AntimonyListener {
       };
     } else if (mod === "'") {
       if (variable.assignment?.kind === "rule") {
-        throw new SemanticError("Variable defined by rule assignment cannot simultaneously be defined by rate assignment.", {
-          tree: ctx,
-        });
+        throw new SemanticError(
+          "Variable defined by rule assignment cannot simultaneously be defined by rate assignment.",
+          {
+            tree: ctx,
+          },
+        );
       }
 
       variable.assignment = {
@@ -191,9 +197,12 @@ export class DeriveModelListener implements AntimonyListener {
       };
     } else {
       if (variable.assignment?.kind === "rule") {
-        throw new SemanticError("Cannot set initial value on variable defined by rule assignment.", {
-          tree: ctx,
-        });
+        throw new SemanticError(
+          "Cannot set initial value on variable defined by rule assignment.",
+          {
+            tree: ctx,
+          },
+        );
       }
 
       if (!variable.assignment) {

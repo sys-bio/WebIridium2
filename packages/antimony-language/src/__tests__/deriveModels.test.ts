@@ -26,7 +26,7 @@ const stripContextsOnlyToText = (obj: Record<string, unknown>): object => {
     };
   }
 
-  for (let key in obj) {
+  for (const key in obj) {
     if (typeof obj[key] === "object" && obj !== null) {
       obj[key] = stripContextsOnlyToText(obj[key] as Record<string, unknown>);
     }
@@ -43,14 +43,14 @@ const expectModels = (code: string, models: TestModel[]): void => {
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     if (model.variables) {
-      expect(stripContextsOnlyToText(Object.fromEntries(derived[i].variables))).toMatchObject(
-        model.variables,
-      );
+      expect(
+        stripContextsOnlyToText(Object.fromEntries(derived[i].variables)),
+      ).toMatchObject(model.variables);
     }
     if (model.reactions) {
-      expect(stripContextsOnlyToText(Object.fromEntries(derived[i].reactions))).toMatchObject(
-        model.reactions,
-      );
+      expect(
+        stripContextsOnlyToText(Object.fromEntries(derived[i].reactions)),
+      ).toMatchObject(model.reactions);
     }
   }
 };

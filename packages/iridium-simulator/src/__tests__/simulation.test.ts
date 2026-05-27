@@ -1,10 +1,21 @@
 import { describe, it, expect } from "vitest";
+import { promises as fs } from "fs";
+import path from "path";
 import { createCvodeWrapper } from "../wrapper.ts";
 
 // import defaultModel from "@/features/__benches__/smallbone_xlarge.ant?raw";
 import defaultModel from "@/assets/default.ant?raw";
 import { compile } from "../compile/compile";
 import type { ModelSpec } from "../modelSpec.ts";
+import { resultToString } from "./debugUtil.ts";
+
+// Turn this on to write to iridiumResults/.
+// Then you can use plotCompare.py script to compare the results with expected.
+const WRITE_TEST_OUTPUT = true;
+
+if (WRITE_TEST_OUTPUT) {
+  console.log("Writing to iridiumResults/");
+}
 
 const simulate = async (
   model: string,
@@ -143,12 +154,31 @@ describe("simulation results", () => {
       );
 
       const csvResults = getResultsFromCsv(csv);
+
+      if (WRITE_TEST_OUTPUT) {
+        // write results to file for debugging
+        const resultsDir = path.resolve(
+          __dirname,
+          "..",
+          "..",
+          "iridiumResults",
+        );
+        await fs.mkdir(resultsDir, { recursive: true });
+
+        const base = path.basename(fileName, ".ant");
+        const outputPath = path.join(resultsDir, `${base}.csv`);
+        await fs.writeFile(
+          outputPath,
+          resultToString(spec, params.numberOfPoints, array),
+        );
+      }
+
       for (const [name, values] of Object.entries(
         getResultsFromArray(spec, params.numberOfPoints, array),
       )) {
         for (let i = 0; i < values.length; i++) {
           // This might be a little too high
-          expect(csvResults[name][i]).toBeCloseTo(values[i], 4);
+          expect(csvResults[name][i]).toBeCloseTo(values[i], 5);
         }
       }
     });

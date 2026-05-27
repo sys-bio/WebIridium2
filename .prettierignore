@@ -9,3 +9,4 @@ manual/theme/**/*
 manual/book/**/*
 packages/antimony-language/src/generated/
 packages/iridium-simulator/build/
+packages/iridium-simulator/scripts/

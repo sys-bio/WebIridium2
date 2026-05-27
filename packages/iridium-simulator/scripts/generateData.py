@@ -10,7 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-test_dir = (Path(__file__).parent / Path("../../src/__tests__/results/")).resolve()
+test_dir = (Path(__file__).parent / Path("../src/__tests__/results/")).resolve()
 
 
 @dataclass

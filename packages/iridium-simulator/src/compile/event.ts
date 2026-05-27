@@ -488,7 +488,9 @@ const compileGetAssignments = (
 
   emitter.emitListHeader(0);
 
-  const ordering = getAssignmentOrder(event.assignments, { allowSelfCycle: true });
+  const ordering = getAssignmentOrder(event.assignments, {
+    allowSelfCycle: true,
+  });
   const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
   for (const name of ordering) {

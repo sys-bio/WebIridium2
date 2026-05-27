@@ -95,11 +95,11 @@ void Model::SetPValue(int i, double value) {
 }
 
 void Model::SetAbsoluteTolerance(double value) {
-    abs_tol = value;
+    abs_tol_ = value;
 }
 
 void Model::SetRelativeTolerance(double value) {
-    rel_tol = value;
+    rel_tol_ = value;
 }
 
 Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int num_points) {
@@ -118,7 +118,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         CVodeReInit(cvode_mem_, 0.0, y_);
     }
 
-    CVodeSStolerances(cvode_mem_, rel_tol, abs_tol);
+    CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_);
 
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
@@ -131,14 +131,12 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     if (start_time > 0.0) {
         CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
-    } else {
-        // TODO: This needs to replace with better method.
-        //       Like a "update" callback.
-        // run the rhs one time to get the reaction rates
-        double *temp = new double[original_y_.size()];
-        user_data_.rhs(t_out, NV_DATA_S(y_), temp, user_data_.p);
-        delete[] temp;
     }
+
+    // TODO: temporary hack to get the RHS to update the `p` variables
+    //       later should make separate update function
+    std::vector<double> dummy_y_dot(original_y_.size());
+    user_data_.rhs(t_out, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
 
     RecordToOutputArray(t_return);
 
@@ -203,6 +201,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
             }
         }
 
+        user_data_.rhs(t_out, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
         RecordToOutputArray(t_return);
     }
 

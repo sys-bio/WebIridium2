@@ -6,7 +6,11 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
 import type { InternalModel } from "./model";
 import { P_PARAM, T_PARAM, Y_PARAM } from "../names";
-import type { AntimonyRateAssignment, AntimonyRuleAssignment, AntimonyVariable } from "antimony-language/semantic";
+import type {
+  AntimonyRateAssignment,
+  AntimonyRuleAssignment,
+  AntimonyVariable,
+} from "antimony-language/semantic";
 import { CompileError } from "./errors";
 
 const YDOT_PTR_PARAM = "ydot[]";
@@ -42,7 +46,10 @@ export const compileRhs = (
     (v) => v.assignment?.kind === "rule",
   );
   const ruleMap = new Map(
-    ruleVariables.map((v) => [v.name, (v.assignment as AntimonyRuleAssignment).rule]),
+    ruleVariables.map((v) => [
+      v.name,
+      (v.assignment as AntimonyRuleAssignment).rule,
+    ]),
   );
   const ruleEvaluationOrder = getAssignmentOrder(ruleMap);
 

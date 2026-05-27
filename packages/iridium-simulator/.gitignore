@@ -2,7 +2,8 @@ build/**/*
 # we want to keep the wrapper
 !build/cvodeBindings*
 
-./scripts/**/.venv
+scripts/.venv
+iridiumResults/
 
 # tooling
 .clangd

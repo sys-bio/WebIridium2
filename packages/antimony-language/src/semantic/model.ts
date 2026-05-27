@@ -9,8 +9,15 @@ export type AntimonyModel = {
 
 export type AntimonySetAssignment = { kind: "set"; initial: FormulaContext };
 export type AntimonyRuleAssignment = { kind: "rule"; rule: FormulaContext };
-export type AntimonyRateAssignment = { kind: "rate"; rate: FormulaContext; initial?: FormulaContext };
-export type AntimonyAssignment = AntimonySetAssignment | AntimonyRuleAssignment | AntimonyRateAssignment;
+export type AntimonyRateAssignment = {
+  kind: "rate";
+  rate: FormulaContext;
+  initial?: FormulaContext;
+};
+export type AntimonyAssignment =
+  | AntimonySetAssignment
+  | AntimonyRuleAssignment
+  | AntimonyRateAssignment;
 
 export type VariableKind = "species" | "parameter" | "compartment";
 
