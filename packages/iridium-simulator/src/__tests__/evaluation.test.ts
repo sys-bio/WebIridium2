@@ -6,7 +6,6 @@ import {
   evaluateInitialValues,
   getAssignmentOrder,
 } from "../compile/evaluate.ts";
-import { TIME_NAME } from "../names.ts";
 
 const evaluateModel = (code: string) => {
   const models = deriveModels(code);
@@ -66,11 +65,21 @@ describe("evaluation order", () => {
       "C = A + 1; B = C + 2; A = 1; D = A + B + C",
     );
 
-    expect(initialValues.get(TIME_NAME)).toBe(0);
     expect(initialValues.get("A")).toBe(1);
     expect(initialValues.get("C")).toBe(2);
     expect(initialValues.get("B")).toBe(4);
     expect(initialValues.get("D")).toBe(7);
+  });
+
+  it("should not include assignment rules in initial values", () => {
+    const initialValues = evaluateModel(
+      "C = A + 1; B = C + 2; A = 1; Total := A + B + C",
+    );
+
+    expect(initialValues.get("A")).toBe(1);
+    expect(initialValues.get("C")).toBe(2);
+    expect(initialValues.get("B")).toBe(4);
+    expect(initialValues.get("Total")).toBeUndefined();
   });
 
   it("should throw CompileError for cyclic assignments", () => {

@@ -13,11 +13,10 @@ import {
   NegativeContext,
   FunctionCallContext,
   ConstantContext,
-  NameContext,
-  SubvariableContext,
   PowerContext,
   NumberContext,
   VarContext,
+  GroupContext,
 } from "antimony-language/grammar";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
@@ -42,13 +41,16 @@ export const evaluateInitialValues = (
   model: InternalModel,
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
+  const outputInitialValues: Map<string, number> = new Map();
   const evalOrder = getAssignmentOrder(
     new Map(
       Array.from(model.variables.values())
         .filter((v) => v.assignment?.kind !== "rule")
         .map((v) => [
           v.name,
-          v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
+          v.assignment?.kind === "rule"
+            ? v.assignment.rule
+            : v.assignment?.initial,
         ]),
     ),
   );
@@ -62,16 +64,24 @@ export const evaluateInitialValues = (
     const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
     const variable = model.variables.get(name)!;
 
-    if (variable?.assignment?.kind === "rule") continue;
+    if (variable?.assignment?.kind === "rule") {
+      // TODO: do we *really* want to base the initial value of rule variable on its assignment
+      //       COPASI does this, so it shouldn't be completely wrong.
+      initialValues.set(
+        name,
+        variable.assignment.rule.accept(evalVisitor) ?? DEFAULT_INITIAL_VALUE,
+      );
+    } else {
+      const value =
+        variable.assignment?.initial?.accept(evalVisitor) ??
+        DEFAULT_INITIAL_VALUE;
 
-    initialValues.set(
-      name,
-      variable.assignment?.initial?.accept(evalVisitor) ??
-        DEFAULT_INITIAL_VALUE,
-    );
+      initialValues.set(name, value);
+      outputInitialValues.set(name, value);
+    }
   }
 
-  return initialValues;
+  return outputInitialValues;
 };
 
 class AssignmentEvaluatorVisitor
@@ -86,7 +96,7 @@ class AssignmentEvaluatorVisitor
   }
 
   defaultResult(): number {
-    return DEFAULT_INITIAL_VALUE;
+    throw new CompileModelError("All nodes must evaluate.");
   }
 
   visitLogical(ctx: LogicalContext): number {
@@ -172,6 +182,10 @@ class AssignmentEvaluatorVisitor
     }
   }
 
+  visitGroup(ctx: GroupContext): number {
+    return super.visit(ctx.getChild(0, FormulaContext));
+  }
+
   visitPower(ctx: PowerContext): number {
     return (
       super.visit(ctx.getChild(0, FormulaContext)) **
@@ -183,24 +197,21 @@ class AssignmentEvaluatorVisitor
     return -super.visit(ctx.getChild(0, FormulaContext));
   }
 
+  // literally does nothing
   visitPositive(ctx: PositiveContext): number {
     return super.visit(ctx.getChild(0, FormulaContext));
   }
 
   visitFunctionCall(_ctx: FunctionCallContext): number {
-    throw new Error("Function calls not yet implemented.");
+    throw new CompileModelError("Function calls not yet implemented.");
   }
 
   visitConstant(ctx: ConstantContext): number {
     return super.visit(ctx.variable());
   }
 
-  visitSubvariable(ctx: SubvariableContext): number {
-    return super.visit(ctx.variable());
-  }
-
-  visitName(ctx: NameContext): number {
-    return this.#variables.get(ctx.NAME().text) as number;
+  visitVar(ctx: VarContext): number {
+    return this.#variables.get(getVariableName(ctx.variable())) as number;
   }
 
   visitNumber(ctx: NumberContext): number {

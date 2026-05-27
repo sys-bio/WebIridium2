@@ -11,6 +11,7 @@ import {
   ReactantListContext,
   ReactionContext,
   SubvariableContext,
+  VarContext,
   VariableContext,
 } from "../generated/AntimonyParser";
 import type {
@@ -162,6 +163,10 @@ export class DeriveModelListener implements AntimonyListener {
     this.#getOrCreateVariable(ctx);
   }
   */
+
+  enterVar(ctx: VarContext): void {
+    this.#getOrCreateVariable(ctx.variable());
+  }
 
   enterAssignment(ctx: AssignmentContext): void {
     const variable = this.#getOrCreateVariable(ctx.variable());
