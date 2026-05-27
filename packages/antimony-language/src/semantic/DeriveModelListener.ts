@@ -20,6 +20,7 @@ import type {
   AntimonyReactionTerm,
   VariableKind,
 } from "./model";
+import { isBuiltinName } from "./names";
 
 type DeclarationState = {
   kind: VariableKind;
@@ -78,7 +79,14 @@ export class DeriveModelListener implements AntimonyListener {
     return this.#currentModel;
   }
 
-  #getOrCreateVariable(variableCtx: VariableContext): AntimonyVariable {
+  /**
+   * Get or create a variable and return it.
+   * If the variable has the name of a built-in, does not create
+   * the varaible, instead returns undefined.
+   */
+  #getOrCreateVariable(
+    variableCtx: VariableContext,
+  ): AntimonyVariable | undefined {
     const model = this.#getActiveModel();
     const fullName = getVariableName(variableCtx);
 
@@ -92,6 +100,11 @@ export class DeriveModelListener implements AntimonyListener {
     }
 
     const name = fullName[0];
+
+    if (isBuiltinName(name)) {
+      return undefined;
+    }
+
     let variable = model.variables.get(name);
 
     if (!variable) {
@@ -143,6 +156,15 @@ export class DeriveModelListener implements AntimonyListener {
 
     // TODO: is it always OK to re-assign?
     const variable = this.#getOrCreateVariable(ctx.variable());
+    if (!variable) {
+      throw new SemanticError(
+        "Cannot use name of built-in within declaration",
+        {
+          tree: ctx,
+        },
+      );
+    }
+
     variable.kind = this.#currentDeclaration.kind;
     variable.isConst = this.#currentDeclaration.isConst;
   }
@@ -170,6 +192,12 @@ export class DeriveModelListener implements AntimonyListener {
 
   enterAssignment(ctx: AssignmentContext): void {
     const variable = this.#getOrCreateVariable(ctx.variable());
+    if (!variable) {
+      throw new SemanticError("Cannot assign to built-in.", {
+        tree: ctx,
+      });
+    }
+
     const mod = ctx._mod?.text;
     if (mod === ":") {
       if (variable.assignment?.kind === "rate") {
@@ -266,6 +294,12 @@ export class DeriveModelListener implements AntimonyListener {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
       const variable = this.#getOrCreateVariable(reactant.variable());
+      if (!variable) {
+        throw new SemanticError("Cannot use built-in within reaction.", {
+          tree: reactant,
+        });
+      }
+
       // TODO: How does the original antimony handle this? We should do the same.
       if (variable.kind === "compartment") {
         throw new SemanticError("Cannot use compartment in reaction.", {
@@ -287,6 +321,12 @@ export class DeriveModelListener implements AntimonyListener {
     const assignments = new Map<string, FormulaContext>();
     for (const assignment of ctx.eventAssignment()) {
       const variable = this.#getOrCreateVariable(assignment.variable());
+      if (!variable) {
+        throw new SemanticError("Cannot assign to built-in.", {
+          tree: ctx,
+        });
+      }
+
       assignments.set(variable.name, assignment.formula());
     }
 

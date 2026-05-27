@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <limits>
 #include <vector>
+#include <iostream>
 
 #include "model.h"
 #include "event.h"
@@ -131,12 +132,12 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     if (start_time > 0.0) {
         CVode(cvode_mem_, t_out, y_, &t_return, CV_NORMAL);
-    }
+    } // TODO: handle events here
 
     // TODO: temporary hack to get the RHS to update the `p` variables
     //       later should make separate update function
     std::vector<double> dummy_y_dot(original_y_.size());
-    user_data_.rhs(t_out, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+    user_data_.rhs(t_return, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
 
     RecordToOutputArray(t_return);
 
@@ -201,7 +202,9 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
             }
         }
 
-        user_data_.rhs(t_out, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+        std::cout << "time:" << t_return << std::endl;
+
+        user_data_.rhs(t_return, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
         RecordToOutputArray(t_return);
     }
 

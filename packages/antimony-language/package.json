@@ -17,6 +17,7 @@
     "./lint": "./src/lint.ts",
     "./grammar": "./src/grammar.ts",
     "./errors": "./src/errors.ts",
-    "./semantic": "./src/semantic/semantic.ts"
+    "./semantic": "./src/semantic/semantic.ts",
+    "./semantic/names": "./src/semantic/names.ts"
   }
 }
