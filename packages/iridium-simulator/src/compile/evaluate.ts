@@ -236,6 +236,7 @@ class VariableGrabberListener implements AntimonyListener {
  */
 export const getAssignmentOrder = (
   assignments: Map<string, FormulaContext | undefined>,
+  { allowSelfCycle = false } = {},
 ): string[] => {
   const graph: Record<string, Set<string>> = {};
   const inDegrees: Record<string, number> = {};
@@ -255,6 +256,8 @@ export const getAssignmentOrder = (
     );
 
     for (const neighbor of variableListener.getVariables()) {
+      if (allowSelfCycle && neighbor === name) continue;
+      
       if (Object.hasOwn(graph, neighbor)) {
         inDegrees[name] += 1;
         graph[neighbor].add(name);

@@ -79,10 +79,10 @@ def try_generate_results(file: Path) -> None:
             for row in result:
                 f.write(",".join(map(str, row)) + "\n")
 
-        print(f"Wrote to {result_file.name}")
+        print(f"\x1b[32mWrote to {result_file.name}\x1b[0m")
 
     except Exception as e:
-        print(f"Failed to generate results for {file}: {e}")
+        print(f"\x1b[31mFailed to generate results for {file}:\x1b[0m {e}")
 
 
 def main(filter: str = ""):

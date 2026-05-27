@@ -118,8 +118,6 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         CVodeReInit(cvode_mem_, 0.0, y_);
     }
 
-    // TODO: what tolerances to set?
-    // I got these ones from roadrunner
     CVodeSStolerances(cvode_mem_, rel_tol, abs_tol);
 
     if (event_params_.has_value()) {

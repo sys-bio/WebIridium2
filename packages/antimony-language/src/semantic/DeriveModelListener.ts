@@ -146,6 +146,10 @@ export class DeriveModelListener implements AntimonyListener {
     variable.isConst = this.#currentDeclaration.isConst;
   }
 
+  /*
+  TODO: fix plz
+  Not every name is necessarily a variable, e.g. annotations for reaction.
+
   enterName(ctx: NameContext): void {
     this.#getOrCreateVariable(ctx);
   }
@@ -157,6 +161,7 @@ export class DeriveModelListener implements AntimonyListener {
   enterConstant(ctx: ConstantContext): void {
     this.#getOrCreateVariable(ctx);
   }
+  */
 
   enterAssignment(ctx: AssignmentContext): void {
     const variable = this.#getOrCreateVariable(ctx.variable());

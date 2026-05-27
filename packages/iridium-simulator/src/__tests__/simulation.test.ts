@@ -147,6 +147,7 @@ describe("simulation results", () => {
         getResultsFromArray(spec, params.numberOfPoints, array),
       )) {
         for (let i = 0; i < values.length; i++) {
+          // This might be a little too high
           expect(csvResults[name][i]).toBeCloseTo(values[i], 4);
         }
       }

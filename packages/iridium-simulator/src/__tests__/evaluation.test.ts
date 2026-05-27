@@ -11,16 +11,35 @@ const evaluateModel = (code: string) => {
   return evaluateInitialValues(createInternalModel(models));
 };
 
+const getAssignmentOrderFromCode = (code: string, options?: { allowSelfCycle?: boolean }): string[] => {
+  const models = deriveModels(code);
+  const model = createInternalModel(models);
+  return getAssignmentOrder(
+    new Map(
+      Array.from(model.variables.values()).filter(v => v.assignment?.kind !== "rule").map((v) => [
+        v.name,
+        v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
+      ]),
+    ),
+    options,
+  );
+}
+
 describe("evaluation order", () => {
   it("should produce a dependency-ordered assignment list", () => {
-    const assignments = new Map<string, FormulaContext | undefined>();
+    expect(getAssignmentOrderFromCode("A = B + 1; B = C + 2; C = 3")).toEqual(["C", "B", "A"]);
+  });
 
-    const [model] = deriveModels("A = B + 1; B = C + 2; C = 3");
-    for (const variable of model.variables.values()) {
-      assignments.set(variable.name, variable.assignment?.kind === "set" ? variable.assignment.initial : undefined);
-    }
+  it("should not allow self-cycles when not permitted", () => {
+    expect(() => getAssignmentOrderFromCode("A = A + 5")).toThrow(CompileModelError);
+  });
 
-    expect(getAssignmentOrder(assignments)).toEqual(["C", "B", "A"]);
+  it("should allow self-cycles when permitted", () => {
+    expect(getAssignmentOrderFromCode("A = A + 5; B = 5", { allowSelfCycle: true })).toEqual(["A", "B"]);
+  });
+
+  it("should not allow cycles even with self-cycles", () => {
+    expect(() => getAssignmentOrderFromCode("A = A + B; B = A + 5", { allowSelfCycle: true })).toThrow(CompileModelError);
   });
 
   it("should evaluate initial values in the correct topological order", () => {
