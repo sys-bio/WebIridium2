@@ -146,7 +146,15 @@ export class DeriveModelListener implements AntimonyListener {
     variable.isConst = this.#currentDeclaration.isConst;
   }
 
-  enterVariable(ctx: VariableContext): void {
+  enterName(ctx: NameContext): void {
+    this.#getOrCreateVariable(ctx);
+  }
+  
+  enterSubvariable(ctx: SubvariableContext): void {
+    this.#getOrCreateVariable(ctx);
+  }
+  
+  enterConstant(ctx: ConstantContext): void {
     this.#getOrCreateVariable(ctx);
   }
 

@@ -134,6 +134,7 @@ describe("event", () => {
     incorrectFormula: "at time +: A = 3",
     incorrectFormula2: "at time +-: A = 3",
     incorrectFormula3: "at (time > 30: A = 3",
+    assignmentRule: "at time > 5: A := 5",
   });
 
   itShouldSucceedForAll({
@@ -144,7 +145,6 @@ describe("event", () => {
     multiline: "at time > 5:\nA = 3",
     multilines: "at time > 5:\n   \n  \t \nA = 3",
     noSpaces: "at time>5:A=3",
-    assignmentRule: "at time > 5: A := 5",
   });
 });
 

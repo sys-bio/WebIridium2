@@ -18,12 +18,14 @@ import {
   SubvariableContext,
   PowerContext,
   NumberContext,
+  VarContext,
 } from "antimony-language/grammar";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
 import type { InternalModel } from "./model.ts";
 import { CompileModelError } from "./errors.ts";
+import { getVariableName } from "./formula.ts";
 
 // if they didn't have an assignment, give them this one
 const DEFAULT_INITIAL_VALUE = 1;
@@ -214,9 +216,9 @@ class VariableGrabberListener implements AntimonyListener {
     return this.#variables;
   }
 
-  enterVariable(ctx: VariableContext): void {
+  enterVar(ctx: VarContext): void {
     if (ctx.text !== TIME_NAME) {
-      this.#variables.add(ctx.text);
+      this.#variables.add(getVariableName(ctx.variable()));
     }
   }
 }
