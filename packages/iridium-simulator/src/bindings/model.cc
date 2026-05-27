@@ -1,7 +1,6 @@
 #include <cstdint>
 #include <limits>
 #include <vector>
-#include <iostream>
 
 #include "model.h"
 #include "event.h"
@@ -201,8 +200,6 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
                 break;
             }
         }
-
-        std::cout << "time:" << t_return << std::endl;
 
         user_data_.rhs(t_return, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
         RecordToOutputArray(t_return);

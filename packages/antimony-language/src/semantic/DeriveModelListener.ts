@@ -1,5 +1,6 @@
 import { SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
+import { ParserRuleContext } from "antlr4ts";
 import {
   AssignmentContext,
   ConstantContext,
@@ -57,7 +58,9 @@ export class DeriveModelListener implements AntimonyListener {
   #currentModel: AntimonyModel | undefined;
   #currentDeclaration: DeclarationState | undefined;
 
-  constructor() {
+  #diagnostics?: Error[];
+
+  constructor({ diagnostics }: { diagnostics?: Error[] } = {}) {
     this.#models = new Map();
     this.#baseModel = {
       name: "__main",
@@ -66,10 +69,21 @@ export class DeriveModelListener implements AntimonyListener {
       events: [],
     };
     this.#models.set(this.#baseModel.name, this.#baseModel);
+
+    this.#diagnostics = diagnostics;
   }
 
   getModels(): AntimonyModel[] {
     return Array.from(this.#models.values());
+  }
+
+  #reportError(message: string, tree: ParserRuleContext): void {
+    const error = new SemanticError(message, { tree });
+    if (this.#diagnostics) {
+      this.#diagnostics.push(error);
+    } else {
+      throw error;
+    }
   }
 
   #getActiveModel(): AntimonyModel {
@@ -137,9 +151,8 @@ export class DeriveModelListener implements AntimonyListener {
     const declWord = ctx.DECL_WORD();
     if (declWord) {
       if (!ALLOWED_DECLARATIONS.has(declWord.text as VariableKind)) {
-        throw new SemanticError(`${declWord.text} is not supported.`, {
-          tree: ctx,
-        });
+        this.#reportError(`${declWord.text} is not supported.`, ctx);
+        return;
       }
       kind = declWord.text as VariableKind;
     }
@@ -157,12 +170,8 @@ export class DeriveModelListener implements AntimonyListener {
     // TODO: is it always OK to re-assign?
     const variable = this.#getOrCreateVariable(ctx.variable());
     if (!variable) {
-      throw new SemanticError(
-        "Cannot use name of built-in within declaration",
-        {
-          tree: ctx,
-        },
-      );
+      this.#reportError("Cannot use name of built-in within declaration", ctx);
+      return;
     }
 
     variable.kind = this.#currentDeclaration.kind;
@@ -193,20 +202,18 @@ export class DeriveModelListener implements AntimonyListener {
   enterAssignment(ctx: AssignmentContext): void {
     const variable = this.#getOrCreateVariable(ctx.variable());
     if (!variable) {
-      throw new SemanticError("Cannot assign to built-in.", {
-        tree: ctx,
-      });
+      this.#reportError("Cannot assign to built-in.", ctx);
+      return;
     }
 
     const mod = ctx._mod?.text;
     if (mod === ":") {
       if (variable.assignment?.kind === "rate") {
-        throw new SemanticError(
+        this.#reportError(
           "Variable defined by rate assignment cannot simultaneously be defined by rule assignment.",
-          {
-            tree: ctx,
-          },
+          ctx,
         );
+        return;
       }
 
       variable.assignment = {
@@ -215,12 +222,11 @@ export class DeriveModelListener implements AntimonyListener {
       };
     } else if (mod === "'") {
       if (variable.assignment?.kind === "rule") {
-        throw new SemanticError(
+        this.#reportError(
           "Variable defined by rule assignment cannot simultaneously be defined by rate assignment.",
-          {
-            tree: ctx,
-          },
+          ctx,
         );
+        return;
       }
 
       variable.assignment = {
@@ -230,12 +236,11 @@ export class DeriveModelListener implements AntimonyListener {
       };
     } else {
       if (variable.assignment?.kind === "rule") {
-        throw new SemanticError(
+        this.#reportError(
           "Cannot set initial value on variable defined by rule assignment.",
-          {
-            tree: ctx,
-          },
+          ctx,
         );
+        return;
       }
 
       if (!variable.assignment) {
@@ -295,16 +300,14 @@ export class DeriveModelListener implements AntimonyListener {
     for (const reactant of ctx.reactant()) {
       const variable = this.#getOrCreateVariable(reactant.variable());
       if (!variable) {
-        throw new SemanticError("Cannot use built-in within reaction.", {
-          tree: reactant,
-        });
+        this.#reportError("Cannot use built-in within reaction.", reactant);
+        continue;
       }
 
       // TODO: How does the original antimony handle this? We should do the same.
       if (variable.kind === "compartment") {
-        throw new SemanticError("Cannot use compartment in reaction.", {
-          tree: reactant,
-        });
+        this.#reportError("Cannot use compartment in reaction.", reactant);
+        continue;
       }
 
       variable.kind = "species";
@@ -322,9 +325,8 @@ export class DeriveModelListener implements AntimonyListener {
     for (const assignment of ctx.eventAssignment()) {
       const variable = this.#getOrCreateVariable(assignment.variable());
       if (!variable) {
-        throw new SemanticError("Cannot assign to built-in.", {
-          tree: ctx,
-        });
+        this.#reportError("Cannot assign to built-in.", ctx);
+        return;
       }
 
       assignments.set(variable.name, assignment.formula());

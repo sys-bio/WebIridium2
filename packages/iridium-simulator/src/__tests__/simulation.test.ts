@@ -177,8 +177,14 @@ describe("simulation results", () => {
         getResultsFromArray(spec, params.numberOfPoints, array),
       )) {
         for (let i = 0; i < values.length; i++) {
-          // This might be a little too high
-          expect(csvResults[name][i]).toBeCloseTo(values[i], 5);
+          const diff =
+            Math.abs(csvResults[name][i] - values[i]) /
+            Math.max(
+              Math.abs(csvResults[name][i]),
+              Math.abs(values[i]),
+              0.000001,
+            );
+          expect(diff).toBeLessThanOrEqual(2 * params.relativeTolerance);
         }
       }
     });

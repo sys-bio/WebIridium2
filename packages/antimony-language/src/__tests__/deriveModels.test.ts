@@ -78,6 +78,15 @@ it("should derive reactions and parameters for default model", () => {
   );
 });
 
+describe("diagnostics mode", () => {
+  it("should collect diagnostics", () => {
+    const diagnostics: Error[] = [];
+    expect(diagnostics).toHaveLength(0);
+    deriveModels("A := 3; A = 3", { diagnostics });
+    expect(diagnostics).toHaveLength(1);
+  });
+});
+
 describe("assignments", () => {
   it("should set initial assignment", () => {
     expectModel(
