@@ -11,6 +11,7 @@
 #include "sundials/sundials_nvector.h"
 
 #include "event.h"
+#include "wasm.h"
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
@@ -62,7 +63,7 @@ public:
     }
 
     // Reset all variables to their original values.
-    void ResetAllVariables();
+    void ResetState();
 
     void SetYValue(int i, double value);
 
@@ -76,6 +77,10 @@ public:
     Float64Array SimulateTimeCourse(double start_time, double end_time, int num_points);
 
 private:
+    void Integrate(double t_out, double *t_return);
+
+    void ApplyEventInvocation(const EventInvocation &invocation);
+
     void InitializeOutputArray(int num_points);
 
     void RecordToOutputArray(double time);
@@ -98,6 +103,12 @@ private:
 
     std::optional<EventParams> event_params_;
     int num_roots_;
+
+    // simulation state (needs to be reset)
+    EventQueue event_queue_{};
+    std::vector<bool> current_triggered_events_;
+    std::vector<int> roots_found_;
+    std::vector<WasmBool> conditions_state_;
 
     // Should be set by the wrapper
     double abs_tol_ = 1;

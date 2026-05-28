@@ -35,6 +35,8 @@ export const resultToString = (
 ): string => {
   const builder: string[] = [];
 
+  builder.push("Time,");
+
   for (const y of spec.y) {
     builder.push(y.name);
     builder.push(",");
@@ -50,14 +52,20 @@ export const resultToString = (
     builder.push(",");
   }
 
-  builder.push("Time\n");
+  // remove extra last comma
+  builder.pop();
+
+  builder.push("\n");
 
   const cols = spec.y.length + spec.p.length + spec.reactions.length + 1;
 
   for (let y = 0; y < numPoints; y++) {
-    for (let x = 0; x < cols; x++) {
+    // push time first
+    builder.push(result[cols * (y + 1) - 1].toString() + ",");
+
+    for (let x = 0; x < cols - 1; x++) {
       builder.push(result[x + cols * y].toString());
-      if (x < cols - 1) {
+      if (x < cols - 2) {
         builder.push(",");
       }
     }

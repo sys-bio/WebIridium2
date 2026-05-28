@@ -20,9 +20,10 @@ class TestParams:
     num_points: int
     absolute_tolerance: float
     relative_tolerance: float
+    selections: list[str] | None
 
 
-param_regex = re.compile(r"([a-zA-Z]+)=([0-9.e+-]+)")
+param_regex = re.compile(r"\b([A-Za-z]+)=([A-Za-z0-9,-\[\]]+)\b")
 
 def parse_test_params(code: str) -> TestParams:
     first_line = code.splitlines()[0]
@@ -30,16 +31,21 @@ def parse_test_params(code: str) -> TestParams:
     if not first_line.startswith("##"):
         raise Exception("Needs to start with ## then list parameters")
 
-    params = {}
+    params: dict[str, str] = {}
 
     for match in param_regex.finditer(code):
-        params[match.group(1)] = float(match.group(2))
+        params[match.group(1)] = match.group(2)
 
-    return TestParams(start_time=params["start"],
-                      end_time=params["end"],
+    selections = None
+    if "selections" in params:
+        selections = ["time"] + params["selections"].split(",")
+
+    return TestParams(start_time=float(params["start"]),
+                      end_time=float(params["end"]),
                       num_points=int(params["points"]),
-                      absolute_tolerance=params["atol"],
-                      relative_tolerance=params["rtol"])
+                      absolute_tolerance=float(params["atol"]),
+                      relative_tolerance=float(params["rtol"]),
+                      selections=selections)
 
 
 def simulate(code: str, params: TestParams) -> Any:
@@ -50,8 +56,10 @@ def simulate(code: str, params: TestParams) -> Any:
 
     sbml = antimony.getSBMLString()
     rr = roadrunner.RoadRunner(sbml)
-    rr.getIntegrator().setValue("absolute_tolerance", params.absolute_tolerance)
-    rr.getIntegrator().setValue("relative_tolerance", params.relative_tolerance)
+    rr.integrator.setValue("absolute_tolerance", params.absolute_tolerance)
+    rr.integrator.setValue("relative_tolerance", params.relative_tolerance)
+    if params.selections:
+        rr.selections = params.selections
     return rr.simulate(params.start_time, params.end_time, params.num_points)
 
 

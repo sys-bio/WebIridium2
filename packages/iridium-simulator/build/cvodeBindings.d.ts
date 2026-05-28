@@ -19,7 +19,7 @@ export interface ClassHandle {
 }
 export interface Model extends ClassHandle {
   num_variables(): number;
-  ResetAllVariables(): void;
+  ResetState(): void;
   SetYValue(_0: number, _1: number): void;
   SetPValue(_0: number, _1: number): void;
   SetAbsoluteTolerance(_0: number): void;

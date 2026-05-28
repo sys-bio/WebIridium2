@@ -17,7 +17,7 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, std::optional<EventParams>>(
             emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
-        .function("ResetAllVariables", &Model::ResetAllVariables)
+        .function("ResetState", &Model::ResetState)
         .function("SetYValue", &Model::SetYValue)
         .function("SetPValue", &Model::SetPValue)
         .function("SetAbsoluteTolerance", &Model::SetAbsoluteTolerance)

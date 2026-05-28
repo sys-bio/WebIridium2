@@ -1,7 +1,8 @@
 #include "event.h"
+#include <queue>
 #include <stdexcept>
 
-double EventQueue::GetNextEventTime() const {
+double EventQueue::GetNextInvocationTime() const {
     if (queue_.empty()) {
         return -1;
     } else {
@@ -9,11 +10,8 @@ double EventQueue::GetNextEventTime() const {
     }
 }
 
-void EventQueue::AddEventInvocation(
-    double time,
-    EventInvocation event_invocation
-) {
-    queue_.emplace(event_invocation);
+void EventQueue::AddInvocation(EventInvocation event_invocation) {
+    queue_.emplace(std::move(event_invocation));
 }
 
 void EventQueue::RemoveInvocationsOf(const EventInfo &event) {
@@ -28,8 +26,16 @@ bool EventQueue::IsInvocationAvailable(double time) const {
     }
 }
 
-EventInvocation EventQueue::PopEventInvocation() {
-    const EventInvocation &got = queue_.top();
+EventInvocation EventQueue::PopInvocation() {
+    EventInvocation got = std::move(queue_.top());
     queue_.pop();
     return got;
+}
+
+void EventQueue::Clear() {
+    queue_ = std::priority_queue<
+        EventInvocation,
+        std::vector<EventInvocation>,
+        EventQueue::CompareQueuedEvent
+    >();
 }

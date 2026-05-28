@@ -38,9 +38,8 @@ struct EventInfo {
 struct EventInvocation {
     const EventInfo *event_info;
     double time;
-    bool has_assignments;
-    std::vector<int> y_values;
-    std::vector<int> p_values;
+    std::vector<double> y_values;
+    std::vector<double> p_values;
 };
 
 class EventQueue {
@@ -51,10 +50,10 @@ public:
     EventQueue& operator=(const EventQueue&) = delete;
 
     // Returns the time for the next event, or `-1` if there is none.
-    double GetNextEventTime() const;
+    double GetNextInvocationTime() const;
 
-    // Adds an invocation for an event that should run at the given time.
-    void AddEventInvocation(double time, EventInvocation event_invocation);
+    // Adds an invocation for an event.
+    void AddInvocation(EventInvocation event_invocation);
 
     // Removes all EventInvocation associated with the given Event.
     void RemoveInvocationsOf(const EventInfo &event_info);
@@ -63,16 +62,19 @@ public:
     bool IsInvocationAvailable(double time) const;
 
     // Pops and returns the most recent event invocation.
-    EventInvocation PopEventInvocation();
+    EventInvocation PopInvocation();
+
+    // Clears all invocations.
+    void Clear();
 
 private:
     class CompareQueuedEvent {
     public:
         bool operator()(const EventInvocation &a, const EventInvocation &b) {
             if (a.time == b.time) {
-                return a.event_info->priority > b.event_info->priority;
+                return a.event_info->priority < b.event_info->priority;
             } else {
-                return a.time < b.time;
+                return a.time > b.time;
             }
         }
     };

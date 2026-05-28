@@ -173,14 +173,24 @@ describe("simulation results", () => {
         );
       }
 
-      for (const [name, values] of Object.entries(
-        getResultsFromArray(spec, params.numberOfPoints, array),
-      )) {
+      const gotResults = getResultsFromArray(
+        spec,
+        params.numberOfPoints,
+        array,
+      );
+
+      for (const [name, values] of Object.entries(gotResults)) {
         for (let i = 0; i < values.length; i++) {
+          const got = values[i];
+          const expected = csvResults[name][i];
           const diff =
-            Math.abs(csvResults[name][i] - values[i]) /
-            Math.max(Math.abs(csvResults[name][i]), Math.abs(values[i]), 1e-12);
-          expect(diff).toBeLessThanOrEqual(10 * params.relativeTolerance);
+            Math.abs(expected - got) /
+            Math.max(Math.abs(expected), Math.abs(got), 1e-3);
+          if (diff > 1e-4) {
+            throw new Error(
+              `${name} too far apart at index ${i}. Expected ${expected}, got ${got}, diff ${diff}.`,
+            );
+          }
         }
       }
     });

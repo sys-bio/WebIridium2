@@ -45,7 +45,7 @@ const simulateTimeCourse = async ({
   const wrapper = await ensureWrapper();
 
   if (parameters.resetInitialConditions) {
-    wrapper.resetAllVariables();
+    wrapper.resetState();
   }
 
   if (parameterScanOptions?.varyingParameter) {

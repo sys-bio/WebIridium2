@@ -202,8 +202,8 @@ export class CvodeWrapper {
     return array.slice();
   }
 
-  resetAllVariables(): void {
-    this.#internalModel?.binding.ResetAllVariables();
+  resetState(): void {
+    this.#internalModel?.binding.ResetState();
   }
 
   setVariable(name: string, value: number): void {
