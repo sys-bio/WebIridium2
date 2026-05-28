@@ -1,3 +1,5 @@
+# Pass <test name> as first argument to get the plots for that test.
+
 from pathlib import Path
 import sys
 import numpy as np

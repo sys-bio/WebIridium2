@@ -1,3 +1,6 @@
+# Run without any arguments to generate data for every test.
+# Run with <substring> to generate data only for tests with names containing the substring.
+
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path

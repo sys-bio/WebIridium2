@@ -13,6 +13,8 @@ This will build the bindings into `./build`. After this, you just need to run `c
 
 If you are building for release, change the last flag in the `emcmake` command to `-DCMAKE_BUILD_TYPE=Release`.
 
+## IDE Support
+
 If your IDE is flagging errors, you might also also have to add this flag to the `emcmake` command: `-DCMAKE_EXPORT_COMPILE_COMMANDS=on`.
 This adds `compile_commands.json` to the build directory. It will help your IDE identify that you are using Emscripten plus some other stuff.
 You will probably get some errors in your IDE still, but you can just ignore them, as long as everything still compiles.
@@ -20,3 +22,14 @@ You will probably get some errors in your IDE still, but you can just ignore the
 # Testing
 
 You have to use `npm run test-sim`.
+
+## Viewing Plots
+
+ - In the `simulation.test.ts` there is an option to write the results to a CSV file.
+ - If you enable it, it will create a `iridiumResults/` directory and write the results there. We have another script that uses this data for plotting.
+ - In `scripts/` there is a `generateData.py` script.
+ - If you are using uv, you an run it with `uv run scripts/generateData.py`.
+ - It will use RoadRunner to generate the expected data for each tests in `src/__tests__/results/`.
+ - Then run then run the `plotCompare.py <test name>` script to get a plot of the expected and received results and their difference.
+ - This script gets the data in `iridiumResults/` and `src/__tests__/results/` and plots them.
+
