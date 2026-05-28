@@ -1,8 +1,7 @@
 import { deriveModelsFromParseTree } from "antimony-language/semantic";
 import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
-import { IndexSymbolTable } from "./SymbolTable";
-import { TypeTable } from "./wasmTypes";
+import { IndexSymbolTable, TypeTable } from "./symbolTables.ts";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { EventSpec, ModelSpec } from "../modelSpec";

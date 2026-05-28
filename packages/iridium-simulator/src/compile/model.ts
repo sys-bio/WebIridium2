@@ -4,7 +4,7 @@ import type {
   AntimonyReaction,
   AntimonyModel,
 } from "antimony-language/semantic";
-import { IndexSymbolTable } from "./SymbolTable";
+import { IndexSymbolTable } from "./symbolTables.ts";
 
 /**
  * Internal representation of a model for compilation.

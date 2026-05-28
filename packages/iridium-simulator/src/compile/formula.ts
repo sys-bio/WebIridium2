@@ -20,7 +20,7 @@ import {
 } from "antimony-language/grammar";
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
-import type { IndexSymbolTable } from "./SymbolTable";
+import type { IndexSymbolTable } from "./symbolTables.ts";
 import { POW_RESERVED_NAME } from "./functions";
 import type { EmitLoadVariableFunction } from "./Emitter";
 import {

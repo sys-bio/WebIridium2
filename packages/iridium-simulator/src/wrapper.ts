@@ -22,7 +22,7 @@ import {
   type ImportedFunction,
 } from "./compile/functions.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
-import { IndexSymbolTable } from "./compile/SymbolTable.ts";
+import { IndexSymbolTable } from "./compile/symbolTables.ts";
 
 interface InternalModel {
   spec: ModelSpec;

@@ -8,7 +8,7 @@ import {
   type AntimonyVisitor,
 } from "antimony-language/grammar";
 import { emitFormula } from "./formula";
-import { IndexSymbolTable, LocalsSymbolTable } from "./SymbolTable";
+import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter, {
   createEmitLoadVariable,

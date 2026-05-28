@@ -72,7 +72,7 @@ describe("simulation results", () => {
     relativeTolerance: number;
   };
 
-  type ResultsObject = Record<string, number[]>;
+  type Columns = Record<string, number[]>;
 
   const paramRegex = /([A-Za-z]+)=([0-9.e+-]+)/g;
   const parseTestParams = (code: string): TestParams => {
@@ -91,49 +91,63 @@ describe("simulation results", () => {
     };
   };
 
-  const getResultsFromCsv = (csv: string): ResultsObject => {
-    const results: ResultsObject = {};
+  const getColumnsFromCsv = (csv: string): Columns => {
+    const columns: Columns = {};
     const lines = csv.split("\n");
     const columnNames = [];
 
     for (const name of lines[0].split(",")) {
-      results[name] = [];
+      columns[name] = [];
       columnNames.push(name);
     }
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",");
       for (let j = 0; j < values.length; j++) {
-        results[columnNames[j]].push(Number(values[j]));
+        columns[columnNames[j]].push(Number(values[j]));
       }
     }
 
-    return results;
+    return columns;
   };
 
-  const getResultsFromArray = (
+  const getColumnsFromArray = (
     spec: ModelSpec,
     numPoints: number,
     array: Float64Array,
-  ): ResultsObject => {
-    const results: ResultsObject = {};
+  ): Columns => {
+    const columns: Columns = {};
 
     let i = 0;
     const rowLength = spec.y.length + spec.p.length + spec.reactions.length + 1;
 
     for (const y of spec.y) {
-      if (y.kind === "floating") {
-        const column = [];
-        for (let j = 0; j < numPoints; j++) {
-          column.push(array[j * rowLength + i]);
-        }
-        results[y.name] = column;
+      const column = [];
+      for (let j = 0; j < numPoints; j++) {
+        column.push(array[j * rowLength + i]);
       }
+      columns[y.name] = column;
 
       i += 1;
     }
 
-    return results;
+    for (const p of spec.p) {
+      const column = [];
+      for (let j = 0; j < numPoints; j++) {
+        column.push(array[j * rowLength + i]);
+      }
+      columns[p.name] = column;
+
+      i += 1;
+    }
+
+    const timeColumn = [];
+    for (let j = 0; j < numPoints; j++) {
+      timeColumn.push(array[(j + 1) * rowLength - 1]);
+    }
+    columns["Time"] = timeColumn;
+
+    return columns;
   };
 
   for (const [fileName, code] of Object.entries(simulationFiles)) {
@@ -153,7 +167,13 @@ describe("simulation results", () => {
         params.relativeTolerance,
       );
 
-      const csvResults = getResultsFromCsv(csv);
+      const expectedColumns = getColumnsFromCsv(csv);
+
+      const gotColumns = getColumnsFromArray(
+        spec,
+        params.numberOfPoints,
+        array,
+      );
 
       if (WRITE_TEST_OUTPUT) {
         // write results to file for debugging
@@ -173,19 +193,20 @@ describe("simulation results", () => {
         );
       }
 
-      const gotResults = getResultsFromArray(
-        spec,
-        params.numberOfPoints,
-        array,
-      );
+      if (modelName === "./results/constants") {
+        console.log(Object.keys(gotColumns), Object.keys(expectedColumns));
+      }
 
-      for (const [name, values] of Object.entries(gotResults)) {
-        for (let i = 0; i < values.length; i++) {
-          const got = values[i];
-          const expected = csvResults[name][i];
+      for (const [name, column] of Object.entries(expectedColumns)) {
+        for (let i = 0; i < column.length; i++) {
+          const got = gotColumns[name][i];
+          const expected = column[i];
           const diff =
             Math.abs(expected - got) /
             Math.max(Math.abs(expected), Math.abs(got), 1e-3);
+          if (modelName === "./results/constants") {
+            console.log(expectedColumns, gotColumns);
+          }
           if (diff > 1e-4) {
             throw new Error(
               `${name} too far apart at index ${i}. Expected ${expected}, got ${got}, diff ${diff}.`,

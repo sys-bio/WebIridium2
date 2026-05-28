@@ -22,8 +22,9 @@ import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
 import type { InternalModel } from "./model.ts";
-import { CompileModelError } from "./errors.ts";
+import { CompileModelError, EvaluationError } from "./errors.ts";
 import { getVariableName } from "./formula.ts";
+import { builtinConstants } from "antimony-language/semantic/builtins";
 
 // if they didn't have an assignment, give them this one
 // annoyingly, COPASI uses 1, RoadRunner uses 0
@@ -60,8 +61,8 @@ export const evaluateInitialValues = (
   //                     should still start at 0. No other reasonable behavior imo.
   initialValues.set(TIME_NAME, 0);
 
+  const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
   for (const name of evalOrder) {
-    const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
     const variable = model.variables.get(name)!;
 
     if (variable?.assignment?.kind === "rule") {
@@ -211,29 +212,20 @@ class AssignmentEvaluatorVisitor
   }
 
   visitVar(ctx: VarContext): number {
-    return this.#variables.get(getVariableName(ctx.variable())) as number;
+    const name = getVariableName(ctx.variable());
+    if (Object.hasOwn(builtinConstants, name)) {
+      return builtinConstants[name].value;
+    }
+
+    const got = this.#variables.get(name);
+    if (got === undefined) {
+      throw new EvaluationError(`Unbound name: ${name}`, { tree: ctx });
+    }
+    return got;
   }
 
   visitNumber(ctx: NumberContext): number {
     return Number(ctx.NUMBER().text);
-  }
-}
-
-class VariableGrabberListener implements AntimonyListener {
-  #variables: Set<string>;
-
-  constructor() {
-    this.#variables = new Set<string>();
-  }
-
-  getVariables(): Set<string> {
-    return this.#variables;
-  }
-
-  enterVar(ctx: VarContext): void {
-    if (ctx.text !== TIME_NAME) {
-      this.#variables.add(getVariableName(ctx.variable()));
-    }
   }
 }
 
@@ -306,3 +298,21 @@ export const getAssignmentOrder = (
 
   return order;
 };
+
+class VariableGrabberListener implements AntimonyListener {
+  #variables: Set<string>;
+
+  constructor() {
+    this.#variables = new Set<string>();
+  }
+
+  getVariables(): Set<string> {
+    return this.#variables;
+  }
+
+  enterVar(ctx: VarContext): void {
+    if (ctx.text !== TIME_NAME) {
+      this.#variables.add(getVariableName(ctx.variable()));
+    }
+  }
+}

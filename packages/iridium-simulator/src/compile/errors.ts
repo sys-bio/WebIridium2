@@ -6,6 +6,11 @@ import { ParseTreeError } from "antimony-language/errors";
 export class CompileError extends ParseTreeError {}
 
 /**
+ * Represents error evaluating an expression.
+ */
+export class EvaluationError extends ParseTreeError {}
+
+/**
  * Represents a compile error that occurs for the whole model.
  */
 export class CompileModelError extends Error {}

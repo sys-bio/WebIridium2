@@ -1,3 +1,4 @@
+import { builtinConstants } from "antimony-language/semantic/builtins";
 import { P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
 import {
   CompositeType,
@@ -9,7 +10,7 @@ import {
 } from "./codes";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import type { InternalModel } from "./model";
-import type { LocalsSymbolTable } from "./SymbolTable";
+import type { LocalsSymbolTable } from "./symbolTables.ts";
 
 const INITIAL_CAPACITY = 32;
 const RESIZE_FACTOR = 2;
@@ -35,6 +36,9 @@ export const createEmitLoadVariable = (
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(T_PARAM));
+    } else if (Object.hasOwn(builtinConstants, name)) {
+      emitter.emitByte(OpCode.f64const);
+      emitter.emitFloat64(builtinConstants[name].value);
     } else if (pTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(P_PARAM));

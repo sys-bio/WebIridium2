@@ -1,6 +1,6 @@
 import { ValType, OpCode } from "./codes";
 import Emitter, { createEmitLoadVariable } from "./Emitter";
-import { IndexSymbolTable, LocalsSymbolTable } from "./SymbolTable";
+import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { getAssignmentOrder } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
