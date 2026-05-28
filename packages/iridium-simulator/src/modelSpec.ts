@@ -8,7 +8,8 @@ export type EventSpec = {
   countRoots: number;
   yIndices: number[];
   pIndices: number[];
-  getDelayExport: string;
+  getDelayExport?: string;
+  getPriorityExport?: string;
   getAssignmentsExport: string;
 };
 

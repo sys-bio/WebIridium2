@@ -38,6 +38,7 @@ export type AntimonyEvent = {
   trigger: FormulaContext;
   assignments: Map<string, FormulaContext>;
   delay?: FormulaContext;
+  options: Record<string, FormulaContext | undefined>;
 };
 
 export type AntimonyReaction = {

@@ -231,3 +231,11 @@ describe("$ modifier", () => {
     );
   });
 });
+
+describe("events", () => {
+  it("should error for invalid option", () => {
+    expect(() => {
+      deriveModels("at 5, t = false: A = 0");
+    }).toThrow();
+  });
+});

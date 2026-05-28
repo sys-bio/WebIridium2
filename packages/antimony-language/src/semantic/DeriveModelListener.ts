@@ -21,7 +21,7 @@ import type {
   AntimonyReactionTerm,
   VariableKind,
 } from "./model";
-import { isBuiltinName } from "./names";
+import { isBuiltinName, builtinEventOptions } from "./builtins";
 
 type DeclarationState = {
   kind: VariableKind;
@@ -332,10 +332,23 @@ export class DeriveModelListener implements AntimonyListener {
       assignments.set(variable.name, assignment.formula());
     }
 
+    const options: Record<string, FormulaContext> = {};
+    const eventOptions = ctx.eventOptions();
+    if (eventOptions) {
+      for (const option of eventOptions.eventOption()) {
+        const name = option.NAME().text;
+        if (!builtinEventOptions.includes(name)) {
+          this.#reportError(`Unknown event option: ${name}`, option);
+          continue;
+        }
+      }
+    }
+
     this.#getActiveModel().events.push({
       assignments,
       trigger: ctx._trigger,
       delay: ctx._delay,
+      options: options,
     });
   }
 }

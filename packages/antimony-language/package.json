@@ -18,6 +18,6 @@
     "./grammar": "./src/grammar.ts",
     "./errors": "./src/errors.ts",
     "./semantic": "./src/semantic/semantic.ts",
-    "./semantic/names": "./src/semantic/names.ts"
+    "./semantic/builtins": "./src/semantic/builtins.ts"
   }
 }
