@@ -62,8 +62,11 @@ declarationTerm : assignment #declarationAssignment
                 | variable inCompartment? #declarationName
                 ;
 
-event           : AT formula ':' NEWLINE* eventAssignment (',' eventAssignment)*;
-eventAssignment : variable '=' formula;
+event            : AT trigger=formula ':' eventAssignments
+                 | AT delay=formula AFTER trigger=formula ':' eventAssignments
+                 ;
+eventAssignments : NEWLINE* eventAssignment (',' eventAssignment)*;
+eventAssignment  : variable '=' formula;
 
 annotation         : variableAnnotation | hasAnnotation | modelAnnotation;
 variableAnnotation : variable annotationBody;

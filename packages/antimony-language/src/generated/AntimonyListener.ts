@@ -51,6 +51,7 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
+import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
@@ -637,6 +638,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEvent?: (ctx: EventContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.eventAssignments`.
+	 * @param ctx the parse tree
+	 */
+	enterEventAssignments?: (ctx: EventAssignmentsContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.eventAssignments`.
+	 * @param ctx the parse tree
+	 */
+	exitEventAssignments?: (ctx: EventAssignmentsContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.eventAssignment`.

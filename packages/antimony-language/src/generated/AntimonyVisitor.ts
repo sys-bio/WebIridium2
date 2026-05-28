@@ -51,6 +51,7 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
+import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
@@ -426,6 +427,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEvent?: (ctx: EventContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.eventAssignments`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEventAssignments?: (ctx: EventAssignmentsContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.eventAssignment`.

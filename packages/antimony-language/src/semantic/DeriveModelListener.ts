@@ -322,7 +322,7 @@ export class DeriveModelListener implements AntimonyListener {
 
   enterEvent(ctx: EventContext): void {
     const assignments = new Map<string, FormulaContext>();
-    for (const assignment of ctx.eventAssignment()) {
+    for (const assignment of ctx.eventAssignments().eventAssignment()) {
       const variable = this.#getOrCreateVariable(assignment.variable());
       if (!variable) {
         this.#reportError("Cannot assign to built-in.", ctx);
@@ -334,7 +334,8 @@ export class DeriveModelListener implements AntimonyListener {
 
     this.#getActiveModel().events.push({
       assignments,
-      trigger: ctx.formula(),
+      trigger: ctx._trigger,
+      delay: ctx._delay,
     });
   }
 }

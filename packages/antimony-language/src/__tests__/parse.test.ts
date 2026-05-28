@@ -135,6 +135,9 @@ describe("event", () => {
     incorrectFormula2: "at time +-: A = 3",
     incorrectFormula3: "at (time > 30: A = 3",
     assignmentRule: "at time > 5: A := 5",
+    missingDelay: "at 5 after: A = 5",
+    delayNoAssignment: "at 5 after 3:",
+    delayNoAssignment2: "at 5 after:",
   });
 
   itShouldSucceedForAll({
@@ -145,6 +148,8 @@ describe("event", () => {
     multiline: "at time > 5:\nA = 3",
     multilines: "at time > 5:\n   \n  \t \nA = 3",
     noSpaces: "at time>5:A=3",
+    delay: "at 5 after time > 3: A = 4\nA=3",
+    delayFormula: "at B * C after 5 > 3: A = 3",
   });
 });
 
