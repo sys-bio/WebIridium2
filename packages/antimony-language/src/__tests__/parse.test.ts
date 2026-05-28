@@ -138,6 +138,11 @@ describe("event", () => {
     missingDelay: "at 5 after: A = 5",
     delayNoAssignment: "at 5 after 3:",
     delayNoAssignment2: "at 5 after:",
+    optionExtraComma: "at dog > 5,: dog = 6",
+    optionNoEquals: "at dog > 5, cat: dog = 6",
+    optionNoFormula: "at dog > 5, cat =: dog = 6",
+    optionExtraComment2: "at dog > 5, cat = 3, : dog = 6",
+    optionExtraEqual: "at dog > 5, cat = 3, = : dog = 6",
   });
 
   itShouldSucceedForAll({
@@ -150,6 +155,10 @@ describe("event", () => {
     noSpaces: "at time>5:A=3",
     delay: "at 5 after time > 3: A = 4\nA=3",
     delayFormula: "at B * C after 5 > 3: A = 3",
+    option: "at dog > 5, priority = 5: dog = 6",
+    option2: "at dog > 5, t0=true, p3=2: dog = 6",
+    delayWithOption: "at 5 after dog > 5, t0=true, p3=2: dog = 6",
+    delayWithOption2: "at 5 after dog > 5, t0=false: dog = 6",
   });
 });
 

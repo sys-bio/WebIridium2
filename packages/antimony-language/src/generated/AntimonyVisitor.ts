@@ -1,4 +1,5 @@
 // @ts-nocheck
+// @ts-nocheck
 // Generated from ./src/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 
@@ -51,6 +52,8 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
+import { EventOptionsContext } from "./AntimonyParser";
+import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
@@ -427,6 +430,20 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEvent?: (ctx: EventContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.eventOptions`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEventOptions?: (ctx: EventOptionsContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.eventOption`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEventOption?: (ctx: EventOptionContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.eventAssignments`.

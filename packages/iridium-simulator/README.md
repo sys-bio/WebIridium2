@@ -25,11 +25,10 @@ You have to use `npm run test-sim`.
 
 ## Viewing Plots
 
- - In the `simulation.test.ts` there is an option to write the results to a CSV file.
- - If you enable it, it will create a `iridiumResults/` directory and write the results there. We have another script that uses this data for plotting.
- - In `scripts/` there is a `generateData.py` script.
- - If you are using uv, you an run it with `uv run scripts/generateData.py`.
- - It will use RoadRunner to generate the expected data for each tests in `src/__tests__/results/`.
- - Then run then run the `plotCompare.py <test name>` script to get a plot of the expected and received results and their difference.
- - This script gets the data in `iridiumResults/` and `src/__tests__/results/` and plots them.
-
+- In the `simulation.test.ts` there is an option to write the results to a CSV file.
+- If you enable it, it will create a `iridiumResults/` directory and write the results there. We have another script that uses this data for plotting.
+- In `scripts/` there is a `generateData.py` script.
+- If you are using uv, you an run it with `uv run scripts/generateData.py`.
+- It will use RoadRunner to generate the expected data for each tests in `src/__tests__/results/`.
+- Then run then run the `plotCompare.py <test name>` script to get a plot of the expected and received results and their difference.
+- This script gets the data in `iridiumResults/` and `src/__tests__/results/` and plots them.

@@ -62,9 +62,11 @@ declarationTerm : assignment #declarationAssignment
                 | variable inCompartment? #declarationName
                 ;
 
-event            : AT trigger=formula ':' eventAssignments
-                 | AT delay=formula AFTER trigger=formula ':' eventAssignments
+event            : AT trigger=formula eventOptions? ':' eventAssignments
+                 | AT delay=formula AFTER trigger=formula eventOptions? ':' eventAssignments
                  ;
+eventOptions     : (',' eventOption)+;
+eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' eventAssignment)*;
 eventAssignment  : variable '=' formula;
 
