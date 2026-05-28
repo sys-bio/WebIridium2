@@ -73,7 +73,10 @@ export default defineConfig({
     ],
     setupFiles: ["./src/vitestSetup.ts", "@vitest/web-worker"],
     environment: "jsdom",
-    exclude: [...defaultExclude, "packages/iridium-simulator/**/*.test.{ts,js}"],
+    exclude: [
+      ...defaultExclude,
+      "packages/iridium-simulator/**/*.test.{ts,js}",
+    ],
     coverage: {
       include: ["src"],
       exclude: [

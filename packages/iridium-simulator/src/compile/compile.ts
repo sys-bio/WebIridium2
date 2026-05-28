@@ -5,7 +5,7 @@ import { IndexSymbolTable } from "./SymbolTable";
 import { TypeTable } from "./wasmTypes";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import type { ModelSpec } from "../modelSpec";
+import type { EventSpec, ModelSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import { parse } from "antimony-language/parse";
 import {
@@ -22,7 +22,7 @@ import {
 } from "../names";
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { createInternalModel, type InternalModel } from "./model";
-import { compileEvents, type CompiledEvent } from "./event";
+import { compileEvents } from "./event";
 import {
   builtinFunctions,
   POW_RESERVED_NAME,
@@ -38,7 +38,7 @@ export const compileIntermediate = (
 ): {
   model: InternalModel;
   imports: string[];
-  events: CompiledEvent[];
+  eventSpecs: EventSpec[];
   bytecode: Uint8Array;
 } => {
   const root = parse(code);
@@ -64,24 +64,23 @@ export const compileIntermediate = (
     }),
   ];
 
-  let events: CompiledEvent[] = [];
+  let eventSpecs: EventSpec[] = [];
   if (internalModel.events.length > 0) {
-    const { functions: eventFunctions, events: compiledEvents } =
-      compileEvents(internalModel);
-    functions.push(...eventFunctions);
-    events = compiledEvents;
+    const eventsResult = compileEvents(internalModel);
+    functions.push(...eventsResult.functions);
+    eventSpecs = eventsResult.eventSpecs;
   }
 
   return {
     model: internalModel,
     imports: referencedFunctions,
-    events,
+    eventSpecs,
     bytecode: compileFunctions(functions),
   };
 };
 
 export const compile = async (code: string): Promise<ModelSpec> => {
-  const { model, imports, events, bytecode } = compileIntermediate(code);
+  const { model, imports, eventSpecs, bytecode } = compileIntermediate(code);
 
   const initialValues = evaluateInitialValues(model);
 
@@ -117,11 +116,7 @@ export const compile = async (code: string): Promise<ModelSpec> => {
       }
     }),
     reactions: model.reactions.map((r) => r.name),
-    events: events.map((e) => ({
-      ...e,
-      yIndices: e.yIndices.keys().map((y) => model.yTable.get(y)),
-      pIndices: e.pIndices.keys().map((p) => model.pTable.get(p)),
-    })),
+    events: eventSpecs,
     wasmModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };

@@ -29,6 +29,7 @@ import type { InternalModel } from "./model";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
+import type { EventSpec } from "../modelSpec";
 
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
@@ -100,9 +101,9 @@ const compileEventCondition = (
 
   emitFormula(subtractionCtx, emitter, emitLoadVariable, functionTable);
 
-  if (op === "!=") {
+  if (op === "==" || op === "==") {
     // TODO: fix this
-    throw new CompileError("!= in events not yet supported.", { tree: ctx });
+    throw new CompileError("==/!= in events not yet supported.", { tree: ctx });
   }
 };
 
@@ -175,33 +176,11 @@ const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
   };
 };
 
-export const createInternalEventsFromModel = (
-  model: InternalModel,
-): InternalEvent[] => {
-  const internalEvents: InternalEvent[] = [];
-
-  for (const event of model.events) {
-    internalEvents.push(createInternalEvent(event));
-  }
-
-  return internalEvents;
-};
-
-const G_PARAM = "g[]";
-
-export type CompiledEvent = {
-  countRoots: number;
-  yIndices: IndexSymbolTable;
-  pIndices: IndexSymbolTable;
-  getDelayExport: string;
-  getAssignmentsExport: string;
-};
-
 export const compileEvents = (
   model: InternalModel,
-): { functions: WasmFunction[]; events: CompiledEvent[] } => {
-  const events = createInternalEventsFromModel(model);
-  const compiledEvents: CompiledEvent[] = [];
+): { functions: WasmFunction[]; eventSpecs: EventSpec[] } => {
+  const events = model.events.map(createInternalEvent);
+  const eventSpecs: EventSpec[] = [];
   const eventFns: WasmFunction[] = [];
 
   for (const event of events) {
@@ -218,7 +197,7 @@ export const compileEvents = (
           tree: formula.parent,
         });
       } else {
-        throw new CompileError("Unbound name.", {
+        throw new CompileError(`Unbound name: ${name}`, {
           tree: (
             formula?.parent as EventAssignmentContext | undefined
           )?.variable?.(),
@@ -226,20 +205,13 @@ export const compileEvents = (
       }
     }
 
-    const compiledEvent: CompiledEvent = {
-      getDelayExport: generateSymbol("getDelay"),
-      getAssignmentsExport: generateSymbol("getAssignments"),
-      yIndices: yIndices,
-      pIndices: pIndices,
-      countRoots: event.conditions.length,
-    };
-
-    compiledEvents.push(compiledEvent);
+    const getDelayExport = generateSymbol("getDelay");
+    const getAssignmentsExport = generateSymbol("getAssignments");
 
     eventFns.push({
       kind: "compile",
       isExported: true,
-      name: compiledEvent.getDelayExport,
+      name: getDelayExport,
       params: GET_DELAY_PARAMS,
       results: GET_DELAY_RESULTS,
       compileBody: (functionTable) =>
@@ -249,16 +221,33 @@ export const compileEvents = (
     eventFns.push({
       kind: "compile",
       isExported: true,
-      name: compiledEvent.getAssignmentsExport,
+      name: getAssignmentsExport,
       params: GET_ASSIGNMENTS_PARAMS,
       results: GET_ASSIGNMENTS_RESULTS,
       compileBody: (functionTable) =>
         compileGetAssignments(
           model,
           event,
-          compiledEvent,
+          yIndices,
+          pIndices,
           functionTable,
         ).getOutput(),
+    });
+
+    eventSpecs.push({
+      getAssignmentsExport,
+      getDelayExport,
+      countRoots: event.conditions.length,
+      // These are actually a different set of indices.
+      // We start with maybe some variables: A, B, C
+      // In the getAssignments function we are given a double[3] array.
+      // We pick [A: 1, B: 2, C: 3]
+      // Then let's say the index of A in the model is 2, B is 4, C is 10
+      // In the EventSpec, we say [1: 2, 2: 4, 3: 10]
+      // Now when someone else reads the double[3] array, they know the first
+      // value correspond with variable 2 (A), second with variable 4 (B), etc.
+      yIndices: yIndices.keys().map((y) => model.yTable.get(y)),
+      pIndices: pIndices.keys().map((p) => model.pTable.get(p)),
     });
   }
 
@@ -283,9 +272,11 @@ export const compileEvents = (
       },
       ...eventFns,
     ],
-    events: compiledEvents,
+    eventSpecs,
   };
 };
+
+const G_PARAM = "g[]";
 
 const compileRoots = (
   functionTable: IndexSymbolTable,
@@ -392,7 +383,7 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
 
       if (direction === 0) {
         // TODO: handle this properly
-        throw new CompileError("== in event not yet supported.", {
+        throw new CompileError("==/!= in event not yet supported.", {
           tree: ctx,
         });
       } else if (direction > 0) {
@@ -465,17 +456,16 @@ const compileGetDelay = (
   return emitter;
 };
 
-const Y_OUT_PARAM = "y_out[]";
-const P_OUT_PARAM = "p_out[]";
+const Y_OUT_PARAM = "yout[]";
+const P_OUT_PARAM = "pout[]";
 
 const compileGetAssignments = (
   model: InternalModel,
   event: InternalEvent,
-  compiledEvent: CompiledEvent,
+  yIndices: IndexSymbolTable,
+  pIndices: IndexSymbolTable,
   functionTable: IndexSymbolTable,
 ): Emitter => {
-  const { yIndices, pIndices } = compiledEvent;
-
   const emitter = new Emitter();
 
   const localsTable = new LocalsSymbolTable([

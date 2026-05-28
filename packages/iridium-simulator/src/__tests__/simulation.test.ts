@@ -179,12 +179,8 @@ describe("simulation results", () => {
         for (let i = 0; i < values.length; i++) {
           const diff =
             Math.abs(csvResults[name][i] - values[i]) /
-            Math.max(
-              Math.abs(csvResults[name][i]),
-              Math.abs(values[i]),
-              1e-12,
-            );
-          expect(diff).toBeLessThanOrEqual(10*params.relativeTolerance);
+            Math.max(Math.abs(csvResults[name][i]), Math.abs(values[i]), 1e-12);
+          expect(diff).toBeLessThanOrEqual(10 * params.relativeTolerance);
         }
       }
     });
