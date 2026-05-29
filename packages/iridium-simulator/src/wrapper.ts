@@ -107,12 +107,23 @@ export class CvodeWrapper {
         const getAssignmentsPtr = this.#bindings.addFunction(
           instance.exports[event.getAssignmentsExport],
         ) as number;
+        funcPtrs.push(getAssignmentsPtr);
 
         let getDelayPtr: number | undefined;
         if (event.getDelayExport) {
           getDelayPtr = this.#bindings.addFunction(
             instance.exports[event.getDelayExport],
           ) as number;
+          funcPtrs.push(getDelayPtr);
+        }
+
+        let getPriorityPtr: number | undefined;
+        if (event.getPriorityExport) {
+          console.log("please add priority");
+          getPriorityPtr = this.#bindings.addFunction(
+            instance.exports[event.getPriorityExport],
+          ) as number;
+          funcPtrs.push(getPriorityPtr);
         }
 
         const yIndices = new this.#bindings.IntVector();
@@ -131,16 +142,11 @@ export class CvodeWrapper {
           p_indices: pIndices,
           get_assignments_fn: getAssignmentsPtr,
           get_delay_fn: getDelayPtr ?? nullptr,
+          get_priority_fn: getPriorityPtr ?? nullptr,
           is_from_trigger: event.isFromTrigger,
           is_persistent: event.isPersistent,
           is_t0: event.isT0,
-          priority: 0,
         });
-
-        funcPtrs.push(getAssignmentsPtr);
-        if (getDelayPtr) {
-          funcPtrs.push(getDelayPtr);
-        }
 
         vectorsToDestroy.push(yIndices);
         vectorsToDestroy.push(pIndices);

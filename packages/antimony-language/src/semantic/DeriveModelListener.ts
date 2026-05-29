@@ -341,6 +341,8 @@ export class DeriveModelListener implements AntimonyListener {
           this.#reportError(`Unknown event option: ${name}`, option);
           continue;
         }
+
+        options[name] = option.formula();
       }
     }
 

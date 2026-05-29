@@ -48,9 +48,9 @@ export type EventInfo = {
   is_t0: boolean,
   is_from_trigger: boolean,
   num_roots: number,
-  priority: number,
   y_indices: IntVector,
   p_indices: IntVector,
+  get_priority_fn: number,
   get_delay_fn: number,
   get_assignments_fn: number
 };

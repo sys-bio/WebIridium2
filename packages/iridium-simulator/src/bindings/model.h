@@ -77,9 +77,20 @@ public:
     Float64Array SimulateTimeCourse(double start_time, double end_time, int num_points);
 
 private:
-    void Integrate(double t_out, double *t_return);
+    void Integrate(double target_time);
 
-    void ApplyEventInvocation(const EventInvocation &invocation);
+    // Updates all event states, adds any to the queue.
+    void UpdateEvents(bool is_t0 = false);
+
+    // Creates an invocation of an event that would have triggered at the given
+    // time and adds it to the event queue.
+    void EnqueueEvent(const EventInfo &info);
+
+    // Applies any pending events, reinits CVODE if necessary.
+    void ApplyPendingEvents();
+
+    // Runs an instance of an event invocation.
+    void RunEventInvocation(const EventInvocation &invocation);
 
     void InitializeOutputArray(int num_points);
 
@@ -104,7 +115,8 @@ private:
     std::optional<EventParams> event_params_;
     int num_roots_;
 
-    // simulation state (needs to be reset)
+    // Simulation state (needs to be reset)
+    double time_;
     EventQueue event_queue_{};
     std::vector<bool> current_triggered_events_;
     std::vector<int> roots_found_;

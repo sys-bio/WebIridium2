@@ -11,10 +11,11 @@ using RootsFn = void(double time, double y[], double gout[], double p[]);
 // The conditions array is to hold state about which conditions hold between root finds.
 using CheckEventsFn = void(double time, int roots[], int conditions[], int eventout[]);
 
-// Generated for each event with a delay. Returns the events delay.
-using GetDelayFn = double(double time, double y[], double p[]);
+// Used for getting delay/priority.
+using GetOptionFn = double(double time, double y[], double p[]);
 
-// Generated for each event. Runs the events assignments.
+// Generated for each event. Runs the events assignments and adds them to the pre-allocated
+// yout[] and pout[] array.
 using GetAssignmentsFn = void(
     double time,
     double y[],
@@ -28,16 +29,17 @@ struct EventInfo {
     bool is_t0;
     bool is_from_trigger;
     int num_roots;
-    int priority;
     std::vector<int> y_indices;
     std::vector<int> p_indices;
     uintptr_t get_delay_fn;
+    uintptr_t get_priority_fn;
     uintptr_t get_assignments_fn;
 };
 
 struct EventInvocation {
     const EventInfo *event_info;
     double time;
+    double priority;
     std::vector<double> y_values;
     std::vector<double> p_values;
 };
@@ -70,9 +72,9 @@ public:
 private:
     class CompareQueuedEvent {
     public:
-        bool operator()(const EventInvocation &a, const EventInvocation &b) {
+        bool operator()(const EventInvocation &a, const EventInvocation &b) const {
             if (a.time == b.time) {
-                return a.event_info->priority < b.event_info->priority;
+                return a.priority < b.priority;
             } else {
                 return a.time > b.time;
             }

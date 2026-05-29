@@ -193,10 +193,6 @@ describe("simulation results", () => {
         );
       }
 
-      if (modelName === "./results/constants") {
-        console.log(Object.keys(gotColumns), Object.keys(expectedColumns));
-      }
-
       for (const [name, column] of Object.entries(expectedColumns)) {
         for (let i = 0; i < column.length; i++) {
           const got = gotColumns[name][i];
@@ -204,9 +200,6 @@ describe("simulation results", () => {
           const diff =
             Math.abs(expected - got) /
             Math.max(Math.abs(expected), Math.abs(got), 1e-3);
-          if (modelName === "./results/constants") {
-            console.log(expectedColumns, gotColumns);
-          }
           if (diff > 1e-4) {
             throw new Error(
               `${name} too far apart at index ${i}. Expected ${expected}, got ${got}, diff ${diff}.`,

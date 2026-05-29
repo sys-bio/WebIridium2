@@ -29,9 +29,9 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .field("is_t0", &EventInfo::is_t0)
         .field("is_from_trigger", &EventInfo::is_from_trigger)
         .field("num_roots", &EventInfo::num_roots)
-        .field("priority", &EventInfo::priority)
         .field("y_indices", &EventInfo::y_indices)
         .field("p_indices", &EventInfo::p_indices)
+        .field("get_priority_fn", &EventInfo::get_priority_fn)
         .field("get_delay_fn", &EventInfo::get_delay_fn)
         .field("get_assignments_fn", &EventInfo::get_assignments_fn);
 

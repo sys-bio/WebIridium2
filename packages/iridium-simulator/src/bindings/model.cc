@@ -25,7 +25,7 @@ static int delegating_roots(double t, N_Vector y, double *gout, UserData *data) 
     return 0;
 }
 
-static double const epsilon = std::numeric_limits<double>::epsilon();
+static double const kEpsilon = std::numeric_limits<double>::epsilon();
 
 Model::Model(
     std::vector<double> y,
@@ -78,6 +78,8 @@ Model::~Model() {
 }
 
 void Model::ResetState() {
+    time_ = 0.0;
+
     for (int i = 0; i < original_y_.size(); i++) {
         NV_Ith_S(y_, i) = original_y_[i];
     }
@@ -120,49 +122,52 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
     if (!has_init_) {
-        CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, 0.0, y_);
+        CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
 
         CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
         CVodeSetUserData(cvode_mem_, &user_data_);
 
         has_init_ = true;
     } else {
-        CVodeReInit(cvode_mem_, 0.0, y_);
+        CVodeReInit(cvode_mem_, time_, y_);
     }
 
     CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_);
 
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
+
+        UpdateEvents(time_ == 0.0);
+        ApplyPendingEvents();
     }
 
-    double t_out = start_time;
-    double t_return = 0.0;
+    double target_time = time_ + start_time;
 
     InitializeOutputArray(num_points);
 
     if (start_time > 0.0) {
-        Integrate(t_out, &t_return);
+        Integrate(target_time);
     }
 
     // TODO: temporary hack to get the RHS to update the `p` variables
     //       later should make separate update function
     std::vector<double> dummy_y_dot(original_y_.size());
-    user_data_.rhs(t_return, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+    user_data_.rhs(time_, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
 
-    RecordToOutputArray(t_return);
+    RecordToOutputArray(time_);
 
     int num_steps = num_points - 1; // minus 1 because 0 counts as the first
     double time_step = (end_time - start_time) / num_steps;
 
     for (int i = 0; i < num_steps; i++) {
-        t_out += time_step;
+        target_time += time_step;
 
-        Integrate(t_out, &t_return);
+        Integrate(target_time);
 
-        user_data_.rhs(t_return, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+        // dumb hack to update p values like above
+        user_data_.rhs(time_, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
 
-        RecordToOutputArray(t_return);
+        RecordToOutputArray(time_);
     }
 
     return Float64Array(
@@ -170,48 +175,27 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     );
 }
 
-void Model::Integrate(double t_out, double *t_return) {
-    while (t_out - *t_return >= epsilon) {
+void Model::Integrate(double target_time) {
+    while (target_time - time_ >= kEpsilon) {
         double event_time = event_queue_.GetNextInvocationTime();
-        bool go_to_event = event_time > 0 && event_time < t_out;
+        bool go_to_event = event_time > 0 && event_time < target_time;
         int result =
             go_to_event
-                ? CVode(cvode_mem_, event_time, y_, t_return, CV_NORMAL)
-                : CVode(cvode_mem_, t_out, y_, t_return, CV_NORMAL);
+                ? CVode(cvode_mem_, event_time, y_, &time_, CV_NORMAL)
+                : CVode(cvode_mem_, target_time, y_, &time_, CV_NORMAL);
 
         if (result == CV_SUCCESS) {
             if (!go_to_event) {
                 break;
             } else {
-                if ((*t_return - event_time) >= -epsilon) {
-                    bool updated = false;
-
-                    while (event_queue_.IsInvocationAvailable(*t_return)) {
-                        EventInvocation invocation = event_queue_.PopInvocation();
-                        if (!invocation.event_info->is_from_trigger) {
-                            ((GetAssignmentsFn*)invocation.event_info->get_assignments_fn)(
-                                *t_return,
-                                NV_DATA_S(y_),
-                                user_data_.p,
-                                invocation.y_values.data(),
-                                invocation.p_values.data()
-                            );
-                        }
-
-                        ApplyEventInvocation(invocation);
-
-                        updated = true;
-                    }
-
-                    if (updated) {
-                        CVodeReInit(cvode_mem_, *t_return, y_);
-                    }
-
+                // TOOD: do we know that CVODE guarantees we will always go at or past the target time?
+                if (time_ >= event_time) {
+                    ApplyPendingEvents();
                     continue;
                 } else {
                     // what happened??
                     std::stringstream ss;
-                    ss << "Missed event!? At " << *t_return << " wanted " << event_time << std::endl;
+                    ss << "Missed event!? At " << time_ << " wanted " << event_time << std::endl;
                     throw std::runtime_error(ss.str());
                     continue;
                 }
@@ -220,54 +204,34 @@ void Model::Integrate(double t_out, double *t_return) {
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
             std::vector<WasmBool> triggered_events(num_roots_);
+
             ((CheckEventsFn*)event_params_.value().check_events_fn)(
-                *t_return,
+                time_,
                 roots_found_.data(),
                 conditions_state_.data(),
                 triggered_events.data()
             );
 
-            bool updated = false;
-
             for (int i = 0; i < triggered_events.size(); i++) {
-                if (triggered_events[i] && !current_triggered_events_[i]) {
-                    current_triggered_events_[i] = true;
+                if (triggered_events[i]) {
+                    if (!current_triggered_events_[i]) {
+                        current_triggered_events_[i] = true;
 
-                    const EventInfo &info = event_params_.value().event_info[i];
-                    const double delay = info.get_delay_fn == NULL ? 0 : ((GetDelayFn*)info.get_delay_fn)(
-                        *t_return,
-                        NV_DATA_S(y_),
-                        user_data_.p
-                    );
-                    EventInvocation invocation{
-                        &info,
-                        *t_return + delay,
-                        std::vector<double>(info.y_indices.size()),
-                        std::vector<double>(info.p_indices.size()),
-                    };
-
-                    if (delay == 0 || info.is_from_trigger) {
-                        ((GetAssignmentsFn*)info.get_assignments_fn)(
-                            *t_return,
-                            NV_DATA_S(y_),
-                            user_data_.p,
-                            invocation.y_values.data(),
-                            invocation.p_values.data()
-                        );
+                        EnqueueEvent(event_params_.value().event_info[i]);
                     }
-                    
-                    if (delay == 0) {
-                        ApplyEventInvocation(invocation);
-                        updated = true;
-                    } else {
-                        event_queue_.AddInvocation(std::move(invocation));
+                } else if (!triggered_events[i]) {
+                    if (current_triggered_events_[i]) {
+                        current_triggered_events_[i] = false;
+
+                        const EventInfo &info = event_params_.value().event_info[i];
+                        if (info.is_persistent) {
+                            // TODO: persistent
+                        }
                     }
                 }
             }
 
-            if (updated) {
-                CVodeReInit(cvode_mem_, *t_return, y_);
-            }
+            ApplyPendingEvents();
         } else {
             // TODO: error handling?
             break;
@@ -275,7 +239,68 @@ void Model::Integrate(double t_out, double *t_return) {
     }
 }
 
-void Model::ApplyEventInvocation(const EventInvocation &invocation) {
+void Model::UpdateEvents(bool is_t0) {
+
+}
+
+void Model::EnqueueEvent(const EventInfo &info) {
+    const double delay =
+        reinterpret_cast<GetOptionFn*>(info.get_delay_fn) == nullptr
+            ? 0
+            : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), user_data_.p);
+
+    const double priority =
+        reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
+            ? 0
+            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), user_data_.p);
+
+    EventInvocation invocation{
+        &info,
+        time_ + delay,
+        priority,
+        std::vector<double>(info.y_indices.size()),
+        std::vector<double>(info.p_indices.size()),
+    };
+
+    if (info.is_from_trigger) {
+        ((GetAssignmentsFn*)info.get_assignments_fn)(
+            time_,
+            NV_DATA_S(y_),
+            user_data_.p,
+            invocation.y_values.data(),
+            invocation.p_values.data()
+        );
+    }
+
+    event_queue_.AddInvocation(std::move(invocation));
+}
+
+void Model::ApplyPendingEvents() {
+    bool updated = false;
+
+    while (event_queue_.IsInvocationAvailable(time_)) {
+        EventInvocation invocation = event_queue_.PopInvocation();
+        if (!invocation.event_info->is_from_trigger) {
+            ((GetAssignmentsFn*)invocation.event_info->get_assignments_fn)(
+                time_,
+                NV_DATA_S(y_),
+                user_data_.p,
+                invocation.y_values.data(),
+                invocation.p_values.data()
+            );
+        }
+
+        RunEventInvocation(invocation);
+
+        updated = true;
+    }
+
+    if (updated) {
+        CVodeReInit(cvode_mem_, time_, y_);
+    }
+}
+
+void Model::RunEventInvocation(const EventInvocation &invocation) {
     const EventInfo *info = invocation.event_info;
 
     for (int iy = 0; iy < info->y_indices.size(); iy++) {
@@ -285,6 +310,8 @@ void Model::ApplyEventInvocation(const EventInvocation &invocation) {
     for (int ip = 0; ip < info->p_indices.size(); ip++) {
         user_data_.p[info->p_indices[ip]] = invocation.p_values[ip];
     }
+
+    UpdateEvents();
 }
 
 void Model::InitializeOutputArray(int num_points) {
