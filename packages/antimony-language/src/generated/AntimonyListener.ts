@@ -1,5 +1,4 @@
 // @ts-nocheck
-// @ts-nocheck
 // Generated from ./src/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 
@@ -52,6 +51,7 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
+import { EventNameContext } from "./AntimonyParser";
 import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
@@ -641,6 +641,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEvent?: (ctx: EventContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.eventName`.
+	 * @param ctx the parse tree
+	 */
+	enterEventName?: (ctx: EventNameContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.eventName`.
+	 * @param ctx the parse tree
+	 */
+	exitEventName?: (ctx: EventNameContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.eventOptions`.

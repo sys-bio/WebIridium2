@@ -74,10 +74,15 @@ const expectModels = (code: string, models: TestModel[]): void => {
     if (model.events) {
       expect(
         stripContextsOnlyToText(
-          derived[i].events.map((e) => ({
-            ...e,
-            assignments: Object.fromEntries(e.assignments),
-          })),
+          Object.fromEntries(
+            Array.from(derived[i].events.entries()).map(([name, event]) => [
+              name,
+              {
+                ...event,
+                assignments: Object.fromEntries(event.assignments),
+              },
+            ]),
+          ),
         ),
       ).toMatchObject(model.events);
     }
@@ -264,7 +269,10 @@ describe("events", () => {
     expectModel(
       "at time > 5: A = 5\nat A > B: B = A",
       model({
-        events: [event("time>5", { A: "5" }), event("A>B", { B: "A" })],
+        events: {
+          _E0: event("time>5", { A: "5" }),
+          _E1: event("A>B", { B: "A" }),
+        },
       }),
     );
   });
@@ -273,7 +281,7 @@ describe("events", () => {
     expectModel(
       "at 5 after time > 5: A = 5",
       model({
-        events: [event("time>5", { delay: "5" }, { A: "5" })],
+        events: { _E0: event("time>5", { delay: "5" }, { A: "5" }) },
       }),
     );
   });
@@ -282,13 +290,13 @@ describe("events", () => {
     expectModel(
       "at 5 after time > 5, priority=234, t0=34: A = 5",
       model({
-        events: [
-          event(
+        events: {
+          _E0: event(
             "time>5",
             { delay: "5", priority: "234", t0: "34" },
             { A: "5" },
           ),
-        ],
+        },
       }),
     );
   });

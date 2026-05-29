@@ -6,7 +6,7 @@
 export type TestModel = {
   variables?: Record<string, any>;
   reactions?: Record<string, any>;
-  events?: unknown;
+  events?: Record<string, any>;
 };
 
 export const model = ({
@@ -25,6 +25,13 @@ export const model = ({
     for (const [name, reaction] of Object.entries(reactions)) {
       // eslint-disable-next-line
       reaction.name = name;
+    }
+  }
+
+  if (events) {
+    for (const [name, event] of Object.entries(events)) {
+      // eslint-disable-next-line
+      event.name = name;
     }
   }
 

@@ -68,7 +68,7 @@ export const createInternalModel = (models: AntimonyModel[]): InternalModel => {
     yVars,
     pVars,
     reactions: Array.from(mainModel.reactions.values()),
-    events: mainModel.events,
+    events: Array.from(mainModel.events.values()),
     yTable,
     pTable,
   };

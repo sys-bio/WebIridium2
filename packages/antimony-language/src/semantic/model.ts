@@ -4,7 +4,7 @@ export type AntimonyModel = {
   name: string;
   variables: Map<string, AntimonyVariable>;
   reactions: Map<string, AntimonyReaction>;
-  events: AntimonyEvent[];
+  events: Map<string, AntimonyEvent>;
 };
 
 export type AntimonySetAssignment = { kind: "set"; initial: FormulaContext };
@@ -35,6 +35,7 @@ export type AntimonyReactionTerm = {
 };
 
 export type AntimonyEvent = {
+  name: string;
   trigger: FormulaContext;
   assignments: Map<string, FormulaContext>;
   delay?: FormulaContext;

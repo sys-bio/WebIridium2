@@ -66,7 +66,7 @@ export class DeriveModelListener implements AntimonyListener {
       name: "__main",
       variables: new Map(),
       reactions: new Map(),
-      events: [],
+      events: new Map(),
     };
     this.#models.set(this.#baseModel.name, this.#baseModel);
 
@@ -320,6 +320,22 @@ export class DeriveModelListener implements AntimonyListener {
     return terms;
   }
 
+  #getOrDefaultEventName(ctx: EventContext): string {
+    const eventName = ctx.eventName();
+    if (eventName) {
+      return eventName.NAME().text;
+    } else {
+      const model = this.#getActiveModel();
+      let candidate: string;
+      let i = 0;
+      do {
+        candidate = `_E${i++}`;
+      } while (model.events.has(candidate));
+
+      return candidate;
+    }
+  }
+
   enterEvent(ctx: EventContext): void {
     const assignments = new Map<string, FormulaContext>();
     for (const assignment of ctx.eventAssignments().eventAssignment()) {
@@ -346,7 +362,10 @@ export class DeriveModelListener implements AntimonyListener {
       }
     }
 
-    this.#getActiveModel().events.push({
+    const name = this.#getOrDefaultEventName(ctx);
+
+    this.#getActiveModel().events.set(name, {
+      name,
       assignments,
       trigger: ctx._trigger,
       delay: ctx._delay,
