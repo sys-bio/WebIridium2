@@ -1,11 +1,9 @@
-import { AbstractParseTreeVisitor } from "antlr4ts/tree/AbstractParseTreeVisitor";
 import {
   CompareContext,
   EventAssignmentContext,
   FormulaContext,
   LogicalContext,
-  SumContext,
-  type AntimonyVisitor,
+  type AntimonyListener,
 } from "antimony-language/grammar";
 import { emitFormula } from "./formula";
 import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
@@ -30,6 +28,9 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { EventSpec } from "../modelSpec";
+import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
+import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
+import type { ParserRuleContext } from "antlr4ts";
 
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
@@ -54,123 +55,131 @@ const GET_ASSIGNMENTS_PARAMS = [
 ];
 const GET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
-/**
- * Represents a condition that an event may be triggered under.
- * The direction indicates what the slope should be when the root is reached.
- *
- * A direction 0 indicates equality, or that both -1 and 1 work.
- *
- * @example
- * ```
- * y > 5 will  be represented as { direction: 1, bytecode: [y - 5] }
- * ```
- */
+type ConditionOperator = ">" | ">=" | "<" | "<=";
+
 type EventCondition = {
-  direction: -1 | 0 | 1;
-  comparison: CompareContext;
+  op: ConditionOperator;
+  left: FormulaContext;
+  right: FormulaContext;
 };
+
+type LogicOperationTree =
+  | number
+  | { kind: "or"; left: LogicOperationTree; right: LogicOperationTree }
+  | { kind: "and"; left: LogicOperationTree; right: LogicOperationTree };
 
 type InternalEvent = AntimonyEvent & {
   conditions: EventCondition[];
+  tree: LogicOperationTree;
 };
 
-const getEventConditionDirection = (ctx: CompareContext): -1 | 0 | 1 => {
-  const op = ctx._op.text;
-  return op === ">=" || op === ">" ? 1 : op === "<=" || op === "<" ? -1 : 0;
-};
+const getEventConditionDirection = ({ op }: EventCondition): -1 | 0 | 1 =>
+  op === ">=" || op === ">" ? 1 : op === "<=" || op === "<" ? -1 : 0;
 
-// TODO: how do we handle != event?
-const compileEventCondition = (
+const emitEventConditionAsRoot = (
   condition: EventCondition,
   emitter: Emitter,
   emitLoadVariable: EmitLoadVariableFunction,
   functionTable: IndexSymbolTable,
 ): void => {
-  const ctx = condition.comparison;
-  const op = ctx._op.text;
-
-  // rewrite the comparison into a root problem
-  const subtractionCtx = new SumContext(ctx);
-  subtractionCtx._op = {
-    ...ctx._op,
-    text: "-",
-  };
-  subtractionCtx.children = ctx.children;
-
-  emitFormula(subtractionCtx, emitter, emitLoadVariable, functionTable);
-
-  if (op === "==" || op === "==") {
-    // TODO: fix this
-    throw new CompileError("==/!= in events not yet supported.", { tree: ctx });
-  }
+  emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
+  emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+  emitter.emitByte(OpCode.f64sub);
 };
 
-const INVALID_TRIGGER_MESSAGE =
-  "Invalid event trigger. Missing comparison or equality.";
+const validComparisonOperators = new Set(["<", "<=", ">", ">="]);
 
-class EventConditionCollectorVisitor
-  extends AbstractParseTreeVisitor<EventCondition[]>
-  implements AntimonyVisitor<EventCondition[]>
-{
+class InternalEventCreatorListener implements AntimonyListener {
+  #treeStack: LogicOperationTree[];
+  #conditions: EventCondition[];
+
   constructor() {
-    super();
+    this.#treeStack = [];
+    this.#conditions = [];
   }
 
-  defaultResult(): EventCondition[] {
-    return [];
-  }
-
-  aggregateResult(
-    aggregate: EventCondition[],
-    nextResult: EventCondition[],
-  ): EventCondition[] {
-    return aggregate.concat(nextResult);
-  }
-
-  visitCompare(ctx: CompareContext): EventCondition[] {
-    return [
-      {
-        direction: getEventConditionDirection(ctx),
-        comparison: ctx,
-      },
-    ];
-  }
-
-  visitLogical(ctx: LogicalContext): EventCondition[] {
-    const conditions: EventCondition[] = [];
-    for (let i = 0; i < ctx.childCount; i++) {
-      if (i > 1) throw new Error("Complex events not yet supported.");
-
-      const child = ctx.getChild(i);
-      if (child instanceof CompareContext) {
-        conditions.push({
-          direction: getEventConditionDirection(child),
-          comparison: child,
-        });
-      } else {
-        throw new CompileError(INVALID_TRIGGER_MESSAGE, { tree: child });
-      }
+  getResult(): {
+    tree: LogicOperationTree;
+    conditions: EventCondition[];
+  } | null {
+    if (this.#treeStack.length !== 1) {
+      return null;
+    } else {
+      return {
+        tree: this.#treeStack.pop() as LogicOperationTree,
+        conditions: this.#conditions,
+      };
     }
-    return conditions;
+  }
+
+  #pushLogicalOperatorTree(
+    ctx: ParserRuleContext,
+    kind: Exclude<LogicOperationTree, number>["kind"],
+  ): void {
+    const right = this.#treeStack.pop();
+    const left = this.#treeStack.pop();
+    if (left === undefined || right === undefined) {
+      throw new CompileError("Missing operand.", { tree: ctx });
+    }
+    this.#treeStack.push({ kind, left, right });
+  }
+
+  exitLogical(ctx: LogicalContext): void {
+    const op = ctx._op.text;
+    if (op === "&&") {
+      this.#pushLogicalOperatorTree(ctx, "and");
+    } else if (op === "||") {
+      this.#pushLogicalOperatorTree(ctx, "or");
+    }
+  }
+
+  exitCompare(ctx: CompareContext): void {
+    const op = ctx._op.text as string;
+    if (!validComparisonOperators.has(op)) {
+      throw new CompileError(`Not yet supported in events: ${op}.`, {
+        tree: ctx,
+      });
+    }
+
+    const left = ctx.getChild(0, FormulaContext);
+
+    this.#treeStack.push(this.#conditions.length);
+
+    // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
+    if (left instanceof CompareContext) {
+      const leftRight = left.getChild(1, FormulaContext);
+      // TODO: what if someone does `0 < (x < 5)`? Should this be allowed?
+      this.#conditions.push({
+        op: op as ConditionOperator,
+        left: leftRight,
+        right: ctx.getChild(1, FormulaContext),
+      });
+      this.#pushLogicalOperatorTree(ctx, "and");
+    } else {
+      this.#conditions.push({
+        op: op as ConditionOperator,
+        left: ctx.getChild(0, FormulaContext),
+        right: ctx.getChild(1, FormulaContext),
+      });
+    }
   }
 }
 
 const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
-  const visitor = new EventConditionCollectorVisitor();
+  const listener = new InternalEventCreatorListener();
+  ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, event.trigger);
 
-  const conditions = event.trigger.accept(visitor);
-  if (conditions.length === 0) {
-    throw new CompileError(INVALID_TRIGGER_MESSAGE, { tree: event.trigger });
-  } else if (conditions.length > 1) {
-    throw new CompileError("Only one comparison supported.", {
-      tree: event.trigger,
-    });
+  const result = listener.getResult();
+  if (!result) {
+    throw new CompileError("Invalid event trigger.", { tree: event.trigger });
+  } else {
+    console.log(result);
+    return {
+      ...event,
+      conditions: result.conditions,
+      tree: result.tree,
+    };
   }
-
-  return {
-    ...event,
-    conditions,
-  };
 };
 
 export const compileEvents = (
@@ -335,7 +344,7 @@ const compileRoots = (
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(G_PARAM));
 
-      compileEventCondition(
+      emitEventConditionAsRoot(
         condition,
         emitter,
         emitLoadVariable,
@@ -359,6 +368,30 @@ const EVENT_OUT_PARAM = "eventout[]";
 const CONDITIONS_PARAM = "conditions[]";
 const ROOTS_PARAM = "roots[]";
 
+const emitLogicOperationTree = (
+  tree: LogicOperationTree,
+  emitter: Emitter,
+  localsTable: LocalsSymbolTable,
+  startRootIndex: number,
+) => {
+  if (typeof tree === "number") {
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+    emitter.emitByte(OpCode.i32load);
+    emitter.emitUint32(MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_INT * (startRootIndex + tree));
+  } else if (tree.kind === "and") {
+    emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32and);
+  } else if (tree.kind === "or") {
+    emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32or);
+  }
+};
+
 const compileCheckEvents = (events: InternalEvent[]): Emitter => {
   // TODO: function header
 
@@ -376,10 +409,10 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
     EVENT_OUT_PARAM,
   ]);
 
-  for (const trigger of events) {
+  for (const event of events) {
     const startRootIndex = currentRootIndex;
 
-    for (const { direction, comparison: ctx } of trigger.conditions) {
+    for (const condition of event.conditions) {
       // load the root
       emitter.emitByte(OpCode.localget);
       emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
@@ -412,11 +445,9 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
       emitter.emitByte(OpCode.i32const);
       emitter.emitUint32(0);
 
+      const direction = getEventConditionDirection(condition);
       if (direction === 0) {
-        // TODO: handle this properly
-        throw new CompileError("==/!= in event not yet supported.", {
-          tree: ctx,
-        });
+        throw new Error("==/!= yet supported.");
       } else if (direction > 0) {
         emitter.emitByte(OpCode.i32ge_s);
       } else {
@@ -436,19 +467,7 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
 
-    // TODO: properly handle logical conditions instead of just AND everything
-    for (let i = startRootIndex; i < currentRootIndex; i++) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
-
-      emitter.emitByte(OpCode.i32load);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_INT * i);
-
-      if (i !== startRootIndex) {
-        emitter.emitByte(OpCode.i32and);
-      }
-    }
+    emitLogicOperationTree(event.tree, emitter, localsTable, startRootIndex);
 
     emitter.emitByte(OpCode.i32store);
     emitter.emitUint32(MEM_ALIGNMENT);
