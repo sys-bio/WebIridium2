@@ -224,8 +224,8 @@ void Model::Integrate(double target_time) {
                         current_triggered_events_[i] = false;
 
                         const EventInfo &info = event_params_.value().event_info[i];
-                        if (info.is_persistent) {
-                            // TODO: persistent
+                        if (!info.is_persistent) {
+                            event_queue_.RemoveInvocationsOf(info);
                         }
                     }
                 }

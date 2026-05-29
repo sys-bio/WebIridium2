@@ -274,7 +274,7 @@ export const compileEvents = (
 
       isPersistent: event.options.persistent
         ? evaluateBoolean(event.options.persistent)
-        : false,
+        : true,
       isFromTrigger: event.options.fromTrigger
         ? evaluateBoolean(event.options.fromTrigger)
         : true,

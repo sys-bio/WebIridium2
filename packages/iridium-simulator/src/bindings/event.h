@@ -70,7 +70,7 @@ public:
     void Clear();
 
 private:
-    class CompareQueuedEvent {
+    class CompareEventInvocation {
     public:
         bool operator()(const EventInvocation &a, const EventInvocation &b) const {
             if (a.time == b.time) {
@@ -84,6 +84,6 @@ private:
     std::priority_queue<
         EventInvocation,
         std::vector<EventInvocation>,
-        CompareQueuedEvent
+        CompareEventInvocation
     > queue_;
 };

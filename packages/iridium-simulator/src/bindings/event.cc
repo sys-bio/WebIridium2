@@ -1,6 +1,5 @@
 #include "event.h"
 #include <queue>
-#include <stdexcept>
 
 double EventQueue::GetNextInvocationTime() const {
     if (queue_.empty()) {
@@ -11,11 +10,28 @@ double EventQueue::GetNextInvocationTime() const {
 }
 
 void EventQueue::AddInvocation(EventInvocation event_invocation) {
-    queue_.emplace(std::move(event_invocation));
+    queue_.push(std::move(event_invocation));
 }
 
 void EventQueue::RemoveInvocationsOf(const EventInfo &event) {
-    throw std::runtime_error("not implemented");
+    // Is there a more efficient way to do this :(
+
+    std::priority_queue<
+        EventInvocation,
+        std::vector<EventInvocation>,
+        CompareEventInvocation
+    > new_queue{};
+
+    while (!queue_.empty()) {
+        if (queue_.top().event_info != &event) {
+            new_queue.push(
+                std::move(const_cast<EventInvocation &>(queue_.top()))
+            );
+        }
+        queue_.pop();
+    }
+
+    queue_ = std::move(new_queue);
 }
 
 bool EventQueue::IsInvocationAvailable(double time) const {
@@ -36,6 +52,6 @@ void EventQueue::Clear() {
     queue_ = std::priority_queue<
         EventInvocation,
         std::vector<EventInvocation>,
-        EventQueue::CompareQueuedEvent
+        EventQueue::CompareEventInvocation
     >();
 }
