@@ -18,7 +18,7 @@ import {
 } from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import {
-  builtinFunctions,
+  predefinedFuncDefs,
   type ImportedFunction,
 } from "./compile/functions.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
@@ -76,7 +76,7 @@ export class CvodeWrapper {
       [IMPORT_NAMESPACE]: Object.fromEntries(
         spec.funcImports.map((name) => [
           name,
-          (builtinFunctions[name] as ImportedFunction).js,
+          (predefinedFuncDefs[name] as ImportedFunction).js,
         ]),
       ),
     });

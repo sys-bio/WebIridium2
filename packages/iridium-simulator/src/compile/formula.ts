@@ -24,7 +24,7 @@ import type { IndexSymbolTable } from "./symbolTables.ts";
 import { POW_RESERVED_NAME } from "./functions";
 import type { EmitLoadVariableFunction } from "./Emitter";
 import {
-  builtinFunctions,
+  predefinedFuncDefs,
   inlineFunctions,
   type InlineFunction,
 } from "./functions";
@@ -81,11 +81,10 @@ class FormulaCompilerListener implements AntimonyListener {
   exitFunctionCall(_ctx: FunctionCallContext): void {
     const name = _ctx.NAME().text;
     if (inlineFunctions.has(name)) {
-      (builtinFunctions[name] as InlineFunction).emit(this.emitter);
+      (predefinedFuncDefs[name] as InlineFunction).emit(this.emitter);
     } else {
       const functionIndex = this.#functionTable.get(_ctx.NAME().text);
-      this.emitter.emitByte(OpCode.call);
-      this.emitter.emitUint32(functionIndex);
+      this.emitter.emitCall(functionIndex);
     }
   }
 
@@ -108,8 +107,7 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitPower(_ctx: PowerContext) {
-    this.emitter.emitByte(OpCode.call);
-    this.emitter.emitUint32(this.#functionTable.get(POW_RESERVED_NAME));
+    this.emitter.emitCall(this.#functionTable.get(POW_RESERVED_NAME));
   }
 
   exitProduct(ctx: ProductContext): void {

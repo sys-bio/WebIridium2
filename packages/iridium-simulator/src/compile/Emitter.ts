@@ -207,6 +207,13 @@ class Emitter {
       this.emitUint32(min);
     }
   }
+
+  /* Other */
+
+  emitCall(functionIndex: number): void {
+    this.emitByte(OpCode.call);
+    this.emitUint32(functionIndex);
+  }
 }
 
 export default Emitter;

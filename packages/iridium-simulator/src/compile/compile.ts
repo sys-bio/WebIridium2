@@ -23,7 +23,7 @@ import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { createInternalModel, type InternalModel } from "./model";
 import { compileEvents } from "./event";
 import {
-  builtinFunctions,
+  predefinedFuncDefs,
   POW_RESERVED_NAME,
   type CompiledFunction,
   type ImportedFunction,
@@ -42,6 +42,7 @@ export const compileIntermediate = (
 } => {
   const root = parse(code);
   const internalModel = createInternalModel(deriveModelsFromParseTree(root));
+
   const referencedFunctions = Array.from(getReferencedFunctions(root));
 
   const functions: WasmFunction[] = [
@@ -55,8 +56,8 @@ export const compileIntermediate = (
         compileRhs(functionTable, internalModel).getOutput(),
     },
     ...referencedFunctions.map((name) => {
-      if (Object.hasOwn(builtinFunctions, name)) {
-        return builtinFunctions[name];
+      if (Object.hasOwn(predefinedFuncDefs, name)) {
+        return predefinedFuncDefs[name];
       } else {
         throw new CompileModelError(`Unbound function: ${name}`);
       }
@@ -125,7 +126,29 @@ const getReferencedFunctions = (context: ParserRuleContext): Set<string> => {
   const referenced = new Set<string>();
   const listener = new GetReferencedListener(referenced);
   ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, context);
-  return referenced;
+
+  const result = new Set<string>();
+
+  // resolve any dependencies
+  const referencedQueue = Array.from(referenced);
+  while (true) {
+    const name = referencedQueue.pop();
+    if (!name) break;
+    if (result.has(name)) continue;
+
+    result.add(name);
+
+    if (!referenced.has(name)) {
+      const definition = predefinedFuncDefs[name];
+      if (definition && "depends" in definition && definition.depends) {
+        for (const dependency of definition.depends) {
+          referencedQueue.push(dependency);
+        }
+      }
+    }
+  }
+
+  return result;
 };
 
 class GetReferencedListener implements AntimonyListener {
@@ -138,8 +161,8 @@ class GetReferencedListener implements AntimonyListener {
   enterFunctionCall(ctx: FunctionCallContext): void {
     const name = ctx.NAME().text;
     if (
-      Object.hasOwn(builtinFunctions, name) &&
-      builtinFunctions[name].kind !== "inline"
+      Object.hasOwn(predefinedFuncDefs, name) &&
+      predefinedFuncDefs[name].kind !== "inline"
     ) {
       this.#referenced.add(name);
     }
@@ -150,7 +173,9 @@ class GetReferencedListener implements AntimonyListener {
   }
 }
 
-/** Compiles a list of functions into a WebAssembly module. */
+/**
+ * Compiles a list of functions into a WebAssembly module.
+ */
 export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   const typeTable = new TypeTable();
   const functionTable = new IndexSymbolTable();
@@ -158,11 +183,15 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   const importedFunctions: ImportedFunction[] = [];
   const compiledFunctions: CompiledFunction[] = [];
   const exportedFunctions: CompiledFunction[] = [];
-  for (const func of funcs) {
+
+  const remainingFuncs = [...funcs];
+  while (remainingFuncs.length > 0) {
+    const func = remainingFuncs.pop() as WasmFunction;
     if (func.kind === "import") {
       importedFunctions.push(func);
     } else if (func.kind === "compile") {
       compiledFunctions.push(func);
+
       if (func.isExported) {
         exportedFunctions.push(func);
       }
