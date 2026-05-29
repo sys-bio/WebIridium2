@@ -17,6 +17,7 @@ import {
   NumberContext,
   VarContext,
   GroupContext,
+  NameContext,
 } from "antimony-language/grammar";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
@@ -228,6 +229,33 @@ class AssignmentEvaluatorVisitor
     return Number(ctx.NUMBER().text);
   }
 }
+
+const INVALID_BOOLEAN_MESSAGE =
+  "You can only use the values `true` or `false` here.";
+
+/**
+ * Evaluates a boolean formula.
+ *
+ * @throws if the formula is neither exactly `true` or `false`
+ */
+export const evaluateBoolean = (formula: FormulaContext): boolean => {
+  if (formula.childCount !== 1) {
+    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+  }
+
+  const child = formula.getChild(0);
+  if (!(child instanceof NameContext)) {
+    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+  }
+
+  if (child.text === "true") {
+    return true;
+  } else if (child.text === "false") {
+    return false;
+  } else {
+    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+  }
+};
 
 /**
  * Returns toplogically sorted evaluation for assignments. Assignments are represented

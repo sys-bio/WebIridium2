@@ -8,6 +8,9 @@ export type EventSpec = {
   countRoots: number;
   yIndices: number[];
   pIndices: number[];
+  isPersistent: boolean;
+  isFromTrigger: boolean;
+  isT0: boolean;
   getDelayExport?: string;
   getPriorityExport?: string;
   getAssignmentsExport: string;

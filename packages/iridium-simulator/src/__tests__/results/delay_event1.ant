@@ -8,4 +8,4 @@ k1 = 0.35; k2 = 0.2
 B = 0; C = 0
 A = 10
 
-at 3 after time > 1: k1 = 3
+at 3 after time > 1: k1 = A

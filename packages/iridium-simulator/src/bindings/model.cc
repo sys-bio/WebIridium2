@@ -234,7 +234,7 @@ void Model::Integrate(double t_out, double *t_return) {
                     current_triggered_events_[i] = true;
 
                     const EventInfo &info = event_params_.value().event_info[i];
-                    const double delay = ((GetDelayFn*)info.get_delay_fn)(
+                    const double delay = info.get_delay_fn == NULL ? 0 : ((GetDelayFn*)info.get_delay_fn)(
                         *t_return,
                         NV_DATA_S(y_),
                         user_data_.p

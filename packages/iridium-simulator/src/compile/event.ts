@@ -27,7 +27,7 @@ import {
 } from "../names";
 import type { InternalModel } from "./model";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
-import { getAssignmentOrder } from "./evaluate";
+import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { EventSpec } from "../modelSpec";
 
@@ -42,8 +42,8 @@ const CHECK_EVENTS_PARAMS = [
 ];
 const CHECK_EVENTS_RESULTS: ValType[] = [];
 
-const GET_DELAY_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
-const GET_DELAY_RESULTS = [ValType.f64];
+const GET_OPTION_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
+const GET_OPTION_RESULTS = [ValType.f64];
 
 const GET_ASSIGNMENTS_PARAMS = [
   ValType.f64,
@@ -70,10 +70,8 @@ type EventCondition = {
   comparison: CompareContext;
 };
 
-type InternalEvent = {
+type InternalEvent = AntimonyEvent & {
   conditions: EventCondition[];
-  assignments: Map<string, FormulaContext>;
-  delay?: FormulaContext;
 };
 
 const getEventConditionDirection = (ctx: CompareContext): -1 | 0 | 1 => {
@@ -170,9 +168,8 @@ const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
   }
 
   return {
+    ...event,
     conditions,
-    assignments: event.assignments,
-    delay: event.delay,
   };
 };
 
@@ -205,18 +202,43 @@ export const compileEvents = (
       }
     }
 
-    const getDelayExport = generateSymbol("getDelay");
+    let getDelayExport: string | undefined;
+    let getPriorityExport: string | undefined;
     const getAssignmentsExport = generateSymbol("getAssignments");
 
-    eventFns.push({
-      kind: "compile",
-      isExported: true,
-      name: getDelayExport,
-      params: GET_DELAY_PARAMS,
-      results: GET_DELAY_RESULTS,
-      compileBody: (functionTable) =>
-        compileGetDelay(model, event, functionTable).getOutput(),
-    });
+    if (event.delay) {
+      getDelayExport = generateSymbol("getDelay");
+      eventFns.push({
+        kind: "compile",
+        isExported: true,
+        name: getDelayExport,
+        params: GET_OPTION_PARAMS,
+        results: GET_OPTION_RESULTS,
+        compileBody: (functionTable) =>
+          compileGetOption(
+            model,
+            event.delay as FormulaContext,
+            functionTable,
+          ).getOutput(),
+      });
+    }
+
+    if (event.options.priority) {
+      getPriorityExport = generateSymbol("getPriority");
+      eventFns.push({
+        kind: "compile",
+        isExported: true,
+        name: getPriorityExport,
+        params: GET_OPTION_PARAMS,
+        results: GET_OPTION_RESULTS,
+        compileBody: (functionTable) =>
+          compileGetOption(
+            model,
+            event.options.priority as FormulaContext,
+            functionTable,
+          ).getOutput(),
+      });
+    }
 
     eventFns.push({
       kind: "compile",
@@ -237,7 +259,9 @@ export const compileEvents = (
     eventSpecs.push({
       getAssignmentsExport,
       getDelayExport,
+      getPriorityExport,
       countRoots: event.conditions.length,
+
       // These are actually a different set of indices.
       // We start with maybe some variables: A, B, C
       // In the getAssignments function we are given a double[3] array.
@@ -245,9 +269,16 @@ export const compileEvents = (
       // Then let's say the index of A in the model is 2, B is 4, C is 10
       // In the EventSpec, we say [1: 2, 2: 4, 3: 10]
       // Now when someone else reads the double[3] array, they know the first
-      // value correspond with variable 2 (A), second with variable 4 (B), etc.
       yIndices: yIndices.keys().map((y) => model.yTable.get(y)),
       pIndices: pIndices.keys().map((p) => model.pTable.get(p)),
+
+      isPersistent: event.options.persistent
+        ? evaluateBoolean(event.options.persistent)
+        : false,
+      isFromTrigger: event.options.fromTrigger
+        ? evaluateBoolean(event.options.fromTrigger)
+        : true,
+      isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : false,
     });
   }
 
@@ -431,10 +462,9 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
   return emitter;
 };
 
-// TODO: if the delay is 0, compilation should be omitted completely
-const compileGetDelay = (
+const compileGetOption = (
   model: InternalModel,
-  event: InternalEvent,
+  formula: FormulaContext,
   functionTable: IndexSymbolTable,
 ): Emitter => {
   const emitter = new Emitter();
@@ -443,13 +473,8 @@ const compileGetDelay = (
 
   emitter.emitListHeader(0);
 
-  if (event.delay) {
-    const emitLoadVariable = createEmitLoadVariable(model, localsTable);
-    emitFormula(event.delay, emitter, emitLoadVariable, functionTable);
-  } else {
-    emitter.emitByte(OpCode.f64const);
-    emitter.emitFloat64(0);
-  }
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+  emitFormula(formula, emitter, emitLoadVariable, functionTable);
 
   emitter.emitByte(OpCode.end);
 

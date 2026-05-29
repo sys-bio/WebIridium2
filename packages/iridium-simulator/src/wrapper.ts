@@ -24,6 +24,8 @@ import {
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 import { IndexSymbolTable } from "./compile/symbolTables.ts";
 
+const nullptr = 0;
+
 interface InternalModel {
   spec: ModelSpec;
   yIndices: IndexSymbolTable;
@@ -105,9 +107,13 @@ export class CvodeWrapper {
         const getAssignmentsPtr = this.#bindings.addFunction(
           instance.exports[event.getAssignmentsExport],
         ) as number;
-        const getDelayPtr = this.#bindings.addFunction(
-          instance.exports[event.getDelayExport],
-        ) as number;
+
+        let getDelayPtr: number | undefined;
+        if (event.getDelayExport) {
+          getDelayPtr = this.#bindings.addFunction(
+            instance.exports[event.getDelayExport],
+          ) as number;
+        }
 
         const yIndices = new this.#bindings.IntVector();
         for (const index of event.yIndices.values()) {
@@ -124,15 +130,17 @@ export class CvodeWrapper {
           y_indices: yIndices,
           p_indices: pIndices,
           get_assignments_fn: getAssignmentsPtr,
-          get_delay_fn: getDelayPtr,
-          is_from_trigger: false,
-          is_persistent: false,
-          is_t0: false,
+          get_delay_fn: getDelayPtr ?? nullptr,
+          is_from_trigger: event.isFromTrigger,
+          is_persistent: event.isPersistent,
+          is_t0: event.isT0,
           priority: 0,
         });
 
         funcPtrs.push(getAssignmentsPtr);
-        funcPtrs.push(getDelayPtr);
+        if (getDelayPtr) {
+          funcPtrs.push(getDelayPtr);
+        }
 
         vectorsToDestroy.push(yIndices);
         vectorsToDestroy.push(pIndices);
