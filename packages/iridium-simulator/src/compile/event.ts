@@ -123,7 +123,7 @@ class EventConditionListener implements AntimonyListener {
     const right = this.#treeStack.pop();
     const left = this.#treeStack.pop();
     if (left === undefined || right === undefined) {
-      throw new CompileError("Missing operand.", { tree: ctx });
+      throw new CompileError("Invalid event trigger. Must evaluate to boolean.", { tree: ctx });
     }
     this.#treeStack.push({ kind, left, right });
   }
@@ -175,7 +175,7 @@ const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
 
   const result = listener.getResult();
   if (!result) {
-    throw new CompileError("Invalid event trigger.", { tree: event.trigger });
+    throw new CompileError("Invalid event trigger. Must evaluate to boolean.", { tree: event.trigger });
   } else {
     return {
       ...event,
