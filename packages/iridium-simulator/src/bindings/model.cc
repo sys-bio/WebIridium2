@@ -21,6 +21,9 @@ static int delegating_rhs(double t, N_Vector y, N_Vector ydot, UserData *data) {
 }
 
 static int delegating_roots(double t, N_Vector y, double *gout, UserData *data) {
+    // TODO: we need to optimize this so we aren't recalculating everything for each event
+    data->rhs(t, NV_DATA_S(y), data->dummy_y_dot, data->p);
+
     data->roots(t, NV_DATA_S(y), gout, data->p);
     return 0;
 }
@@ -46,6 +49,7 @@ Model::Model(
     user_data_.p_len = p.size() + num_reactions_;
     user_data_.p = new double[user_data_.p_len];
     user_data_.rhs = (RHSFunc*)rhs;
+    user_data_.dummy_y_dot = new double[original_y_.size()];
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -72,6 +76,7 @@ Model::~Model() {
     SUNLinSolFree_Dense(linear_solver_);
     SUNMatDestroy_Dense(matrix_);
     delete[] user_data_.p;
+    delete[] user_data_.dummy_y_dot;
     N_VDestroy_Serial(y_);
     CVodeFree(&cvode_mem_);
     SUNContext_Free(&ctx_);
@@ -151,8 +156,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     // TODO: temporary hack to get the RHS to update the `p` variables
     //       later should make separate update function
-    std::vector<double> dummy_y_dot(original_y_.size());
-    user_data_.rhs(time_, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+    user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
 
     RecordToOutputArray(time_);
 
@@ -165,7 +169,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         Integrate(target_time);
 
         // dumb hack to update p values like above
-        user_data_.rhs(time_, NV_DATA_S(y_), dummy_y_dot.data(), user_data_.p);
+        user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
 
         RecordToOutputArray(time_);
     }

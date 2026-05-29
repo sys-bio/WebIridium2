@@ -25,6 +25,10 @@ struct UserData {
     size_t p_len;
 
     RootsFn *roots;
+
+    // lazy hack so we can call RHS for its side effects without reallocating
+    // a fake ydot array each time
+    double *dummy_y_dot;
 };
 
 struct EventParams {
