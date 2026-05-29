@@ -6,9 +6,14 @@
 export type TestModel = {
   variables?: Record<string, any>;
   reactions?: Record<string, any>;
+  events?: unknown;
 };
 
-export const model = ({ variables, reactions }: TestModel): TestModel => {
+export const model = ({
+  variables,
+  reactions,
+  events,
+}: TestModel): TestModel => {
   if (variables) {
     for (const [name, variable] of Object.entries(variables)) {
       // eslint-disable-next-line
@@ -23,7 +28,7 @@ export const model = ({ variables, reactions }: TestModel): TestModel => {
     }
   }
 
-  return { variables, reactions };
+  return { variables, reactions, events };
 };
 
 /** Convenience function for making test model that only consists of variables. */
@@ -155,4 +160,45 @@ export const reaction = (
       text: rate,
     },
   };
+};
+
+export const event = (
+  trigger: string,
+  assignmentsOrOptions: Record<string, string>,
+  assignments?: Record<string, string>,
+) => {
+  const newAssignments: Record<string, { text: string }> = {};
+  if (assignments) {
+    const delay = assignmentsOrOptions.delay;
+
+    if ("delay" in assignmentsOrOptions) {
+      delete assignmentsOrOptions.delay;
+    }
+
+    for (const [name, value] of Object.entries(assignments)) {
+      newAssignments[name] = { text: value };
+    }
+
+    const newOptions: Record<string, { text: string }> = {};
+    for (const [name, value] of Object.entries(assignmentsOrOptions)) {
+      newOptions[name] = { text: value };
+    }
+
+    return {
+      trigger: { text: trigger },
+      delay: delay && { text: delay },
+      assignments: newAssignments,
+      options: newOptions,
+    };
+  } else {
+    for (const [name, value] of Object.entries(assignmentsOrOptions)) {
+      newAssignments[name] = { text: value };
+    }
+
+    return {
+      trigger: { text: trigger },
+      assignments: newAssignments,
+      options: {},
+    };
+  }
 };

@@ -9,6 +9,7 @@ import {
   compartment,
   type TestModel,
   variables,
+  event,
 } from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
@@ -19,16 +20,32 @@ import { SemanticError } from "../errors.ts";
  * Strip parse contexts only to their text value. Otherwise
  * Vitest will explode when it toMatchObject on the contexts.
  */
-const stripContextsOnlyToText = (obj: Record<string, unknown>): object => {
+const stripContextsOnlyToText = (
+  obj: Record<string, unknown> | unknown[],
+): object => {
   if (obj instanceof ParserRuleContext) {
     return {
       text: obj.text,
     };
   }
 
-  for (const key in obj) {
-    if (typeof obj[key] === "object" && obj !== null) {
-      obj[key] = stripContextsOnlyToText(obj[key] as Record<string, unknown>);
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      if (
+        Array.isArray(obj[i]) ||
+        (typeof obj[i] === "object" && obj[i] !== null)
+      ) {
+        obj[i] = stripContextsOnlyToText(obj[i] as Record<string, unknown>);
+      }
+    }
+  } else {
+    for (const key in obj) {
+      if (
+        Array.isArray(key) ||
+        (typeof obj[key] === "object" && obj[key] !== null)
+      ) {
+        obj[key] = stripContextsOnlyToText(obj[key] as Record<string, unknown>);
+      }
     }
   }
 
@@ -47,10 +64,22 @@ const expectModels = (code: string, models: TestModel[]): void => {
         stripContextsOnlyToText(Object.fromEntries(derived[i].variables)),
       ).toMatchObject(model.variables);
     }
+
     if (model.reactions) {
       expect(
         stripContextsOnlyToText(Object.fromEntries(derived[i].reactions)),
       ).toMatchObject(model.reactions);
+    }
+
+    if (model.events) {
+      expect(
+        stripContextsOnlyToText(
+          derived[i].events.map((e) => ({
+            ...e,
+            assignments: Object.fromEntries(e.assignments),
+          })),
+        ),
+      ).toMatchObject(model.events);
     }
   }
 };
@@ -223,16 +252,47 @@ describe("$ modifier", () => {
   it("should set const to true", () => {
     expectModel(
       "species A;$A ->;;A=5",
-      model({
-        variables: {
-          A: species.const(),
-        },
+      variables({
+        A: species.const(),
       }),
     );
   });
 });
 
 describe("events", () => {
+  it("should add basic events", () => {
+    expectModel(
+      "at time > 5: A = 5\nat A > B: B = A",
+      model({
+        events: [event("time>5", { A: "5" }), event("A>B", { B: "A" })],
+      }),
+    );
+  });
+
+  it("should add delays", () => {
+    expectModel(
+      "at 5 after time > 5: A = 5",
+      model({
+        events: [event("time>5", { delay: "5" }, { A: "5" })],
+      }),
+    );
+  });
+
+  it("should add options", () => {
+    expectModel(
+      "at 5 after time > 5, priority=234, t0=34: A = 5",
+      model({
+        events: [
+          event(
+            "time>5",
+            { delay: "5", priority: "234", t0: "34" },
+            { A: "5" },
+          ),
+        ],
+      }),
+    );
+  });
+
   it("should error for invalid option", () => {
     expect(() => {
       deriveModels("at 5, t = false: A = 0");
