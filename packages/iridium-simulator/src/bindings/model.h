@@ -34,7 +34,8 @@ struct UserData {
 struct EventParams {
     std::vector<EventInfo> event_info;
     uintptr_t roots_fn;
-    uintptr_t check_events_fn;
+    uintptr_t check_roots_fn;
+    uintptr_t update_conditions_fn;
 };
 
 class Model {
@@ -83,15 +84,19 @@ public:
 private:
     void Integrate(double target_time);
 
-    // Updates all event states, adds any to the queue.
-    void UpdateEvents(bool is_t0 = false);
+    // Enqueues any events as indicated by the event swap buffer.
+    void EnqueueEventsFromSwap();
 
-    // Creates an invocation of an event that would have triggered at the given
-    // time and adds it to the event queue.
+    // Updates all event states, adds any to the queue.
+    // This is meant to be used whenever any discontinuous changes are made.
+    // Rely on Integrate for event updates during simulation.
+    void UpdateEvents();
+
+    // Creates an invocation of an event to the event queue.
     void EnqueueEvent(const EventInfo &info);
 
     // Applies any pending events, reinits CVODE if necessary.
-    void ApplyPendingEvents();
+    void RunPendingEventInvocations();
 
     // Runs an instance of an event invocation.
     void RunEventInvocation(const EventInvocation &invocation);
@@ -125,6 +130,10 @@ private:
     std::vector<bool> current_triggered_events_;
     std::vector<int> roots_found_;
     std::vector<WasmBool> conditions_state_;
+    // Every time we update which events are active, tell the generated function to put
+    // its results here. Then we will compare this with current_triggered_events
+    // and update as necessary.
+    std::vector<WasmBool> events_swap_;
 
     // Should be set by the wrapper
     double abs_tol_ = 1;

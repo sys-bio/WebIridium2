@@ -5,7 +5,7 @@ import {
   LogicalContext,
   type AntimonyListener,
 } from "antimony-language/grammar";
-import { emitFormula } from "./formula";
+import { emitComparisonOperator, emitFormula } from "./formula";
 import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter, {
@@ -16,12 +16,13 @@ import type { AntimonyEvent } from "antimony-language/semantic";
 import { CompileError } from "./errors";
 import {
   ROOTS_NAME,
-  CHECK_EVENTS_NAME,
+  CHECK_ROOTS_NAME,
   P_PARAM,
   T_PARAM,
   TIME_NAME,
   Y_PARAM,
   generateSymbol,
+  UPDATE_CONDITIONS_NAME,
 } from "../names";
 import type { InternalModel } from "./model";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
@@ -35,13 +36,16 @@ import type { ParserRuleContext } from "antlr4ts";
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
 
-const CHECK_EVENTS_PARAMS = [
+const CHECK_ROOTS_PARAMS = [
   ValType.f64,
   ValType.i32,
   ValType.i32,
   ValType.i32,
 ];
-const CHECK_EVENTS_RESULTS: ValType[] = [];
+const CHECK_ROOTS_RESULTS: ValType[] = [];
+
+const UPDATE_CONDITIONS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32, ValType.i32];
+const UPDATE_CONDITIONS_RESULTS: ValType[] = [];
 
 const GET_OPTION_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
 const GET_OPTION_RESULTS = [ValType.f64];
@@ -89,7 +93,7 @@ const emitEventConditionAsRoot = (
 
 const validComparisonOperators = new Set(["<", "<=", ">", ">="]);
 
-class InternalEventCreatorListener implements AntimonyListener {
+class EventConditionListener implements AntimonyListener {
   #treeStack: LogicOperationTree[];
   #conditions: EventCondition[];
 
@@ -166,14 +170,13 @@ class InternalEventCreatorListener implements AntimonyListener {
 }
 
 const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
-  const listener = new InternalEventCreatorListener();
+  const listener = new EventConditionListener();
   ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, event.trigger);
 
   const result = listener.getResult();
   if (!result) {
     throw new CompileError("Invalid event trigger.", { tree: event.trigger });
   } else {
-    console.log(result);
     return {
       ...event,
       conditions: result.conditions,
@@ -287,7 +290,7 @@ export const compileEvents = (
       isFromTrigger: event.options.fromTrigger
         ? evaluateBoolean(event.options.fromTrigger)
         : true,
-      isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : false,
+      isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : true,
     });
   }
 
@@ -305,10 +308,18 @@ export const compileEvents = (
       {
         kind: "compile",
         isExported: true,
-        name: CHECK_EVENTS_NAME,
-        params: CHECK_EVENTS_PARAMS,
-        results: CHECK_EVENTS_RESULTS,
-        compileBody: (_functionTable) => compileCheckEvents(events).getOutput(),
+        name: CHECK_ROOTS_NAME,
+        params: CHECK_ROOTS_PARAMS,
+        results: CHECK_ROOTS_RESULTS,
+        compileBody: (_functionTable) => compileCheckRoots(events).getOutput(),
+      },
+      {
+        kind: "compile",
+        isExported: true,
+        name: UPDATE_CONDITIONS_NAME,
+        params: UPDATE_CONDITIONS_PARAMS,
+        results: UPDATE_CONDITIONS_RESULTS,
+        compileBody: (functionTable) => compileUpdateConditions(model, events, functionTable).getOutput(),
       },
       ...eventFns,
     ],
@@ -392,11 +403,8 @@ const emitLogicOperationTree = (
   }
 };
 
-const compileCheckEvents = (events: InternalEvent[]): Emitter => {
+const compileCheckRoots = (events: InternalEvent[]): Emitter => {
   // TODO: function header
-
-  let currentRootIndex = 0;
-  let currentEventIndex = 0;
 
   const emitter = new Emitter();
 
@@ -408,6 +416,9 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
     CONDITIONS_PARAM,
     EVENT_OUT_PARAM,
   ]);
+
+  let currentRootIndex = 0;
+  let currentEventIndex = 0;
 
   for (const event of events) {
     const startRootIndex = currentRootIndex;
@@ -459,6 +470,61 @@ const compileCheckEvents = (events: InternalEvent[]): Emitter => {
       emitter.emitUint32(SIZEOF_INT * currentRootIndex);
 
       emitter.emitByte(OpCode.end);
+
+      currentRootIndex += 1;
+    }
+
+    // update the event out
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
+
+    emitLogicOperationTree(event.tree, emitter, localsTable, startRootIndex);
+
+    emitter.emitByte(OpCode.i32store);
+    emitter.emitUint32(MEM_ALIGNMENT);
+    emitter.emitUint32(SIZEOF_INT * currentEventIndex);
+
+    currentEventIndex += 1;
+  }
+
+  emitter.emitByte(OpCode.end);
+
+  return emitter;
+};
+
+const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], functionTable: IndexSymbolTable): Emitter => {
+  const emitter = new Emitter();
+
+  emitter.emitListHeader(0);
+
+  const localsTable = new LocalsSymbolTable([
+    T_PARAM,
+    Y_PARAM,
+    P_PARAM,
+    CONDITIONS_PARAM,
+    EVENT_OUT_PARAM,
+  ]);
+
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+
+  let currentRootIndex = 0;
+  let currentEventIndex = 0;
+
+  for (const event of events) {
+    const startRootIndex = currentRootIndex;
+    
+    // update every condition
+    for (const condition of event.conditions) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+      emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
+      emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+      emitComparisonOperator(emitter, condition.op);
+
+      emitter.emitByte(OpCode.i32store);
+      emitter.emitUint32(MEM_ALIGNMENT);
+      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
 
       currentRootIndex += 1;
     }

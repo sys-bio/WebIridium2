@@ -63,6 +63,24 @@ export const emitFormula = (
   ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
 };
 
+export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
+  if (op === ">=") {
+    emitter.emitByte(OpCode.f64ge);
+  } else if (op === "<=") {
+    emitter.emitByte(OpCode.f64le);
+  } else if (op === "<") {
+    emitter.emitByte(OpCode.f64lt);
+  } else if (op === ">") {
+    emitter.emitByte(OpCode.f64gt);
+  } else if (op === "==") {
+    emitter.emitByte(OpCode.f64eq);
+  } else if (op === "!=") {
+    emitter.emitByte(OpCode.f64ne);
+  } else {
+    throw new Error(`unknown comparison op: ${op}`);
+  }
+}
+
 class FormulaCompilerListener implements AntimonyListener {
   protected emitter: Emitter;
   #emitLoadVariable: EmitLoadVariableFunction;
@@ -135,22 +153,7 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitCompare(ctx: CompareContext): void {
-    if (ctx._op.text === ">=") {
-      this.emitter.emitByte(OpCode.f64ge);
-    } else if (ctx._op.text === "<=") {
-      this.emitter.emitByte(OpCode.f64le);
-    } else if (ctx._op.text === "<") {
-      this.emitter.emitByte(OpCode.f64lt);
-    } else if (ctx._op.text === ">") {
-      this.emitter.emitByte(OpCode.f64gt);
-    } else if (ctx._op.text === "==") {
-      this.emitter.emitByte(OpCode.f64eq);
-    } else if (ctx._op.text === "!=") {
-      this.emitter.emitByte(OpCode.f64ne);
-    } else {
-      throw new Error(`unknown comparison op: ${ctx._op.text}`);
-    }
-
+    emitComparisonOperator(this.emitter, ctx._op.text as string);
     this.emitter.emitByte(OpCode.f64convert_u_i32);
   }
 

@@ -38,7 +38,8 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::value_object<EventParams>("EventParams")
         .field("event_info", &EventParams::event_info)
         .field("roots_fn", &EventParams::roots_fn)
-        .field("check_events_fn", &EventParams::check_events_fn);
+        .field("check_roots_fn", &EventParams::check_roots_fn)
+        .field("update_conditions_fn", &EventParams::update_conditions_fn);
 
     emscripten::register_vector<double>("DoubleVector");
     emscripten::register_vector<int>("IntVector");

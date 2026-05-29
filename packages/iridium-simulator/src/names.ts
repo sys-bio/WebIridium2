@@ -1,6 +1,7 @@
 export const RHS_NAME = "rhs";
 export const ROOTS_NAME = "roots";
-export const CHECK_EVENTS_NAME = "checkEvents";
+export const CHECK_ROOTS_NAME = "checkRoots";
+export const UPDATE_CONDITIONS_NAME = "updateConditions";
 
 export { TIME_NAME } from "antimony-language/semantic/builtins";
 

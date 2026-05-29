@@ -3,13 +3,18 @@
 #include <queue>
 #include <vector>
 
+#include "wasm.h"
+
 // Events may have multiple roots, so len(gout) >= len(events)
 // Expresses every event condition as a root-finding problem.
 using RootsFn = void(double time, double y[], double gout[], double p[]);
 
 // Updates which event triggers hold when CVODE indicates a root found.
 // The conditions array is to hold state about which conditions hold between root finds.
-using CheckEventsFn = void(double time, int roots[], int conditions[], int eventout[]);
+using CheckRootsFn = void(double time, int roots[], WasmBool conditionsout[], WasmBool eventout[]);
+
+// Updates the conditions array and events.
+using UpdateConditionsFn = void(double time, double y[], double p[], WasmBool conditionsout[], WasmBool eventout[]);
 
 // Used for getting delay/priority.
 using GetOptionFn = double(double time, double y[], double p[]);

@@ -66,7 +66,8 @@ export interface EventInfoVector extends ClassHandle, Iterable<EventInfo> {
 export type EventParams = {
   event_info: EventInfoVector,
   roots_fn: number,
-  check_events_fn: number
+  check_roots_fn: number,
+  update_conditions_fn: number
 };
 
 interface EmbindModule {

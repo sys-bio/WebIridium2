@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 #include "model.h"
 #include "event.h"
@@ -64,6 +65,7 @@ Model::Model(
 
         num_roots_ = total_conditions;
         user_data_.roots = (RootsFn*)event_params.roots_fn;
+        events_swap_ = std::vector<WasmBool>(event_params.event_info.size());
     }
 
     ResetState();
@@ -97,11 +99,13 @@ void Model::ResetState() {
 
     if (event_params_.has_value()) {
         const EventParams &params = event_params_.value();
-        current_triggered_events_ = std::vector<bool>();
 
         roots_found_ = std::vector<int>(num_roots_);
         conditions_state_ = std::vector<WasmBool>(num_roots_);
-        current_triggered_events_ = std::vector<bool>(params.event_info.size());
+
+        for (int i = 0; i < params.event_info.size(); i++) {
+            current_triggered_events_[i] = params.event_info[i].is_t0;
+        }
     }
 }
 
@@ -142,8 +146,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
 
-        UpdateEvents(time_ == 0.0);
-        ApplyPendingEvents();
+        UpdateEvents();
+        RunPendingEventInvocations();
     }
 
     double target_time = time_ + start_time;
@@ -192,9 +196,9 @@ void Model::Integrate(double target_time) {
             if (!go_to_event) {
                 break;
             } else {
-                // TOOD: do we know that CVODE guarantees we will always go at or past the target time?
+                // TODO: do we know that CVODE guarantees we will always go at or past the target time?
                 if (time_ >= event_time) {
-                    ApplyPendingEvents();
+                    RunPendingEventInvocations();
                     continue;
                 } else {
                     // what happened??
@@ -207,35 +211,16 @@ void Model::Integrate(double target_time) {
         } else if (result == CV_ROOT_RETURN) {
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
-            std::vector<WasmBool> triggered_events(num_roots_);
-
-            ((CheckEventsFn*)event_params_.value().check_events_fn)(
+            ((CheckRootsFn*)event_params_.value().check_roots_fn)(
                 time_,
                 roots_found_.data(),
                 conditions_state_.data(),
-                triggered_events.data()
+                events_swap_.data()
             );
 
-            for (int i = 0; i < triggered_events.size(); i++) {
-                if (triggered_events[i]) {
-                    if (!current_triggered_events_[i]) {
-                        current_triggered_events_[i] = true;
+            EnqueueEventsFromSwap();
 
-                        EnqueueEvent(event_params_.value().event_info[i]);
-                    }
-                } else if (!triggered_events[i]) {
-                    if (current_triggered_events_[i]) {
-                        current_triggered_events_[i] = false;
-
-                        const EventInfo &info = event_params_.value().event_info[i];
-                        if (!info.is_persistent) {
-                            event_queue_.RemoveInvocationsOf(info);
-                        }
-                    }
-                }
-            }
-
-            ApplyPendingEvents();
+            RunPendingEventInvocations();
         } else {
             // TODO: error handling?
             break;
@@ -243,8 +228,37 @@ void Model::Integrate(double target_time) {
     }
 }
 
-void Model::UpdateEvents(bool is_t0) {
+void Model::EnqueueEventsFromSwap() {
+    for (int i = 0; i < events_swap_.size(); i++) {
+        if (events_swap_[i]) {
+            if (!current_triggered_events_[i]) {
+                current_triggered_events_[i] = true;
 
+                EnqueueEvent(event_params_.value().event_info[i]);
+            }
+        } else if (!events_swap_[i]) {
+            if (current_triggered_events_[i]) {
+                current_triggered_events_[i] = false;
+
+                const EventInfo &info = event_params_.value().event_info[i];
+                if (!info.is_persistent) {
+                    event_queue_.RemoveInvocationsOf(info);
+                }
+            }
+        }
+    }
+}
+
+void Model::UpdateEvents() {
+    ((UpdateConditionsFn*)event_params_.value().update_conditions_fn)(
+        time_,
+        NV_DATA_S(y_),
+        user_data_.p,
+        conditions_state_.data(),
+        events_swap_.data()
+    );
+
+    EnqueueEventsFromSwap();
 }
 
 void Model::EnqueueEvent(const EventInfo &info) {
@@ -279,7 +293,7 @@ void Model::EnqueueEvent(const EventInfo &info) {
     event_queue_.AddInvocation(std::move(invocation));
 }
 
-void Model::ApplyPendingEvents() {
+void Model::RunPendingEventInvocations() {
     bool updated = false;
 
     while (event_queue_.IsInvocationAvailable(time_)) {
@@ -315,7 +329,7 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
         user_data_.p[info->p_indices[ip]] = invocation.p_values[ip];
     }
 
-    UpdateEvents();
+    // UpdateEvents();
 }
 
 void Model::InitializeOutputArray(int num_points) {

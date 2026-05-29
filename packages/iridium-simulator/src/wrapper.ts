@@ -9,12 +9,13 @@ import type {
   Model,
 } from "../build/cvodeBindings.d.ts";
 import {
-  CHECK_EVENTS_NAME,
+  CHECK_ROOTS_NAME,
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
   RHS_NAME,
   ROOTS_NAME,
+  UPDATE_CONDITIONS_NAME,
 } from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import {
@@ -98,8 +99,11 @@ export class CvodeWrapper {
       const rootsPtr = this.#bindings.addFunction(
         instance.exports[ROOTS_NAME],
       ) as number;
-      const checkEventsPtr = this.#bindings.addFunction(
-        instance.exports[CHECK_EVENTS_NAME],
+      const checkRootsPtr = this.#bindings.addFunction(
+        instance.exports[CHECK_ROOTS_NAME],
+      ) as number;
+      const updateConditionsPtr = this.#bindings.addFunction(
+        instance.exports[UPDATE_CONDITIONS_NAME],
       ) as number;
       const eventInfo = new this.#bindings.EventInfoVector();
 
@@ -119,7 +123,6 @@ export class CvodeWrapper {
 
         let getPriorityPtr: number | undefined;
         if (event.getPriorityExport) {
-          console.log("please add priority");
           getPriorityPtr = this.#bindings.addFunction(
             instance.exports[event.getPriorityExport],
           ) as number;
@@ -155,8 +158,13 @@ export class CvodeWrapper {
       eventParams = {
         event_info: eventInfo,
         roots_fn: rootsPtr,
-        check_events_fn: checkEventsPtr,
+        check_roots_fn: checkRootsPtr,
+        update_conditions_fn: updateConditionsPtr,
       };
+
+      funcPtrs.push(rootsPtr);
+      funcPtrs.push(checkRootsPtr);
+      funcPtrs.push(updateConditionsPtr);
 
       vectorsToDestroy.push(eventInfo);
     }
