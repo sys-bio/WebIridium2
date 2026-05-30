@@ -79,7 +79,7 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   } else {
     throw new Error(`unknown comparison op: ${op}`);
   }
-}
+};
 
 class FormulaCompilerListener implements AntimonyListener {
   protected emitter: Emitter;
@@ -102,7 +102,7 @@ class FormulaCompilerListener implements AntimonyListener {
       (predefinedFuncDefs[name] as InlineFunction).emit(this.emitter);
     } else {
       const functionIndex = this.#functionTable.get(_ctx.NAME().text);
-      this.emitter.emitCall(functionIndex);
+      this.emitter.emitCallOp(functionIndex);
     }
   }
 
@@ -125,7 +125,7 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitPower(_ctx: PowerContext) {
-    this.emitter.emitCall(this.#functionTable.get(POW_RESERVED_NAME));
+    this.emitter.emitCallOp(this.#functionTable.get(POW_RESERVED_NAME));
   }
 
   exitProduct(ctx: ProductContext): void {

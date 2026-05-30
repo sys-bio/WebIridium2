@@ -41,9 +41,9 @@ const createReciprocal = (functionName: string) => {
     emitter.emitFloat64(1);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(0);
+    emitter.emitUint(0);
 
-    emitter.emitCall(functionsTable.get(functionName));
+    emitter.emitCallOp(functionsTable.get(functionName));
 
     emitter.emitByte(OpCode.f64div);
 
@@ -62,11 +62,11 @@ const createInverseReciprocal = (functionName: string) => {
     emitter.emitFloat64(1);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(0);
+    emitter.emitUint(0);
 
     emitter.emitByte(OpCode.f64div);
 
-    emitter.emitCall(functionsTable.get(functionName));
+    emitter.emitCallOp(functionsTable.get(functionName));
 
     emitter.emitByte(OpCode.end);
 

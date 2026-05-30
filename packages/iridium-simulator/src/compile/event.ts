@@ -37,15 +37,16 @@ import { WASM_FALSE, WASM_TRUE } from "./wasmTypes.ts";
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
 
-const CHECK_ROOTS_PARAMS = [
+const CHECK_ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
+const CHECK_ROOTS_RESULTS: ValType[] = [];
+
+const UPDATE_CONDITIONS_PARAMS = [
   ValType.f64,
   ValType.i32,
   ValType.i32,
   ValType.i32,
+  ValType.i32,
 ];
-const CHECK_ROOTS_RESULTS: ValType[] = [];
-
-const UPDATE_CONDITIONS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32, ValType.i32];
 const UPDATE_CONDITIONS_RESULTS: ValType[] = [];
 
 const GET_OPTION_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
@@ -102,12 +103,10 @@ const emitEventConditionAsRoot = (
   // discontinuous function that is 1 on true and -1 on false. We can also do that,
   // it will actually be way less of a headache.
   if (condition.op === ">") {
-    emitter.emitByte(OpCode.f64const);
-    emitter.emitFloat64(Number.EPSILON);
+    emitter.emitF64ConstOp(Number.EPSILON);
     emitter.emitByte(OpCode.f64sub);
   } else if (condition.op === "<") {
-    emitter.emitByte(OpCode.f64const);
-    emitter.emitFloat64(Number.EPSILON);
+    emitter.emitF64ConstOp(Number.EPSILON);
     emitter.emitByte(OpCode.f64add);
   }
 };
@@ -145,7 +144,10 @@ class EventConditionListener implements AntimonyListener {
     const right = this.#treeStack.pop();
     const left = this.#treeStack.pop();
     if (left === undefined || right === undefined) {
-      throw new CompileError("Invalid event trigger. Must evaluate to boolean.", { tree: ctx });
+      throw new CompileError(
+        "Invalid event trigger. Must evaluate to boolean.",
+        { tree: ctx },
+      );
     }
     this.#treeStack.push({ kind, left, right });
   }
@@ -189,8 +191,6 @@ class EventConditionListener implements AntimonyListener {
       });
     }
   }
-
-  
 }
 
 const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
@@ -199,7 +199,9 @@ const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
 
   const result = listener.getResult();
   if (!result) {
-    throw new CompileError("Invalid event trigger. Must evaluate to boolean.", { tree: event.trigger });
+    throw new CompileError("Invalid event trigger. Must evaluate to boolean.", {
+      tree: event.trigger,
+    });
   } else {
     return {
       ...event,
@@ -343,7 +345,8 @@ export const compileEvents = (
         name: UPDATE_CONDITIONS_NAME,
         params: UPDATE_CONDITIONS_PARAMS,
         results: UPDATE_CONDITIONS_RESULTS,
-        compileBody: (functionTable) => compileUpdateConditions(model, events, functionTable).getOutput(),
+        compileBody: (functionTable) =>
+          compileUpdateConditions(model, events, functionTable).getOutput(),
       },
       ...eventFns,
     ],
@@ -377,7 +380,7 @@ const compileRoots = (
   for (const event of events) {
     for (const condition of event.conditions) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(G_PARAM));
+      emitter.emitUint(localsTable.getParam(G_PARAM));
 
       emitEventConditionAsRoot(
         condition,
@@ -387,8 +390,8 @@ const compileRoots = (
       );
 
       emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * currentRootIndex);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * currentRootIndex);
 
       currentRootIndex += 1;
     }
@@ -411,11 +414,11 @@ const emitLogicOperationTree = (
 ) => {
   if (typeof tree === "number") {
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+    emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
     emitter.emitByte(OpCode.i32load);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_INT * (startRootIndex + tree));
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_INT * (startRootIndex + tree));
   } else if (tree.kind === "and") {
     emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
     emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
@@ -450,63 +453,57 @@ const compileCheckRoots = (events: InternalEvent[]): Emitter => {
     for (const condition of event.conditions) {
       // load the root
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
+      emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
 
       emitter.emitByte(OpCode.i32load);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
       // check if the root was changed
-      emitter.emitByte(OpCode.i32const);
-      emitter.emitUint32(0);
+      emitter.emitI32ConstOp(0);
 
       emitter.emitByte(OpCode.i32ne);
 
       // if so, we need to update our condition array
-      emitter.emitByte(OpCode.if);
-      emitter.emitByte(OpCode.blockNoType);
+      emitter.emitIf(OpCode.blockNoType, () => {
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-      // load the root, check if its the right direction and result in the conditions array
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
 
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(ROOTS_PARAM));
+        emitter.emitByte(OpCode.i32load);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
-      emitter.emitByte(OpCode.i32load);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+        emitter.emitI32ConstOp(0);
 
-      emitter.emitByte(OpCode.i32const);
-      emitter.emitUint32(0);
+        const direction = getEventConditionDirection(condition);
+        if (direction === 0) {
+          throw new Error("==/!= yet supported.");
+        } else if (direction > 0) {
+          emitter.emitByte(OpCode.i32ge_s);
+        } else {
+          emitter.emitByte(OpCode.i32le_s);
+        }
 
-      const direction = getEventConditionDirection(condition);
-      if (direction === 0) {
-        throw new Error("==/!= yet supported.");
-      } else if (direction > 0) {
-        emitter.emitByte(OpCode.i32ge_s);
-      } else {
-        emitter.emitByte(OpCode.i32le_s);
-      }
-
-      emitter.emitByte(OpCode.i32store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
-
-      emitter.emitByte(OpCode.end);
+        emitter.emitByte(OpCode.i32store);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_INT * currentRootIndex);
+      });
 
       currentRootIndex += 1;
     }
 
     // update the event out
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
+    emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
 
     emitLogicOperationTree(event.tree, emitter, localsTable, startRootIndex);
 
     emitter.emitByte(OpCode.i32store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_INT * currentEventIndex);
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_INT * currentEventIndex);
 
     currentEventIndex += 1;
   }
@@ -520,17 +517,20 @@ const LEFT_LOCAL = "left";
 const RIGHT_LOCAL = "right";
 const SHOULD_SKIP_EVENT_LOCAL = "shouldSkipEvent";
 
-const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], functionTable: IndexSymbolTable): Emitter => {
+const compileUpdateConditions = (
+  model: InternalModel,
+  events: InternalEvent[],
+  functionTable: IndexSymbolTable,
+): Emitter => {
   const emitter = new Emitter();
 
   // ask for 2 float64 locals, 1 i32 local
   emitter.emitListHeader(2);
-  emitter.emitUint32(2);
+  emitter.emitUint(2);
   emitter.emitByte(ValType.f64);
 
-  emitter.emitUint32(1);
+  emitter.emitUint(1);
   emitter.emitByte(ValType.i32);
-
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
@@ -551,7 +551,7 @@ const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], 
 
   for (const event of events) {
     const startRootIndex = currentRootIndex;
-    
+
     // update every condition
     for (const condition of event.conditions) {
       // These have to be handled specially because we are not able to really implement them at a boundary
@@ -561,101 +561,105 @@ const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], 
       if (condition.op === ">" || condition.op === "<") {
         emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
         emitter.emitByte(OpCode.localset);
-        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
+        emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
 
         emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
         emitter.emitByte(OpCode.localset);
-        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
+        emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
 
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
+        emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
 
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
+        emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
 
         emitter.emitByte(OpCode.f64eq);
 
         // case: boundary, can't make any conclusions about this event
-        emitter.emitByte(OpCode.if);
-        emitter.emitByte(OpCode.blockNoType);
+        emitter.emitIf(
+          OpCode.blockNoType,
+          () => {
+            // Set local so we know to ignore updating the event.
+            emitter.emitI32ConstOp(WASM_TRUE);
 
-        // Set local so we know to ignore updating the event.
-        emitter.emitI32Const(WASM_TRUE);
+            emitter.emitByte(OpCode.localset);
+            emitter.emitByte(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
 
-        emitter.emitByte(OpCode.localset);
-        emitter.emitByte(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+            // It's OK to set the condition to false because at the boundary it is not true yet.
+            // If the root-finding function hits it, this will update as required.
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-        // It's OK to set the condition to false because at the boundary it is not true yet.
-        // If the root-finding function hits it, this will update as required.
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+            emitter.emitI32ConstOp(WASM_FALSE);
 
-        emitter.emitI32Const(WASM_FALSE);
+            emitter.emitByte(OpCode.i32store);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(SIZEOF_INT * currentRootIndex);
+          },
+          () => {
+            // case: not a boundary, we can confidently update the condition
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-        emitter.emitByte(OpCode.i32store);
-        emitter.emitUint32(MEM_ALIGNMENT);
-        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
 
-        // case: not a boundary, we can confidently update the condition
-        emitter.emitByte(OpCode.else);
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
 
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+            emitComparisonOperator(emitter, condition.op);
 
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
-
-        emitComparisonOperator(emitter, condition.op);
-
-        emitter.emitByte(OpCode.i32store);
-        emitter.emitUint32(MEM_ALIGNMENT);
-        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
-
-        emitter.emitByte(OpCode.end);
+            emitter.emitByte(OpCode.i32store);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(SIZEOF_INT * currentRootIndex);
+          },
+        );
       } else {
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+        emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
         emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
         emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
         emitComparisonOperator(emitter, condition.op);
 
         emitter.emitByte(OpCode.i32store);
-        emitter.emitUint32(MEM_ALIGNMENT);
-        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_INT * currentRootIndex);
       }
 
       currentRootIndex += 1;
     }
 
-    // update the event out
+    // check if we should skip
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+    emitter.emitUint(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
 
-    emitter.emitByte(OpCode.if);
-    emitter.emitByte(OpCode.blockNoType);
+    emitter.emitIf(
+      OpCode.blockNoType,
+      () => {
+        // reset the flag if we need to skip
+        emitter.emitI32ConstOp(WASM_FALSE);
 
-    // reset the flag
-    emitter.emitI32Const(WASM_FALSE);
+        emitter.emitByte(OpCode.localset);
+        emitter.emitUint(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+      },
+      () => {
+        // update the event out
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
 
-    emitter.emitByte(OpCode.localset);
-    emitter.emitUint32(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+        emitLogicOperationTree(
+          event.tree,
+          emitter,
+          localsTable,
+          startRootIndex,
+        );
 
-    emitter.emitByte(OpCode.else)
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
-
-    emitLogicOperationTree(event.tree, emitter, localsTable, startRootIndex);
-
-    emitter.emitByte(OpCode.i32store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_INT * currentEventIndex);
-
-    emitter.emitByte(OpCode.end);
+        emitter.emitByte(OpCode.i32store);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_INT * currentEventIndex);
+      },
+    );
 
     currentEventIndex += 1;
   }
@@ -716,10 +720,10 @@ const compileGetAssignments = (
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(Y_OUT_PARAM));
+      emitter.emitUint(localsTable.getParam(Y_OUT_PARAM));
     } else if (pIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(P_OUT_PARAM));
+      emitter.emitUint(localsTable.getParam(P_OUT_PARAM));
     } else if (name === TIME_NAME) {
       throw new CompileError("You cannot assign to time.", {
         tree: formula.parent,
@@ -736,12 +740,12 @@ const compileGetAssignments = (
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yIndices.get(name));
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * yIndices.get(name));
     } else if (pIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pIndices.get(name));
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * pIndices.get(name));
     }
   }
 

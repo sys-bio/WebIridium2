@@ -233,7 +233,7 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
     const funcIndex = functionTable.add(func.name);
 
-    functionSection.emitUint32(funcTypeIndex);
+    functionSection.emitUint(funcTypeIndex);
 
     if (func.isExported) {
       exportSection.emitName(func.name);
@@ -255,7 +255,7 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
 
   for (const func of compiledFunctions) {
     const body = func.compileBody(functionTable);
-    codeSection.emitUint32(body.byteLength);
+    codeSection.emitUint(body.byteLength);
     codeSection.appendBytes(body);
   }
 

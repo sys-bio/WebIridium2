@@ -35,24 +35,24 @@ export const createEmitLoadVariable = (
   return (emitter: Emitter, name: string): void => {
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(T_PARAM));
+      emitter.emitUint(localsTable.getParam(T_PARAM));
     } else if (Object.hasOwn(builtinConstants, name)) {
       emitter.emitByte(OpCode.f64const);
       emitter.emitFloat64(builtinConstants[name].value);
     } else if (pTable.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(P_PARAM));
+      emitter.emitUint(localsTable.getParam(P_PARAM));
 
       emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(name));
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * pTable.get(name));
     } else if (yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(Y_PARAM));
+      emitter.emitUint(localsTable.getParam(Y_PARAM));
 
       emitter.emitByte(OpCode.f64load);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(name));
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * yTable.get(name));
     } else {
       throw new Error(`Unbound name: ${name}`);
     }
@@ -128,11 +128,11 @@ class Emitter {
     }
   }
 
-  emitUint32(n: number): void {
+  emitUint(n: number): void {
     this.#emitUnsignedLEB128(n);
   }
 
-  emitSint32(n: number): void {
+  emitSint(n: number): void {
     this.#emitSignedLEB128(n);
   }
 
@@ -154,14 +154,14 @@ class Emitter {
   /* Lists (https://webassembly.github.io/spec/core/binary/conventions.html#lists) */
 
   emitListHeader(length: number): void {
-    this.emitUint32(length);
+    this.emitUint(length);
   }
 
   /* Sections */
 
   emitSection(code: SectionCode, content: Uint8Array): void {
     this.emitByte(code);
-    this.emitUint32(content.byteLength);
+    this.emitUint(content.byteLength);
     this.appendBytes(content);
   }
 
@@ -189,7 +189,7 @@ class Emitter {
 
   emitExternFunctionType(functionIndex: number): void {
     this.emitByte(ExternType.func);
-    this.emitUint32(functionIndex);
+    this.emitUint(functionIndex);
   }
 
   emitExternMemoryType(minPages: number, maxPages?: number): void {
@@ -200,29 +200,44 @@ class Emitter {
   emitLimits(min: number, max?: number): void {
     if (max !== undefined) {
       this.emitByte(LimitFlag.i32minMax);
-      this.emitUint32(min);
-      this.emitUint32(max);
+      this.emitUint(min);
+      this.emitUint(max);
     } else {
       this.emitByte(LimitFlag.i32minOnly);
-      this.emitUint32(min);
+      this.emitUint(min);
     }
   }
 
   /* Other */
 
-  emitI32Const(i32: number): void {
+  emitI32ConstOp(i32: number): void {
     this.emitByte(OpCode.i32const);
-    this.emitUint32(i32);
+    this.emitSint(i32);
   }
 
-  emitF64Const(f64: number): void {
+  emitF64ConstOp(f64: number): void {
     this.emitByte(OpCode.f64const);
-    this.emitUint32(f64);
+    this.emitFloat64(f64);
   }
 
-  emitCall(functionIndex: number): void {
+  emitCallOp(functionIndex: number): void {
     this.emitByte(OpCode.call);
-    this.emitUint32(functionIndex);
+    this.emitUint(functionIndex);
+  }
+
+  /** Only supports ValType and empty value types right now (no type indices). */
+  emitIf(type: number, body: () => void, elseBody?: () => void): void {
+    this.emitByte(OpCode.if);
+    this.emitByte(type);
+
+    body();
+
+    if (elseBody) {
+      this.emitByte(OpCode.else);
+      elseBody();
+    }
+
+    this.emitByte(OpCode.end);
   }
 }
 

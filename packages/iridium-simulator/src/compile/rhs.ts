@@ -68,7 +68,7 @@ export const compileRhs = (
   emitter.emitListHeader(1);
 
   // specify that we want these many f64s
-  emitter.emitUint32(reactions.length);
+  emitter.emitUint(reactions.length);
   emitter.emitByte(ValType.f64);
 
   const emitLoadVariable = createEmitLoadVariable(model, localsTable);
@@ -79,7 +79,7 @@ export const compileRhs = (
     const variable = variables.get(variableName)!;
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PARAM));
+    emitter.emitUint(localsTable.getParam(P_PARAM));
 
     emitFormula(
       (variable.assignment as AntimonyRuleAssignment).rule,
@@ -89,8 +89,8 @@ export const compileRhs = (
     );
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * pTable.get(variableName));
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_DOUBLE * pTable.get(variableName));
   }
 
   // calculate all the reaction rates
@@ -100,14 +100,14 @@ export const compileRhs = (
       emitFormula(reaction.rate, emitter, emitLoadVariable, functionTable);
 
       emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localsTable.getLocal(reaction.name));
+      emitter.emitUint(localsTable.getLocal(reaction.name));
     } else {
       // TODO: how to handle missing rate?
       emitter.emitByte(OpCode.f64const);
-      emitter.emitUint32(0);
+      emitter.emitUint(0);
 
       emitter.emitByte(OpCode.localset);
-      emitter.emitUint32(localsTable.getLocal(reaction.name));
+      emitter.emitUint(localsTable.getLocal(reaction.name));
     }
   }
 
@@ -148,7 +148,7 @@ export const compileRhs = (
     const reactions = involvedReactions.get(f.name);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
+    emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
     if (reactions) {
       if (f.assignment?.kind === "rate") {
@@ -168,7 +168,7 @@ export const compileRhs = (
         if (stoichiometry === 0) continue;
 
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint32(localsTable.getLocal(reaction));
+        emitter.emitUint(localsTable.getLocal(reaction));
 
         if (stoichiometry === -1) {
           emitter.emitByte(OpCode.f64neg);
@@ -198,14 +198,14 @@ export const compileRhs = (
     }
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(f.name));
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(f.name));
   }
 
   // do rate rules
   for (const ode of odes) {
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(YDOT_PTR_PARAM));
+    emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
     emitFormula(
       (ode.assignment as AntimonyRateAssignment).rate,
@@ -215,8 +215,8 @@ export const compileRhs = (
     );
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * yTable.get(ode.name));
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(ode.name));
   }
 
   // add to reactions to p (for output)
@@ -224,19 +224,18 @@ export const compileRhs = (
     const index = pTable.get(reaction.name);
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getParam(P_PARAM));
+    emitter.emitUint(localsTable.getParam(P_PARAM));
 
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint32(localsTable.getLocal(reaction.name));
+    emitter.emitUint(localsTable.getLocal(reaction.name));
 
     emitter.emitByte(OpCode.f64store);
-    emitter.emitUint32(MEM_ALIGNMENT);
-    emitter.emitUint32(SIZEOF_DOUBLE * index);
+    emitter.emitUint(MEM_ALIGNMENT);
+    emitter.emitUint(SIZEOF_DOUBLE * index);
   }
 
   // return success
-  emitter.emitByte(OpCode.i32const);
-  emitter.emitUint32(0);
+  emitter.emitI32ConstOp(0);
 
   emitter.emitByte(OpCode.end);
 
