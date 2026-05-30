@@ -127,7 +127,7 @@ private:
     // Simulation state (needs to be reset)
     double time_;
     EventQueue event_queue_{};
-    std::vector<bool> current_triggered_events_;
+    std::vector<WasmBool> current_triggered_events_;
     std::vector<int> roots_found_;
     std::vector<WasmBool> conditions_state_;
     // Every time we update which events are active, tell the generated function to put

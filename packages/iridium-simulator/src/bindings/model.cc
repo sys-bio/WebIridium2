@@ -66,6 +66,7 @@ Model::Model(
         num_roots_ = total_conditions;
         user_data_.roots = (RootsFn*)event_params.roots_fn;
         events_swap_ = std::vector<WasmBool>(event_params.event_info.size());
+        current_triggered_events_ = std::vector<WasmBool>(event_params.event_info.size());
     }
 
     ResetState();
@@ -146,6 +147,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
 
+        user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+
         UpdateEvents();
         RunPendingEventInvocations();
     }
@@ -209,6 +212,7 @@ void Model::Integrate(double target_time) {
                 }
             }
         } else if (result == CV_ROOT_RETURN) {
+            std::cout << "hit root at " << time_ << std::endl;
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
             ((CheckRootsFn*)event_params_.value().check_roots_fn)(
@@ -232,14 +236,10 @@ void Model::EnqueueEventsFromSwap() {
     for (int i = 0; i < events_swap_.size(); i++) {
         if (events_swap_[i]) {
             if (!current_triggered_events_[i]) {
-                current_triggered_events_[i] = true;
-
                 EnqueueEvent(event_params_.value().event_info[i]);
             }
         } else if (!events_swap_[i]) {
             if (current_triggered_events_[i]) {
-                current_triggered_events_[i] = false;
-
                 const EventInfo &info = event_params_.value().event_info[i];
                 if (!info.is_persistent) {
                     event_queue_.RemoveInvocationsOf(info);
@@ -247,6 +247,8 @@ void Model::EnqueueEventsFromSwap() {
             }
         }
     }
+
+    current_triggered_events_.swap(events_swap_);
 }
 
 void Model::UpdateEvents() {
@@ -257,6 +259,11 @@ void Model::UpdateEvents() {
         conditions_state_.data(),
         events_swap_.data()
     );
+
+    std::cout << "time: " << time_ << std::endl;
+    for (int i = 0 ; i < events_swap_.size(); i++) {
+        std::cout << "[" << i << "] = " << events_swap_[i] << std::endl;
+    }
 
     EnqueueEventsFromSwap();
 }
@@ -323,13 +330,17 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
 
     for (int iy = 0; iy < info->y_indices.size(); iy++) {
         NV_Ith_S(y_, info->y_indices[iy]) = invocation.y_values[iy];
+        std::cout << "y[" << info->y_indices[iy] << "] = " << invocation.y_values[iy] << std::endl;
     }
 
     for (int ip = 0; ip < info->p_indices.size(); ip++) {
         user_data_.p[info->p_indices[ip]] = invocation.p_values[ip];
+        std::cout << "p[" << info->p_indices[ip] << "] = " << invocation.p_values[ip] << std::endl;
     }
 
-    // UpdateEvents();
+
+    user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+    UpdateEvents();
 }
 
 void Model::InitializeOutputArray(int num_points) {

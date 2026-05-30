@@ -5,3 +5,6 @@ export type WasmTypeDefinition = {
   params: ValType[];
   results: ValType[];
 };
+
+export const WASM_TRUE = 1;
+export const WASM_FALSE = 0;

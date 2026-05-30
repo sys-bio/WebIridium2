@@ -32,6 +32,7 @@ import type { EventSpec } from "../modelSpec";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { ParserRuleContext } from "antlr4ts";
+import { WASM_FALSE, WASM_TRUE } from "./wasmTypes.ts";
 
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
@@ -89,10 +90,31 @@ const emitEventConditionAsRoot = (
   emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
   emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
   emitter.emitByte(OpCode.f64sub);
+
+  // We need to do a little trick when we end up exactly at the event boundary.
+  // For example, take the event `at time > 0:`. CVODE will ignore the root at
+  // the beginning because the sign does not change. To fix this, we nudge the
+  // function a very very very tiny amount down (or up if it is <). That way
+  // it will be like -0.000000000000000000001 then 0.001 or whatever and
+  // CVODE will see the sign change! But if we do this, another issue comes up:
+  // What if we end up exactly at where we nudged the boundary? In such cases,
+  // I think it is fair to give up. What RoadRunner seems to do is have its events as
+  // discontinuous function that is 1 on true and -1 on false. We can also do that,
+  // it will actually be way less of a headache.
+  if (condition.op === ">") {
+    emitter.emitByte(OpCode.f64const);
+    emitter.emitFloat64(Number.EPSILON);
+    emitter.emitByte(OpCode.f64sub);
+  } else if (condition.op === "<") {
+    emitter.emitByte(OpCode.f64const);
+    emitter.emitFloat64(Number.EPSILON);
+    emitter.emitByte(OpCode.f64add);
+  }
 };
 
 const validComparisonOperators = new Set(["<", "<=", ">", ">="]);
 
+// TODO: how to handle something like x + (x < 5)
 class EventConditionListener implements AntimonyListener {
   #treeStack: LogicOperationTree[];
   #conditions: EventCondition[];
@@ -167,6 +189,8 @@ class EventConditionListener implements AntimonyListener {
       });
     }
   }
+
+  
 }
 
 const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
@@ -492,10 +516,21 @@ const compileCheckRoots = (events: InternalEvent[]): Emitter => {
   return emitter;
 };
 
+const LEFT_LOCAL = "left";
+const RIGHT_LOCAL = "right";
+const SHOULD_SKIP_EVENT_LOCAL = "shouldSkipEvent";
+
 const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], functionTable: IndexSymbolTable): Emitter => {
   const emitter = new Emitter();
 
-  emitter.emitListHeader(0);
+  // ask for 2 float64 locals, 1 i32 local
+  emitter.emitListHeader(2);
+  emitter.emitUint32(2);
+  emitter.emitByte(ValType.f64);
+
+  emitter.emitUint32(1);
+  emitter.emitByte(ValType.i32);
+
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
@@ -504,6 +539,10 @@ const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], 
     CONDITIONS_PARAM,
     EVENT_OUT_PARAM,
   ]);
+
+  localsTable.addLocal(LEFT_LOCAL);
+  localsTable.addLocal(RIGHT_LOCAL);
+  localsTable.addLocal(SHOULD_SKIP_EVENT_LOCAL);
 
   const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
@@ -515,21 +554,98 @@ const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], 
     
     // update every condition
     for (const condition of event.conditions) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+      // These have to be handled specially because we are not able to really implement them at a boundary
+      // without stepping an infitesimal step forward. Our strategy is to NOT do anything if we end up
+      // at a boundary. Instead, in the root function, we nudge the inequalities slightly so a root will be
+      // found if we end up moving in the right direction. Then we can just rely on the normal root check code.
+      if (condition.op === ">" || condition.op === "<") {
+        emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
+        emitter.emitByte(OpCode.localset);
+        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
 
-      emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
-      emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
-      emitComparisonOperator(emitter, condition.op);
+        emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+        emitter.emitByte(OpCode.localset);
+        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
 
-      emitter.emitByte(OpCode.i32store);
-      emitter.emitUint32(MEM_ALIGNMENT);
-      emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
+
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
+
+        emitter.emitByte(OpCode.f64eq);
+
+        // case: boundary, can't make any conclusions about this event
+        emitter.emitByte(OpCode.if);
+        emitter.emitByte(OpCode.blockNoType);
+
+        // Set local so we know to ignore updating the event.
+        emitter.emitI32Const(WASM_TRUE);
+
+        emitter.emitByte(OpCode.localset);
+        emitter.emitByte(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+
+        // It's OK to set the condition to false because at the boundary it is not true yet.
+        // If the root-finding function hits it, this will update as required.
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+        emitter.emitI32Const(WASM_FALSE);
+
+        emitter.emitByte(OpCode.i32store);
+        emitter.emitUint32(MEM_ALIGNMENT);
+        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
+        // case: not a boundary, we can confidently update the condition
+        emitter.emitByte(OpCode.else);
+
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getLocal(LEFT_LOCAL));
+
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getLocal(RIGHT_LOCAL));
+
+        emitComparisonOperator(emitter, condition.op);
+
+        emitter.emitByte(OpCode.i32store);
+        emitter.emitUint32(MEM_ALIGNMENT);
+        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+
+        emitter.emitByte(OpCode.end);
+      } else {
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint32(localsTable.getParam(CONDITIONS_PARAM));
+
+        emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
+        emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+        emitComparisonOperator(emitter, condition.op);
+
+        emitter.emitByte(OpCode.i32store);
+        emitter.emitUint32(MEM_ALIGNMENT);
+        emitter.emitUint32(SIZEOF_INT * currentRootIndex);
+      }
 
       currentRootIndex += 1;
     }
 
     // update the event out
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint32(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+
+    emitter.emitByte(OpCode.if);
+    emitter.emitByte(OpCode.blockNoType);
+
+    // reset the flag
+    emitter.emitI32Const(WASM_FALSE);
+
+    emitter.emitByte(OpCode.localset);
+    emitter.emitUint32(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
+
+    emitter.emitByte(OpCode.else)
+
     emitter.emitByte(OpCode.localget);
     emitter.emitUint32(localsTable.getParam(EVENT_OUT_PARAM));
 
@@ -538,6 +654,8 @@ const compileUpdateConditions = (model: InternalModel, events: InternalEvent[], 
     emitter.emitByte(OpCode.i32store);
     emitter.emitUint32(MEM_ALIGNMENT);
     emitter.emitUint32(SIZEOF_INT * currentEventIndex);
+
+    emitter.emitByte(OpCode.end);
 
     currentEventIndex += 1;
   }

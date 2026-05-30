@@ -210,6 +210,16 @@ class Emitter {
 
   /* Other */
 
+  emitI32Const(i32: number): void {
+    this.emitByte(OpCode.i32const);
+    this.emitUint32(i32);
+  }
+
+  emitF64Const(f64: number): void {
+    this.emitByte(OpCode.f64const);
+    this.emitUint32(f64);
+  }
+
   emitCall(functionIndex: number): void {
     this.emitByte(OpCode.call);
     this.emitUint32(functionIndex);
