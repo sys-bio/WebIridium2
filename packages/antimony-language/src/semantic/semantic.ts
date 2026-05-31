@@ -7,6 +7,11 @@ import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 
 export * from "./model.ts";
 
+/**
+ * Pass in optional diagnostics parameter to switch to "diagnostics mode."
+ * In this mode, no errors will be thrown, instead they'll be added to the
+ * array you passed in.
+ */
 export const deriveModels = (
   code: string,
   { diagnostics }: { diagnostics?: Error[] } = {},

@@ -32,3 +32,14 @@ You have to use `npm run test-sim`.
 - It will use RoadRunner to generate the expected data for each tests in `src/__tests__/results/`.
 - Then run then run the `plotCompare.py <test name>` script to get a plot of the expected and received results and their difference.
 - This script gets the data in `iridiumResults/` and `src/__tests__/results/` and plots them.
+
+# Evaluation
+
+There are actually three ways Antimony code is evaluated. When adding/removing
+runtime features, make sure all these parts are accounted for:
+
+- Via the compiler. This is split throughout the codebase, notably in `formula.ts`.
+- Via the simple tree-walk interpreter. This solely exists inside `evaluate.ts` to evaluate
+  initial conditions. This may be removed later.
+- Via the boolean expression compiler. This is in `event.ts`. It compiles
+  only boolean expressions and relies on the normal compiler for the rest.

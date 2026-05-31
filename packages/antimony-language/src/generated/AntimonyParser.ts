@@ -76,7 +76,7 @@ export class AntimonyParser extends Parser {
 	public static readonly RULE_exportList = 6;
 	public static readonly RULE_formula = 7;
 	public static readonly RULE_functionCall = 8;
-	public static readonly RULE_parameterList = 9;
+	public static readonly RULE_argumentList = 9;
 	public static readonly RULE_variable = 10;
 	public static readonly RULE_inCompartment = 11;
 	public static readonly RULE_reaction = 12;
@@ -106,7 +106,7 @@ export class AntimonyParser extends Parser {
 	// tslint:disable:no-trailing-whitespace
 	public static readonly ruleNames: string[] = [
 		"root", "statementSeparator", "topLevelStatement", "statementList", "statement", 
-		"model", "exportList", "formula", "functionCall", "parameterList", "variable", 
+		"model", "exportList", "formula", "functionCall", "argumentList", "variable", 
 		"inCompartment", "reaction", "reactionName", "reactionFormula", "reactantList", 
 		"reactant", "assignment", "declaration", "declarationTerm", "event", "eventName", 
 		"eventOptions", "eventOption", "eventAssignments", "eventAssignment", 
@@ -778,7 +778,7 @@ export class AntimonyParser extends Parser {
 			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << AntimonyParser.T__2) | (1 << AntimonyParser.T__6) | (1 << AntimonyParser.T__7) | (1 << AntimonyParser.T__8) | (1 << AntimonyParser.T__12) | (1 << AntimonyParser.NAME) | (1 << AntimonyParser.NUMBER))) !== 0)) {
 				{
 				this.state = 171;
-				this.parameterList();
+				this.argumentList();
 				}
 			}
 
@@ -801,9 +801,9 @@ export class AntimonyParser extends Parser {
 		return _localctx;
 	}
 	// @RuleVersion(0)
-	public parameterList(): ParameterListContext {
-		let _localctx: ParameterListContext = new ParameterListContext(this._ctx, this.state);
-		this.enterRule(_localctx, 18, AntimonyParser.RULE_parameterList);
+	public argumentList(): ArgumentListContext {
+		let _localctx: ArgumentListContext = new ArgumentListContext(this._ctx, this.state);
+		this.enterRule(_localctx, 18, AntimonyParser.RULE_argumentList);
 		let _la: number;
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -3153,8 +3153,8 @@ export class LogicalContext extends FormulaContext {
 
 export class FunctionCallContext extends ParserRuleContext {
 	public NAME(): TerminalNode { return this.getToken(AntimonyParser.NAME, 0); }
-	public parameterList(): ParameterListContext | undefined {
-		return this.tryGetRuleContext(0, ParameterListContext);
+	public argumentList(): ArgumentListContext | undefined {
+		return this.tryGetRuleContext(0, ArgumentListContext);
 	}
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
@@ -3184,7 +3184,7 @@ export class FunctionCallContext extends ParserRuleContext {
 }
 
 
-export class ParameterListContext extends ParserRuleContext {
+export class ArgumentListContext extends ParserRuleContext {
 	public formula(): FormulaContext[];
 	public formula(i: number): FormulaContext;
 	public formula(i?: number): FormulaContext | FormulaContext[] {
@@ -3198,23 +3198,23 @@ export class ParameterListContext extends ParserRuleContext {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return AntimonyParser.RULE_parameterList; }
+	public get ruleIndex(): number { return AntimonyParser.RULE_argumentList; }
 	// @Override
 	public enterRule(listener: AntimonyListener): void {
-		if (listener.enterParameterList) {
-			listener.enterParameterList(this);
+		if (listener.enterArgumentList) {
+			listener.enterArgumentList(this);
 		}
 	}
 	// @Override
 	public exitRule(listener: AntimonyListener): void {
-		if (listener.exitParameterList) {
-			listener.exitParameterList(this);
+		if (listener.exitArgumentList) {
+			listener.exitArgumentList(this);
 		}
 	}
 	// @Override
 	public accept<Result>(visitor: AntimonyVisitor<Result>): Result {
-		if (visitor.visitParameterList) {
-			return visitor.visitParameterList(this);
+		if (visitor.visitArgumentList) {
+			return visitor.visitArgumentList(this);
 		} else {
 			return visitor.visitChildren(this);
 		}

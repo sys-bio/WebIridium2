@@ -1,4 +1,7 @@
-import type { BuiltinFunctionName } from "antimony-language/semantic/builtins";
+import type {
+  BuiltinFunctionName,
+  builtinFunctions,
+} from "antimony-language/semantic/builtins";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
 import { LocalsSymbolTable, type FunctionTable } from "./symbolTables.ts";
@@ -77,12 +80,66 @@ const createInverseReciprocal = (functionName: string) => {
   };
 };
 
-// is ugly type is to ensure we have a definition for every builtin
+const createBooleanFunction = (
+  emitOp: (emitter: Emitter) => void,
+  putSecondParamOnTop: boolean = true,
+) => {
+  return () => {
+    const a = "a";
+    const b = "b";
+    const tmp = "tmp";
+
+    const emitter = new Emitter();
+    const localsTable = new LocalsSymbolTable([a, b]);
+    localsTable.addLocal(tmp);
+
+    emitter.emitListHeader(1);
+    emitter.emitUint(1);
+    emitter.emitByte(ValType.i32);
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getParam(putSecondParamOnTop ? b : a));
+
+    // convert to 0/1 int
+    emitter.emitF64ConstOp(0);
+    emitter.emitByte(OpCode.f64ne);
+
+    emitter.emitByte(OpCode.localset);
+    emitter.emitUint(localsTable.getLocal(tmp));
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getParam(putSecondParamOnTop ? a : b));
+
+    // convert to 0/1 int
+    emitter.emitF64ConstOp(0);
+    emitter.emitByte(OpCode.f64ne);
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getLocal(tmp));
+
+    emitOp(emitter);
+
+    emitter.emitByte(OpCode.f64convert_u_i32);
+
+    emitter.emitByte(OpCode.end);
+
+    return emitter.getOutput();
+  };
+};
+
+type IsNonVariadicBuiltin<Name extends BuiltinFunctionName> =
+  (typeof builtinFunctions)[Name] extends { arity: number } ? Name : never;
+
+// this ugly type is to ensure we have a definition for every builtin that is non-variadic
 const builtinFunctionDefinitions: {
-  [Name in BuiltinFunctionName]:
-    | (Extract<WasmFunction, { kind: "import" }> & { name: Name })
-    | (Extract<WasmFunction, { kind: "compile" }> & { name: Name })
-    | (Extract<WasmFunction, { kind: "inline" }> & { name: Name });
+  [Name in BuiltinFunctionName as IsNonVariadicBuiltin<Name>]: (typeof builtinFunctions)[Name] extends {
+    arity: number;
+  }
+    ?
+        | (Extract<WasmFunction, { kind: "import" }> & { name: Name })
+        | (Extract<WasmFunction, { kind: "compile" }> & { name: Name })
+        | (Extract<WasmFunction, { kind: "inline" }> & { name: Name })
+    : never;
 } = {
   ln: {
     kind: "import",
@@ -95,6 +152,26 @@ const builtinFunctionDefinitions: {
     kind: "inline",
     name: "abs",
     emit: (emitter) => emitter.emitByte(OpCode.f64abs),
+  },
+  not: {
+    kind: "inline",
+    name: "not",
+    emit: (emitter) => {
+      emitter.emitF64ConstOp(0);
+      emitter.emitByte(OpCode.f64eq);
+      emitter.emitByte(OpCode.f64convert_u_i32);
+    },
+  },
+  implies: {
+    kind: "compile",
+    isExported: false,
+    name: "implies",
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: createBooleanFunction((emitter) => {
+      emitter.emitByte(OpCode.i32eqz);
+      emitter.emitByte(OpCode.i32or);
+    }, false),
   },
   sin: {
     kind: "import",
@@ -290,46 +367,6 @@ const builtinFunctionDefinitions: {
   },
 };
 
-const createBooleanExpression = (emitOp: (emitter: Emitter) => void) => {
-  return () => {
-    const a = "a";
-    const b = "b";
-    const tmp = "tmp";
-
-    const emitter = new Emitter();
-    const localsTable = new LocalsSymbolTable([a, b]);
-    localsTable.addLocal(tmp);
-
-    emitter.emitListHeader(1);
-    emitter.emitUint(1);
-    emitter.emitByte(ValType.i32);
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint(localsTable.getParam(b));
-
-    emitter.emitByte(OpCode.i32_trunc_f64);
-
-    emitter.emitByte(OpCode.localset);
-    emitter.emitUint(localsTable.getLocal(tmp));
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint(localsTable.getParam(a));
-
-    emitter.emitByte(OpCode.i32_trunc_f64);
-
-    emitter.emitByte(OpCode.localget);
-    emitter.emitUint(localsTable.getLocal(tmp));
-
-    emitOp(emitter);
-
-    emitter.emitByte(OpCode.f64convert_u_i32);
-
-    emitter.emitByte(OpCode.end);
-
-    return emitter.getOutput();
-  };
-};
-
 const otherFunctionDefinitionsList: WasmFunction[] = [
   {
     kind: "import",
@@ -338,23 +375,26 @@ const otherFunctionDefinitionsList: WasmFunction[] = [
     results: [ValType.f64],
     js: Math.pow,
   },
+  // This is not for the and() function, that is more like a macro.
+  // This is for the and operator.
   {
     kind: "compile",
     isExported: false,
     name: AND_RESERVED_NAME,
     params: [ValType.f64, ValType.f64],
     results: [ValType.f64],
-    compileBody: createBooleanExpression((emitter) =>
+    compileBody: createBooleanFunction((emitter) =>
       emitter.emitByte(OpCode.i32and),
     ),
   },
+  // This is not for the or() function
   {
     kind: "compile",
     isExported: false,
     name: OR_RESERVED_NAME,
     params: [ValType.f64, ValType.f64],
     results: [ValType.f64],
-    compileBody: createBooleanExpression((emitter) =>
+    compileBody: createBooleanFunction((emitter) =>
       emitter.emitByte(OpCode.i32or),
     ),
   },

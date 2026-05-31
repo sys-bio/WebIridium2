@@ -69,8 +69,7 @@ export const OpCode = {
 
   i32and: 0x71,
   i32or: 0x72,
-
-  i32_trunc_f64: 0xaa,
+  i32xor: 0x73,
 
   f64const: 0x44,
   f64load: 0x2b,

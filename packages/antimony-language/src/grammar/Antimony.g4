@@ -40,8 +40,8 @@ formula : '(' formula ')' #group
         | formula op=LOGICAL formula #logical
         ;
 
-functionCall : NAME '(' parameterList? ')';
-parameterList : formula (',' formula)*;
+functionCall : NAME '(' argumentList? ')';
+argumentList : formula (',' formula)*;
 
 variable : NAME #name
          | variable '.' NAME #subvariable

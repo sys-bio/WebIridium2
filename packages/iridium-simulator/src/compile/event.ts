@@ -1,4 +1,6 @@
 import {
+  ArgumentListContext,
+  CallContext,
   CompareContext,
   EventAssignmentContext,
   FormulaContext,
@@ -35,7 +37,6 @@ import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { EventSpec } from "../modelSpec";
 import type { ParserRuleContext } from "antlr4ts";
-import { WASM_FALSE, WASM_TRUE } from "./wasmTypes.ts";
 
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
@@ -81,8 +82,11 @@ type EventCondition = {
 
 type LogicTree =
   | number
+  | boolean
   | { kind: "or"; left: LogicTree; right: LogicTree }
+  | { kind: "xor"; left: LogicTree; right: LogicTree }
   | { kind: "and"; left: LogicTree; right: LogicTree }
+  | { kind: "implies"; left: LogicTree; right: LogicTree }
   | { kind: "not"; child: LogicTree };
 
 type InternalEvent = AntimonyEvent & {
@@ -141,6 +145,27 @@ const getConditionsFromFormula = (
       );
     }
     treeStack.push({ kind, left, right });
+  };
+
+  const walkVariadicFunction = (
+    defaultValue: boolean,
+    kind: "or" | "xor" | "and",
+    args: ArgumentListContext | undefined,
+  ): void => {
+    if (!args) {
+      treeStack.push(defaultValue);
+    } else {
+      const formulas = args.formula();
+      for (let i = 0; i < formulas.length; i++) {
+        walkFormula(formulas[i]);
+
+        if (i > 0) {
+          const right = treeStack.pop() as LogicTree;
+          const left = treeStack.pop() as LogicTree;
+          treeStack.push({ kind, left, right });
+        }
+      }
+    }
   };
 
   const walkFormula = (ctx: FormulaContext): void => {
@@ -210,6 +235,50 @@ const getConditionsFromFormula = (
         kind: "not",
         child: treeStack.pop() as LogicTree,
       });
+    } else if (ctx instanceof CallContext) {
+      const name = ctx.functionCall().NAME().text;
+      if (name === "and") {
+        walkVariadicFunction(true, "and", ctx.functionCall().argumentList());
+      } else if (name === "or") {
+        walkVariadicFunction(false, "or", ctx.functionCall().argumentList());
+      } else if (name === "xor") {
+        walkVariadicFunction(false, "xor", ctx.functionCall().argumentList());
+      } else if (name === "implies") {
+        const formulas = ctx.functionCall().argumentList()?.formula();
+        if (!formulas || formulas.length !== 2) {
+          throw new CompileError("Expected 2 argumentes for implies.", {
+            tree: ctx,
+          });
+        }
+
+        walkFormula(formulas[0]);
+        walkFormula(formulas[1]);
+
+        const right = treeStack.pop() as LogicTree;
+        const left = treeStack.pop() as LogicTree;
+        treeStack.push({
+          kind: "implies",
+          left,
+          right,
+        });
+      } else if (name === "not") {
+        const formulas = ctx.functionCall().argumentList()?.formula();
+        if (!formulas || formulas.length !== 1) {
+          throw new CompileError("Expected 1 argumentes for not.", {
+            tree: ctx,
+          });
+        }
+
+        walkFormula(formulas[0]);
+
+        const child = treeStack.pop() as LogicTree;
+        treeStack.push({
+          kind: "not",
+          child,
+        });
+      } else {
+        throw new CompileError("Expected boolean expression.", { tree: ctx });
+      }
     } else {
       throw new CompileError("Expected boolean expression.", { tree: ctx });
     }
@@ -445,12 +514,23 @@ const emitLogicTree = (
     emitter.emitByte(OpCode.i32load);
     emitter.emitUint(MEM_ALIGNMENT);
     emitter.emitUint(SIZEOF_INT * (startRootIndex + tree));
+  } else if (typeof tree === "boolean") {
+    emitter.emitI32ConstOp(tree ? 1 : 0);
   } else if (tree.kind === "and") {
     emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
     emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32and);
   } else if (tree.kind === "or") {
     emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32or);
+  } else if (tree.kind === "xor") {
+    emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32xor);
+  } else if (tree.kind === "implies") {
+    emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32eqz);
     emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32or);
   } else if (tree.kind === "not") {
@@ -685,7 +765,7 @@ const compileUpdateConditions = (
           OpCode.blockNoType,
           () => {
             // Set local so we know to ignore updating the event.
-            emitter.emitI32ConstOp(WASM_TRUE);
+            emitter.emitI32ConstOp(1);
 
             emitter.emitByte(OpCode.localset);
             emitter.emitByte(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
@@ -695,7 +775,7 @@ const compileUpdateConditions = (
             emitter.emitByte(OpCode.localget);
             emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-            emitter.emitI32ConstOp(WASM_FALSE);
+            emitter.emitI32ConstOp(0);
 
             emitter.emitByte(OpCode.i32store);
             emitter.emitUint(MEM_ALIGNMENT);
@@ -742,8 +822,8 @@ const compileUpdateConditions = (
     emitter.emitIf(
       OpCode.blockNoType,
       () => {
-        // reset the flag if we need to skip
-        emitter.emitI32ConstOp(WASM_FALSE);
+        // reset the flag
+        emitter.emitI32ConstOp(0);
 
         emitter.emitByte(OpCode.localset);
         emitter.emitUint(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));

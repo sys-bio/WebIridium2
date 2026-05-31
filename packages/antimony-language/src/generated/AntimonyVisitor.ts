@@ -40,7 +40,7 @@ import { ModelContext } from "./AntimonyParser";
 import { ExportListContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
-import { ParameterListContext } from "./AntimonyParser";
+import { ArgumentListContext } from "./AntimonyParser";
 import { VariableContext } from "./AntimonyParser";
 import { InCompartmentContext } from "./AntimonyParser";
 import { ReactionContext } from "./AntimonyParser";
@@ -357,11 +357,11 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitFunctionCall?: (ctx: FunctionCallContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `AntimonyParser.parameterList`.
+	 * Visit a parse tree produced by `AntimonyParser.argumentList`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitParameterList?: (ctx: ParameterListContext) => Result;
+	visitArgumentList?: (ctx: ArgumentListContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.variable`.

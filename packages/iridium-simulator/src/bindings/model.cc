@@ -236,9 +236,22 @@ void Model::Integrate(double target_time) {
 }
 
 void Model::EnqueueEventsFromSwap() {
+    std::cout << "time: " << time_ << std::endl;
+
+    for (int i = 0; i < num_roots_; i++) {
+        std::cout << "r[" << i << "] = " << conditions_state_[i] << std::endl;
+    }
+
+    for (int i = 0 ; i < events_swap_.size(); i++) {
+        std::cout << "e[" << i << "] = " << events_swap_[i] << std::endl;
+    }
+
+    // NOTE: we don't actually swap the events_swap_ since both need to have
+    //       the exact same state or some things won't work in some edge-cases.
     for (int i = 0; i < events_swap_.size(); i++) {
         if (events_swap_[i]) {
             if (!current_triggered_events_[i]) {
+                current_triggered_events_[i] = events_swap_[i];
                 const EventInfo &info = event_params_.value().event_info[i];
                 if (!info.is_for_piecewise) {
                     EnqueueEvent(info);
@@ -246,6 +259,7 @@ void Model::EnqueueEventsFromSwap() {
             }
         } else if (!events_swap_[i]) {
             if (current_triggered_events_[i]) {
+                current_triggered_events_[i] = events_swap_[i];
                 const EventInfo &info = event_params_.value().event_info[i];
                 if (!info.is_persistent && !info.is_for_piecewise) {
                     event_queue_.RemoveInvocationsOf(info);
@@ -253,8 +267,6 @@ void Model::EnqueueEventsFromSwap() {
             }
         }
     }
-
-    current_triggered_events_.swap(events_swap_);
 }
 
 void Model::UpdateEvents() {
@@ -265,11 +277,6 @@ void Model::UpdateEvents() {
         conditions_state_.data(),
         events_swap_.data()
     );
-
-    std::cout << "time: " << time_ << std::endl;
-    for (int i = 0 ; i < events_swap_.size(); i++) {
-        std::cout << "[" << i << "] = " << events_swap_[i] << std::endl;
-    }
 
     EnqueueEventsFromSwap();
 }

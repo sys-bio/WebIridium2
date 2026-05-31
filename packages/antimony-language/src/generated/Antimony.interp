@@ -90,7 +90,7 @@ model
 exportList
 formula
 functionCall
-parameterList
+argumentList
 variable
 inCompartment
 reaction

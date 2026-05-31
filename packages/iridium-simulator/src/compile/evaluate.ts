@@ -11,7 +11,6 @@ import {
   ProductContext,
   PositiveContext,
   NegativeContext,
-  FunctionCallContext,
   ConstantContext,
   PowerContext,
   NumberContext,
@@ -19,6 +18,7 @@ import {
   GroupContext,
   NameContext,
   NotContext,
+  CallContext,
 } from "antimony-language/grammar";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
@@ -175,7 +175,8 @@ class AssignmentEvaluatorVisitor
     return Number(!super.visit(ctx.formula()));
   }
 
-  visitFunctionCall(_ctx: FunctionCallContext): number {
+  visitCall(_ctx: CallContext): number {
+    // TODO: implement function calls
     throw new CompileModelError("Function calls not yet implemented.");
   }
 

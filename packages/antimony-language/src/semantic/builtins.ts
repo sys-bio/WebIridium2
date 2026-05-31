@@ -53,9 +53,11 @@ export const builtinConstants: Readonly<Record<string, BuiltinConstantInfo>> = {
   },
 };
 
+export type Arity = number | { min: number };
+
 export type BuiltinFunctionInfo = {
   description: string;
-  argumentCount: number;
+  arity: Arity;
 };
 
 export type BuiltinFunctionName = keyof typeof builtinFunctions;
@@ -63,106 +65,134 @@ export type BuiltinFunctionName = keyof typeof builtinFunctions;
 export const builtinFunctions = {
   abs: {
     description: "Returns the absolute value.",
-    argumentCount: 1,
+    arity: 1,
   },
   ln: {
     description: "The natural logarithm",
-    argumentCount: 1,
+    arity: 1,
   },
+
+  // Logical
+  and: {
+    description: "Returns true if all arguments are true or false otherwise.",
+    arity: { min: 0 },
+  },
+  or: {
+    description:
+      "Returns true if at least one argument is true or false otherwise.",
+    arity: { min: 0 },
+  },
+  xor: {
+    description:
+      "Returns true if there are an odd number of true arguments or false otherwise.",
+    arity: { min: 0 },
+  },
+  not: {
+    description:
+      "Returns true if the argument is false and false if it is true.",
+    arity: 1,
+  },
+  implies: {
+    description:
+      "Returns false if the first argument is true and the second argument is false, otherwise returns true.",
+    arity: 2,
+  },
+
+  // Trig
   sin: {
     description: "The sine function",
-    argumentCount: 1,
+    arity: 1,
   },
   cos: {
     description: "The cosine function",
-    argumentCount: 1,
+    arity: 1,
   },
   tan: {
     description: "The tangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   sec: {
     description: "The secant function",
-    argumentCount: 1,
+    arity: 1,
   },
   csc: {
     description: "The cosecant function",
-    argumentCount: 1,
+    arity: 1,
   },
   cot: {
     description: "The cotangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   sinh: {
     description: "The hyperbolic sine function",
-    argumentCount: 1,
+    arity: 1,
   },
   cosh: {
     description: "The hyperbolic cosine function",
-    argumentCount: 1,
+    arity: 1,
   },
   tanh: {
     description: "The hyperbolic tangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   sech: {
     description: "The hyperbolic secant function",
-    argumentCount: 1,
+    arity: 1,
   },
   csch: {
     description: "The hyperbolic cosecant function",
-    argumentCount: 1,
+    arity: 1,
   },
   coth: {
     description: "The hyperbolic cotangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   arcsin: {
     description: "The inverse sine function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccos: {
     description: "The inverse cosine function",
-    argumentCount: 1,
+    arity: 1,
   },
   arctan: {
     description: "The inverse tangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   arcsec: {
     description: "The inverse secant function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccsc: {
     description: "The inverse cosecant function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccot: {
     description: "The inverse cotangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   arcsinh: {
     description: "The inverse hyperbolic sine function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccosh: {
     description: "The inverse hyperbolic cosine function",
-    argumentCount: 1,
+    arity: 1,
   },
   arctanh: {
     description: "The inverse hyperbolic tangent function",
-    argumentCount: 1,
+    arity: 1,
   },
   arcsech: {
     description: "The inverse hyperbolic secant function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccsch: {
     description: "The inverse hyperbolic cosecant function",
-    argumentCount: 1,
+    arity: 1,
   },
   arccoth: {
     description: "The inverse hyperbolic cotangent function",
-    argumentCount: 1,
+    arity: 1,
   },
 } satisfies Record<string, BuiltinFunctionInfo>;
