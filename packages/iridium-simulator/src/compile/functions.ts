@@ -1,7 +1,7 @@
 import type { BuiltinFunctionName } from "antimony-language/semantic/builtins";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
-import type { FunctionTable } from "./symbolTables.ts";
+import { LocalsSymbolTable, type FunctionTable } from "./symbolTables.ts";
 
 export type ImportedFunction = {
   kind: "import";
@@ -31,6 +31,8 @@ export type InlineFunction = {
 
 export type WasmFunction = ImportedFunction | CompiledFunction | InlineFunction;
 
+export const AND_RESERVED_NAME = "$reserved_and";
+export const OR_RESERVED_NAME = "$reserved_or";
 export const POW_RESERVED_NAME = "$reserved_pow";
 
 const createReciprocal = (functionName: string) => {
@@ -288,6 +290,46 @@ const builtinFunctionDefinitions: {
   },
 };
 
+const createBooleanExpression = (emitOp: (emitter: Emitter) => void) => {
+  return () => {
+    const a = "a";
+    const b = "b";
+    const tmp = "tmp";
+
+    const emitter = new Emitter();
+    const localsTable = new LocalsSymbolTable([a, b]);
+    localsTable.addLocal(tmp);
+
+    emitter.emitListHeader(1);
+    emitter.emitUint(1);
+    emitter.emitByte(ValType.i32);
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getParam(b));
+
+    emitter.emitByte(OpCode.i32_trunc_f64);
+
+    emitter.emitByte(OpCode.localset);
+    emitter.emitUint(localsTable.getLocal(tmp));
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getParam(a));
+
+    emitter.emitByte(OpCode.i32_trunc_f64);
+
+    emitter.emitByte(OpCode.localget);
+    emitter.emitUint(localsTable.getLocal(tmp));
+
+    emitOp(emitter);
+
+    emitter.emitByte(OpCode.f64convert_u_i32);
+
+    emitter.emitByte(OpCode.end);
+
+    return emitter.getOutput();
+  };
+};
+
 const otherFunctionDefinitionsList: WasmFunction[] = [
   {
     kind: "import",
@@ -295,6 +337,26 @@ const otherFunctionDefinitionsList: WasmFunction[] = [
     params: [ValType.f64, ValType.f64],
     results: [ValType.f64],
     js: Math.pow,
+  },
+  {
+    kind: "compile",
+    isExported: false,
+    name: AND_RESERVED_NAME,
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: createBooleanExpression((emitter) =>
+      emitter.emitByte(OpCode.i32and),
+    ),
+  },
+  {
+    kind: "compile",
+    isExported: false,
+    name: OR_RESERVED_NAME,
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: createBooleanExpression((emitter) =>
+      emitter.emitByte(OpCode.i32or),
+    ),
   },
 ];
 

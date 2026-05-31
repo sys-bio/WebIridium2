@@ -4,6 +4,7 @@ import {
   FormulaContext,
   GroupContext,
   LogicalContext,
+  NotContext,
 } from "antimony-language/grammar";
 import { emitComparisonOperator, emitFormula } from "./formula";
 import {
@@ -202,6 +203,13 @@ const getConditionsFromFormula = (
           right: ctx.getChild(1, FormulaContext),
         });
       }
+    } else if (ctx instanceof NotContext) {
+      walkFormula(ctx.formula());
+
+      treeStack.push({
+        kind: "not",
+        child: treeStack.pop() as LogicTree,
+      });
     } else {
       throw new CompileError("Expected boolean expression.", { tree: ctx });
     }

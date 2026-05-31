@@ -18,6 +18,7 @@ import {
   VarContext,
   GroupContext,
   NameContext,
+  NotContext,
 } from "antimony-language/grammar";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
@@ -103,15 +104,9 @@ class AssignmentEvaluatorVisitor
 
   visitLogical(ctx: LogicalContext): number {
     if (ctx._op.text === "&&") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) &&
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) && super.visit(ctx.formula(1));
     } else if (ctx._op.text === "||") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) ||
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) || super.visit(ctx.formula(1));
     } else {
       throw new Error(`Unknown logical operator: ${ctx._op.text}`);
     }
@@ -120,25 +115,15 @@ class AssignmentEvaluatorVisitor
   visitCompare(ctx: CompareContext): number {
     let wasTrue = false;
     if (ctx._op.text === ">=") {
-      wasTrue =
-        super.visit(ctx.getChild(0, FormulaContext)) >=
-        super.visit(ctx.getChild(1, FormulaContext));
+      wasTrue = super.visit(ctx.formula(0)) >= super.visit(ctx.formula(1));
     } else if (ctx._op.text === "<=") {
-      wasTrue =
-        super.visit(ctx.getChild(0, FormulaContext)) <=
-        super.visit(ctx.getChild(1, FormulaContext));
+      wasTrue = super.visit(ctx.formula(0)) <= super.visit(ctx.formula(1));
     } else if (ctx._op.text === ">") {
-      wasTrue =
-        super.visit(ctx.getChild(0, FormulaContext)) >
-        super.visit(ctx.getChild(1, FormulaContext));
+      wasTrue = super.visit(ctx.formula(0)) > super.visit(ctx.formula(1));
     } else if (ctx._op.text === "<") {
-      wasTrue =
-        super.visit(ctx.getChild(0, FormulaContext)) <
-        super.visit(ctx.getChild(1, FormulaContext));
+      wasTrue = super.visit(ctx.formula(0)) < super.visit(ctx.formula(1));
     } else if (ctx._op.text === "==") {
-      wasTrue =
-        super.visit(ctx.getChild(0, FormulaContext)) ==
-        super.visit(ctx.getChild(1, FormulaContext));
+      wasTrue = super.visit(ctx.formula(0)) == super.visit(ctx.formula(1));
     } else {
       throw new Error(`Unknown comparison operator: ${ctx._op.text}`);
     }
@@ -148,15 +133,9 @@ class AssignmentEvaluatorVisitor
 
   visitSum(ctx: SumContext): number {
     if (ctx._op.text === "+") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) +
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) + super.visit(ctx.formula(1));
     } else if (ctx._op.text === "-") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) -
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) - super.visit(ctx.formula(1));
     } else {
       throw new Error(`Unknown operator: ${ctx._op.text}`);
     }
@@ -164,44 +143,36 @@ class AssignmentEvaluatorVisitor
 
   visitProduct(ctx: ProductContext): number {
     if (ctx._op.text === "*") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) *
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) * super.visit(ctx.formula(1));
     } else if (ctx._op.text === "/") {
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) /
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) / super.visit(ctx.formula(1));
     } else if (ctx._op.text === "%") {
       // TODO: does this behave how we want for negatives?
-      return (
-        super.visit(ctx.getChild(0, FormulaContext)) %
-        super.visit(ctx.getChild(1, FormulaContext))
-      );
+      return super.visit(ctx.formula(0)) % super.visit(ctx.formula(1));
     } else {
       throw new Error(`Unknown operator: ${ctx._op.text}`);
     }
   }
 
   visitGroup(ctx: GroupContext): number {
-    return super.visit(ctx.getChild(0, FormulaContext));
+    return super.visit(ctx.formula());
   }
 
   visitPower(ctx: PowerContext): number {
-    return (
-      super.visit(ctx.getChild(0, FormulaContext)) **
-      super.visit(ctx.getChild(1, FormulaContext))
-    );
+    return super.visit(ctx.formula(0)) ** super.visit(ctx.formula(1));
   }
 
   visitNegative(ctx: NegativeContext): number {
-    return -super.visit(ctx.getChild(0, FormulaContext));
+    return -super.visit(ctx.formula());
   }
 
   // literally does nothing
   visitPositive(ctx: PositiveContext): number {
-    return super.visit(ctx.getChild(0, FormulaContext));
+    return super.visit(ctx.formula());
+  }
+
+  visitNot(ctx: NotContext): number {
+    return Number(!super.visit(ctx.formula()));
   }
 
   visitFunctionCall(_ctx: FunctionCallContext): number {

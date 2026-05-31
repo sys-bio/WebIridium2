@@ -26,14 +26,17 @@ formula : '(' formula ')' #group
         | NUMBER #number
         | functionCall #call
         | variable #var
-        | '+' formula #positive
-        | '-' formula #negative
         // | 'exp' formula #exp // does not seem to actually be valid, but it was in the old grammars
         | <assoc=right> formula '^' formula #power
+        | '+' formula #positive
+        | '-' formula #negative
+        | '!' formula #not
         | formula op=('*' | '/' | '%') formula #product
         | formula op=('+' | '-') formula #sum
         | formula op=COMPARE formula #compare
         // In the Antimony grammar, || and && these are the same precedence
+        // Also they are individual tokens (you can put a space between)...
+        // but not going to bother with that right now.
         | formula op=LOGICAL formula #logical
         ;
 

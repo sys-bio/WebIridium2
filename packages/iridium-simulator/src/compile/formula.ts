@@ -6,6 +6,7 @@ import {
   FormulaContext,
   LogicalContext,
   NameContext,
+  NotContext,
   SubvariableContext,
   SumContext,
   VariableContext,
@@ -21,7 +22,11 @@ import {
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
 import type { FunctionTable } from "./symbolTables.ts";
-import { POW_RESERVED_NAME } from "./functions";
+import {
+  AND_RESERVED_NAME,
+  OR_RESERVED_NAME,
+  POW_RESERVED_NAME,
+} from "./functions";
 import type { EmitLoadVariableFunction } from "./Emitter";
 import {
   predefinedFuncDefs,
@@ -157,7 +162,20 @@ class FormulaCompilerListener implements AntimonyListener {
     this.emitter.emitByte(OpCode.f64convert_u_i32);
   }
 
-  exitLogical(_ctx: LogicalContext): void {
-    TODO();
+  exitNot(_ctx: NotContext): void {
+    this.emitter.emitF64ConstOp(0);
+    this.emitter.emitByte(OpCode.f64eq);
+    this.emitter.emitByte(OpCode.f64convert_u_i32);
+  }
+
+  exitLogical(ctx: LogicalContext): void {
+    const op = ctx._op.text;
+    if (op === "&&") {
+      this.emitter.emitCallOp(this.#functionTable.get(AND_RESERVED_NAME));
+    } else if (op === "||") {
+      this.emitter.emitCallOp(this.#functionTable.get(OR_RESERVED_NAME));
+    } else {
+      throw new CompileError(`Unknown logical operator: ${op}`, { tree: ctx });
+    }
   }
 }

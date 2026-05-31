@@ -21,9 +21,10 @@ import { GroupContext } from "./AntimonyParser";
 import { NumberContext } from "./AntimonyParser";
 import { CallContext } from "./AntimonyParser";
 import { VarContext } from "./AntimonyParser";
+import { PowerContext } from "./AntimonyParser";
 import { PositiveContext } from "./AntimonyParser";
 import { NegativeContext } from "./AntimonyParser";
-import { PowerContext } from "./AntimonyParser";
+import { NotContext } from "./AntimonyParser";
 import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
@@ -295,6 +296,19 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitVar?: (ctx: VarContext) => void;
 
 	/**
+	 * Enter a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	enterPower?: (ctx: PowerContext) => void;
+	/**
+	 * Exit a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 */
+	exitPower?: (ctx: PowerContext) => void;
+
+	/**
 	 * Enter a parse tree produced by the `positive`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
@@ -321,17 +335,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitNegative?: (ctx: NegativeContext) => void;
 
 	/**
-	 * Enter a parse tree produced by the `power`
+	 * Enter a parse tree produced by the `not`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 */
-	enterPower?: (ctx: PowerContext) => void;
+	enterNot?: (ctx: NotContext) => void;
 	/**
-	 * Exit a parse tree produced by the `power`
+	 * Exit a parse tree produced by the `not`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 */
-	exitPower?: (ctx: PowerContext) => void;
+	exitNot?: (ctx: NotContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `product`

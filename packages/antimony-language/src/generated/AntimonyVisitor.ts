@@ -21,9 +21,10 @@ import { GroupContext } from "./AntimonyParser";
 import { NumberContext } from "./AntimonyParser";
 import { CallContext } from "./AntimonyParser";
 import { VarContext } from "./AntimonyParser";
+import { PowerContext } from "./AntimonyParser";
 import { PositiveContext } from "./AntimonyParser";
 import { NegativeContext } from "./AntimonyParser";
-import { PowerContext } from "./AntimonyParser";
+import { NotContext } from "./AntimonyParser";
 import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
@@ -213,6 +214,14 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitVar?: (ctx: VarContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by the `power`
+	 * labeled alternative in `AntimonyParser.formula`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitPower?: (ctx: PowerContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by the `positive`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
@@ -229,12 +238,12 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitNegative?: (ctx: NegativeContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by the `power`
+	 * Visit a parse tree produced by the `not`
 	 * labeled alternative in `AntimonyParser.formula`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitPower?: (ctx: PowerContext) => Result;
+	visitNot?: (ctx: NotContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by the `product`

@@ -8,6 +8,7 @@ import type { EventSpec, ModelSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import { parse } from "antimony-language/parse";
 import {
+  LogicalContext,
   type AntimonyListener,
   type FunctionCallContext,
   type PowerContext,
@@ -28,6 +29,8 @@ import {
   type CompiledFunction,
   type ImportedFunction,
   type WasmFunction,
+  AND_RESERVED_NAME,
+  OR_RESERVED_NAME,
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
 
@@ -170,6 +173,15 @@ class GetReferencedListener implements AntimonyListener {
 
   enterPower(_ctx: PowerContext): void {
     this.#referenced.add(POW_RESERVED_NAME);
+  }
+
+  enterLogical(ctx: LogicalContext): void {
+    const op = ctx._op.text;
+    if (op === "&&") {
+      this.#referenced.add(AND_RESERVED_NAME);
+    } else if (op === "||") {
+      this.#referenced.add(OR_RESERVED_NAME);
+    }
   }
 }
 
