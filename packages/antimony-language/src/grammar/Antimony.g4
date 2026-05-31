@@ -33,6 +33,7 @@ formula : '(' formula ')' #group
         | formula op=('*' | '/' | '%') formula #product
         | formula op=('+' | '-') formula #sum
         | formula op=COMPARE formula #compare
+        // In the Antimony grammar, || and && these are the same precedence
         | formula op=LOGICAL formula #logical
         ;
 

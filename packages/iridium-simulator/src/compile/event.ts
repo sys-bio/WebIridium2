@@ -2,8 +2,8 @@ import {
   CompareContext,
   EventAssignmentContext,
   FormulaContext,
+  GroupContext,
   LogicalContext,
-  type AntimonyListener,
 } from "antimony-language/grammar";
 import { emitComparisonOperator, emitFormula } from "./formula";
 import {
@@ -33,8 +33,6 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { EventSpec } from "../modelSpec";
-import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
-import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { ParserRuleContext } from "antlr4ts";
 import { WASM_FALSE, WASM_TRUE } from "./wasmTypes.ts";
 
@@ -80,15 +78,15 @@ type EventCondition = {
   right: FormulaContext;
 };
 
-type LogicOperationTree =
+type LogicTree =
   | number
-  | { kind: "or"; left: LogicOperationTree; right: LogicOperationTree }
-  | { kind: "and"; left: LogicOperationTree; right: LogicOperationTree }
-  | { kind: "not"; child: LogicOperationTree };
+  | { kind: "or"; left: LogicTree; right: LogicTree }
+  | { kind: "and"; left: LogicTree; right: LogicTree }
+  | { kind: "not"; child: LogicTree };
 
 type InternalEvent = AntimonyEvent & {
   conditions: EventCondition[];
-  tree: LogicOperationTree;
+  tree: LogicTree;
 };
 
 const emitEventConditionAsRoot = (
@@ -120,100 +118,114 @@ const emitEventConditionAsRoot = (
   }
 };
 
-// TODO: how to handle something like x + (x < 5)
-class EventConditionListener implements AntimonyListener {
-  #treeStack: LogicOperationTree[];
-  #conditions: EventCondition[];
+/**
+ * Gets the conditions from a formula and a logic tree to execute it.
+ */
+const getConditionsFromFormula = (
+  root: FormulaContext,
+): { tree: LogicTree; conditions: EventCondition[] } => {
+  const treeStack: LogicTree[] = [];
+  const conditions: EventCondition[] = [];
 
-  constructor() {
-    this.#treeStack = [];
-    this.#conditions = [];
-  }
-
-  getResult(): {
-    tree: LogicOperationTree;
-    conditions: EventCondition[];
-  } | null {
-    if (this.#treeStack.length !== 1) {
-      return null;
-    } else {
-      return {
-        tree: this.#treeStack.pop() as LogicOperationTree,
-        conditions: this.#conditions,
-      };
-    }
-  }
-
-  #pushBinaryLogicalOp(ctx: ParserRuleContext, kind: "and" | "or"): void {
-    const right = this.#treeStack.pop();
-    const left = this.#treeStack.pop();
+  const pushBinaryLogicalOp = (
+    ctx: ParserRuleContext,
+    kind: "and" | "or",
+  ): void => {
+    const right = treeStack.pop();
+    const left = treeStack.pop();
     if (left === undefined || right === undefined) {
       throw new CompileError(
         "Invalid event trigger. Must evaluate to boolean.",
         { tree: ctx },
       );
     }
-    this.#treeStack.push({ kind, left, right });
-  }
+    treeStack.push({ kind, left, right });
+  };
 
-  exitLogical(ctx: LogicalContext): void {
-    const op = ctx._op.text;
-    if (op === "&&") {
-      this.#pushBinaryLogicalOp(ctx, "and");
-    } else if (op === "||") {
-      this.#pushBinaryLogicalOp(ctx, "or");
-    }
-  }
+  const walkFormula = (ctx: FormulaContext): void => {
+    if (ctx instanceof GroupContext) {
+      walkFormula(ctx.formula());
+    } else if (ctx instanceof LogicalContext) {
+      const left = ctx.formula(0);
+      const right = ctx.formula(1);
 
-  exitCompare(ctx: CompareContext): void {
-    const op = ctx._op.text as ComparisonOperator;
-    const left = ctx.getChild(0, FormulaContext);
+      walkFormula(left);
+      walkFormula(right);
 
-    this.#treeStack.push(this.#conditions.length);
+      const op = ctx._op.text;
+      if (op === "&&") {
+        pushBinaryLogicalOp(ctx, "and");
+      } else if (op === "||") {
+        pushBinaryLogicalOp(ctx, "or");
+      }
+    } else if (ctx instanceof CompareContext) {
+      const op = ctx._op.text as ComparisonOperator;
+      const left = ctx.formula(0);
+      const right = ctx.formula(1);
 
-    // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
-    if (left instanceof CompareContext) {
-      const leftRight = left.getChild(1, FormulaContext);
-      // TODO: what if someone does `0 < (x < 5)`? Should this be allowed?
-      this.#conditions.push({
-        op: op,
-        left: leftRight,
-        right: ctx.getChild(1, FormulaContext),
-      });
-      this.#pushBinaryLogicalOp(ctx, "and");
-    } else {
-      if (op === "!=") {
-        this.#treeStack.push({
-          kind: "not",
-          child: this.#treeStack.pop() as LogicOperationTree,
-        });
+      if (left instanceof CompareContext) {
+        walkFormula(left);
       }
 
-      this.#conditions.push({
-        op: op,
-        left: ctx.getChild(0, FormulaContext),
-        right: ctx.getChild(1, FormulaContext),
-      });
+      if (right instanceof CompareContext) {
+        walkFormula(right);
+      }
+
+      treeStack.push(conditions.length);
+
+      // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
+      if (left instanceof CompareContext) {
+        const leftRight = left.getChild(1, FormulaContext);
+        // TODO: what if someone does `0 < (x < 5)`? Should this be allowed?
+
+        conditions.push({
+          op: op,
+          left: leftRight,
+          right: ctx.getChild(1, FormulaContext),
+        });
+
+        pushBinaryLogicalOp(ctx, "and");
+      } else {
+        // We flip the != so it is false more often than it is true.
+        // This is so they are more likely to fire when they should
+        // (it is not perfect though)
+        if (op === "!=") {
+          treeStack.push({
+            kind: "not",
+            child: treeStack.pop() as LogicTree,
+          });
+        }
+
+        conditions.push({
+          op: op,
+          left: ctx.getChild(0, FormulaContext),
+          right: ctx.getChild(1, FormulaContext),
+        });
+      }
+    } else {
+      throw new CompileError("Expected boolean expression.", { tree: ctx });
     }
+  };
+
+  walkFormula(root);
+
+  if (treeStack.length !== 1) {
+    throw new CompileError(
+      "Unexpected error. Please report this bug with code.",
+      { tree: root },
+    );
   }
-}
+
+  return { tree: treeStack[0], conditions };
+};
 
 const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
-  const listener = new EventConditionListener();
-  ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, event.trigger);
-
-  const result = listener.getResult();
-  if (!result) {
-    throw new CompileError("Invalid event trigger. Must evaluate to boolean.", {
-      tree: event.trigger,
-    });
-  } else {
-    return {
-      ...event,
-      conditions: result.conditions,
-      tree: result.tree,
-    };
-  }
+  const { tree, conditions } = getConditionsFromFormula(event.trigger);
+  return {
+    ...event,
+    conditions: conditions,
+    tree: tree,
+  };
 };
 
 export const compileEvents = (
@@ -412,8 +424,8 @@ const EVENT_OUT_PARAM = "eventout[]";
 const CONDITIONS_PARAM = "conditions[]";
 const ROOTS_PARAM = "roots[]";
 
-const emitLogicOperationTree = (
-  tree: LogicOperationTree,
+const emitLogicTree = (
+  tree: LogicTree,
   emitter: Emitter,
   localsTable: LocalsSymbolTable,
   startRootIndex: number,
@@ -426,15 +438,15 @@ const emitLogicOperationTree = (
     emitter.emitUint(MEM_ALIGNMENT);
     emitter.emitUint(SIZEOF_INT * (startRootIndex + tree));
   } else if (tree.kind === "and") {
-    emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
-    emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32and);
   } else if (tree.kind === "or") {
-    emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
-    emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.left, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.right, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32or);
   } else if (tree.kind === "not") {
-    emitLogicOperationTree(tree.child, emitter, localsTable, startRootIndex);
+    emitLogicTree(tree.child, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32eqz);
   }
 };
@@ -584,7 +596,7 @@ const compileCheckRoots = (
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
 
-    emitLogicOperationTree(event.tree, emitter, localsTable, startRootIndex);
+    emitLogicTree(event.tree, emitter, localsTable, startRootIndex);
 
     emitter.emitByte(OpCode.i32store);
     emitter.emitUint(MEM_ALIGNMENT);
@@ -733,12 +745,7 @@ const compileUpdateConditions = (
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
 
-        emitLogicOperationTree(
-          event.tree,
-          emitter,
-          localsTable,
-          startRootIndex,
-        );
+        emitLogicTree(event.tree, emitter, localsTable, startRootIndex);
 
         emitter.emitByte(OpCode.i32store);
         emitter.emitUint(MEM_ALIGNMENT);
