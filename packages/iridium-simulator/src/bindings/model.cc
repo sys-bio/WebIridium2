@@ -215,8 +215,13 @@ void Model::Integrate(double target_time) {
             std::cout << "hit root at " << time_ << std::endl;
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
+            // TODO: replace this with better
+            user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+
             ((CheckRootsFn*)event_params_.value().check_roots_fn)(
                 time_,
+                NV_DATA_S(y_),
+                user_data_.p,
                 roots_found_.data(),
                 conditions_state_.data(),
                 events_swap_.data()

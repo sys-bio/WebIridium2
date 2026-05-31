@@ -1,7 +1,7 @@
 import { deriveModelsFromParseTree } from "antimony-language/semantic";
 import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
-import { IndexSymbolTable, TypeTable } from "./symbolTables.ts";
+import { FunctionTable, TypeTable } from "./symbolTables.ts";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { EventSpec, ModelSpec } from "../modelSpec";
@@ -52,8 +52,8 @@ export const compileIntermediate = (
       name: RHS_NAME,
       params: RHS_PARAMS,
       results: RHS_RESULTS,
-      compileBody: (functionTable: IndexSymbolTable) =>
-        compileRhs(functionTable, internalModel).getOutput(),
+      compileBody: (functionTable) =>
+        compileRhs(internalModel, functionTable).getOutput(),
     },
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {
@@ -178,7 +178,7 @@ class GetReferencedListener implements AntimonyListener {
  */
 export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   const typeTable = new TypeTable();
-  const functionTable = new IndexSymbolTable();
+  const functionTable = new FunctionTable();
 
   const importedFunctions: ImportedFunction[] = [];
   const compiledFunctions: CompiledFunction[] = [];
@@ -231,7 +231,9 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
 
   for (const func of compiledFunctions) {
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
-    const funcIndex = functionTable.add(func.name);
+    const funcIndex = func.isExported
+      ? functionTable.addExported(func.name)
+      : functionTable.add(func.name);
 
     functionSection.emitUint(funcTypeIndex);
 

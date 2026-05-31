@@ -45,6 +45,50 @@ export class IndexSymbolTable {
   }
 }
 
+/**
+ * Similar to IndexSymbolTable but has `addExported` method which cannot be
+ * accessed by `get`. (since these are meant for external code).
+ */
+export class FunctionTable {
+  #map: Map<string, number>;
+  #exposedMap: Map<string, number>;
+
+  constructor() {
+    this.#map = new Map();
+    this.#exposedMap = new Map();
+  }
+
+  get(funcName: string): number {
+    const index = this.#exposedMap.get(funcName);
+    if (index === undefined) {
+      throw new Error(`Missing: ${funcName}`);
+    }
+    return index;
+  }
+
+  add(funcName: string): number {
+    if (this.#map.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
+
+    const index = this.#map.size;
+    this.#exposedMap.set(funcName, index);
+    this.#map.set(funcName, index);
+    return index;
+  }
+
+  addExported(funcName: string): number {
+    funcName = "$reserved_export_" + funcName;
+    if (this.#map.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
+
+    const index = this.#map.size;
+    this.#map.set(funcName, index);
+    return index;
+  }
+
+  has(funcName: string): boolean {
+    return this.#exposedMap.has(funcName);
+  }
+}
+
 export class LocalsSymbolTable {
   #paramMap: Map<string, number>;
   #localsMap: Map<string, number>;

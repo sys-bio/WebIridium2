@@ -1,6 +1,6 @@
 import { ValType, OpCode } from "./codes";
 import Emitter, { createEmitLoadVariable } from "./Emitter";
-import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
+import { FunctionTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { getAssignmentOrder } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
@@ -24,8 +24,8 @@ export const RHS_PARAMS: ValType[] = [
 export const RHS_RESULTS: ValType[] = [ValType.i32];
 
 export const compileRhs = (
-  functionTable: IndexSymbolTable,
   model: InternalModel,
+  functionTable: FunctionTable,
 ): Emitter => {
   const { variables, yVars, reactions, yTable, pTable } = model;
   const emitter = new Emitter();

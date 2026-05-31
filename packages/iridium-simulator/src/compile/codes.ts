@@ -59,6 +59,7 @@ export const OpCode = {
   i32store: 0x36,
 
   i32add: 0x6a,
+  i32eqz: 0x45,
   i32eq: 0x46,
   i32ne: 0x47,
   i32lt_s: 0x48,

@@ -20,7 +20,7 @@ import {
 } from "antimony-language/grammar";
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
-import type { IndexSymbolTable } from "./symbolTables.ts";
+import type { FunctionTable } from "./symbolTables.ts";
 import { POW_RESERVED_NAME } from "./functions";
 import type { EmitLoadVariableFunction } from "./Emitter";
 import {
@@ -52,7 +52,7 @@ export const emitFormula = (
   formula: FormulaContext,
   emitter: Emitter,
   emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: IndexSymbolTable,
+  functionTable: FunctionTable,
 ): void => {
   const formulaListener = new FormulaCompilerListener(
     emitter,
@@ -84,12 +84,12 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
 class FormulaCompilerListener implements AntimonyListener {
   protected emitter: Emitter;
   #emitLoadVariable: EmitLoadVariableFunction;
-  #functionTable: IndexSymbolTable;
+  #functionTable: FunctionTable;
 
   constructor(
     emitter: Emitter,
     emitLoadVariable: EmitLoadVariableFunction,
-    functionTable: IndexSymbolTable,
+    functionTable: FunctionTable,
   ) {
     this.emitter = emitter;
     this.#emitLoadVariable = emitLoadVariable;

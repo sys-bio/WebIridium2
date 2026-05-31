@@ -11,7 +11,14 @@ using RootsFn = void(double time, double y[], double gout[], double p[]);
 
 // Updates which event triggers hold when CVODE indicates a root found.
 // The conditions array is to hold state about which conditions hold between root finds.
-using CheckRootsFn = void(double time, int roots[], WasmBool conditionsout[], WasmBool eventout[]);
+using CheckRootsFn = void(
+    double time,
+    double y[],
+    double p[],
+    int roots[],
+    WasmBool conditionsout[],
+    WasmBool eventout[]
+);
 
 // Updates the conditions array and events.
 using UpdateConditionsFn = void(double time, double y[], double p[], WasmBool conditionsout[], WasmBool eventout[]);

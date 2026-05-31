@@ -6,14 +6,18 @@ import {
   type AntimonyListener,
 } from "antimony-language/grammar";
 import { emitComparisonOperator, emitFormula } from "./formula";
-import { IndexSymbolTable, LocalsSymbolTable } from "./symbolTables.ts";
+import {
+  FunctionTable,
+  IndexSymbolTable,
+  LocalsSymbolTable,
+} from "./symbolTables.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter, {
   createEmitLoadVariable,
   type EmitLoadVariableFunction,
 } from "./Emitter";
 import type { AntimonyEvent } from "antimony-language/semantic";
-import { CompileError } from "./errors";
+import { CompileError, CompileInvariantError } from "./errors";
 import {
   ROOTS_NAME,
   CHECK_ROOTS_NAME,
@@ -37,7 +41,14 @@ import { WASM_FALSE, WASM_TRUE } from "./wasmTypes.ts";
 const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const ROOTS_RESULTS: ValType[] = [];
 
-const CHECK_ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
+const CHECK_ROOTS_PARAMS = [
+  ValType.f64,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
 const CHECK_ROOTS_RESULTS: ValType[] = [];
 
 const UPDATE_CONDITIONS_PARAMS = [
@@ -61,10 +72,10 @@ const GET_ASSIGNMENTS_PARAMS = [
 ];
 const GET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
-type ConditionOperator = ">" | ">=" | "<" | "<=";
+type ComparisonOperator = ">" | ">=" | "<" | "<=" | "==" | "!=";
 
 type EventCondition = {
-  op: ConditionOperator;
+  op: ComparisonOperator;
   left: FormulaContext;
   right: FormulaContext;
 };
@@ -72,21 +83,19 @@ type EventCondition = {
 type LogicOperationTree =
   | number
   | { kind: "or"; left: LogicOperationTree; right: LogicOperationTree }
-  | { kind: "and"; left: LogicOperationTree; right: LogicOperationTree };
+  | { kind: "and"; left: LogicOperationTree; right: LogicOperationTree }
+  | { kind: "not"; child: LogicOperationTree };
 
 type InternalEvent = AntimonyEvent & {
   conditions: EventCondition[];
   tree: LogicOperationTree;
 };
 
-const getEventConditionDirection = ({ op }: EventCondition): -1 | 0 | 1 =>
-  op === ">=" || op === ">" ? 1 : op === "<=" || op === "<" ? -1 : 0;
-
 const emitEventConditionAsRoot = (
   condition: EventCondition,
   emitter: Emitter,
   emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: IndexSymbolTable,
+  functionTable: FunctionTable,
 ): void => {
   emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
   emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
@@ -110,8 +119,6 @@ const emitEventConditionAsRoot = (
     emitter.emitByte(OpCode.f64add);
   }
 };
-
-const validComparisonOperators = new Set(["<", "<=", ">", ">="]);
 
 // TODO: how to handle something like x + (x < 5)
 class EventConditionListener implements AntimonyListener {
@@ -137,10 +144,7 @@ class EventConditionListener implements AntimonyListener {
     }
   }
 
-  #pushLogicalOperatorTree(
-    ctx: ParserRuleContext,
-    kind: Exclude<LogicOperationTree, number>["kind"],
-  ): void {
+  #pushBinaryLogicalOp(ctx: ParserRuleContext, kind: "and" | "or"): void {
     const right = this.#treeStack.pop();
     const left = this.#treeStack.pop();
     if (left === undefined || right === undefined) {
@@ -155,20 +159,14 @@ class EventConditionListener implements AntimonyListener {
   exitLogical(ctx: LogicalContext): void {
     const op = ctx._op.text;
     if (op === "&&") {
-      this.#pushLogicalOperatorTree(ctx, "and");
+      this.#pushBinaryLogicalOp(ctx, "and");
     } else if (op === "||") {
-      this.#pushLogicalOperatorTree(ctx, "or");
+      this.#pushBinaryLogicalOp(ctx, "or");
     }
   }
 
   exitCompare(ctx: CompareContext): void {
-    const op = ctx._op.text as string;
-    if (!validComparisonOperators.has(op)) {
-      throw new CompileError(`Not yet supported in events: ${op}.`, {
-        tree: ctx,
-      });
-    }
-
+    const op = ctx._op.text as ComparisonOperator;
     const left = ctx.getChild(0, FormulaContext);
 
     this.#treeStack.push(this.#conditions.length);
@@ -178,14 +176,21 @@ class EventConditionListener implements AntimonyListener {
       const leftRight = left.getChild(1, FormulaContext);
       // TODO: what if someone does `0 < (x < 5)`? Should this be allowed?
       this.#conditions.push({
-        op: op as ConditionOperator,
+        op: op,
         left: leftRight,
         right: ctx.getChild(1, FormulaContext),
       });
-      this.#pushLogicalOperatorTree(ctx, "and");
+      this.#pushBinaryLogicalOp(ctx, "and");
     } else {
+      if (op === "!=") {
+        this.#treeStack.push({
+          kind: "not",
+          child: this.#treeStack.pop() as LogicOperationTree,
+        });
+      }
+
       this.#conditions.push({
-        op: op as ConditionOperator,
+        op: op,
         left: ctx.getChild(0, FormulaContext),
         right: ctx.getChild(1, FormulaContext),
       });
@@ -329,7 +334,7 @@ export const compileEvents = (
         params: ROOTS_PARAMS,
         results: ROOTS_RESULTS,
         compileBody: (functionTable) =>
-          compileRoots(functionTable, model, events).getOutput(),
+          compileRoots(model, events, functionTable).getOutput(),
       },
       {
         kind: "compile",
@@ -337,7 +342,8 @@ export const compileEvents = (
         name: CHECK_ROOTS_NAME,
         params: CHECK_ROOTS_PARAMS,
         results: CHECK_ROOTS_RESULTS,
-        compileBody: (_functionTable) => compileCheckRoots(events).getOutput(),
+        compileBody: (functionTable) =>
+          compileCheckRoots(model, events, functionTable).getOutput(),
       },
       {
         kind: "compile",
@@ -357,9 +363,9 @@ export const compileEvents = (
 const G_PARAM = "g[]";
 
 const compileRoots = (
-  functionTable: IndexSymbolTable,
   model: InternalModel,
   events: InternalEvent[],
+  functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
 
@@ -427,22 +433,31 @@ const emitLogicOperationTree = (
     emitLogicOperationTree(tree.left, emitter, localsTable, startRootIndex);
     emitLogicOperationTree(tree.right, emitter, localsTable, startRootIndex);
     emitter.emitByte(OpCode.i32or);
+  } else if (tree.kind === "not") {
+    emitLogicOperationTree(tree.child, emitter, localsTable, startRootIndex);
+    emitter.emitByte(OpCode.i32eqz);
   }
 };
 
-const compileCheckRoots = (events: InternalEvent[]): Emitter => {
-  // TODO: function header
-
+const compileCheckRoots = (
+  model: InternalModel,
+  events: InternalEvent[],
+  functionTable: FunctionTable,
+): Emitter => {
   const emitter = new Emitter();
 
   emitter.emitListHeader(0);
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
+    Y_PARAM,
+    P_PARAM,
     ROOTS_PARAM,
     CONDITIONS_PARAM,
     EVENT_OUT_PARAM,
   ]);
+
+  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
   let currentRootIndex = 0;
   let currentEventIndex = 0;
@@ -451,24 +466,75 @@ const compileCheckRoots = (events: InternalEvent[]): Emitter => {
     const startRootIndex = currentRootIndex;
 
     for (const condition of event.conditions) {
-      // load the root
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
-
-      emitter.emitByte(OpCode.i32load);
-      emitter.emitUint(MEM_ALIGNMENT);
-      emitter.emitUint(SIZEOF_INT * currentRootIndex);
-
-      // check if the root was changed
-      emitter.emitI32ConstOp(0);
-
-      emitter.emitByte(OpCode.i32ne);
-
-      // if so, we need to update our condition array
-      emitter.emitIf(OpCode.blockNoType, () => {
+      if (condition.op === "==" || condition.op === "!=") {
+        // For equality, we want to check the condition again if it is true
+        // even if no root was hit since we may not be equal anymore (which wouldn't
+        // be detected by the root-finder usually)
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
+        emitter.emitByte(OpCode.i32load);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_INT * currentRootIndex);
+
+        emitter.emitByte(OpCode.i32eqz);
+
+        emitter.emitIf(
+          OpCode.blockNoType,
+          () => {
+            // Prior state was false, check the root if we had any crossing (it will be true
+            // at this moment (or false for !=))
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
+
+            // load the root
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
+
+            emitter.emitByte(OpCode.i32load);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(SIZEOF_INT * currentRootIndex);
+
+            emitter.emitI32ConstOp(0);
+            if (condition.op === "!=") {
+              emitter.emitByte(OpCode.i32eq);
+            } else {
+              emitter.emitByte(OpCode.i32ne);
+            }
+
+            emitter.emitByte(OpCode.i32store);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(SIZEOF_INT * currentRootIndex);
+          },
+          () => {
+            // Prior state was true, so re-evaluate it
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
+
+            emitFormula(
+              condition.left,
+              emitter,
+              emitLoadVariable,
+              functionTable,
+            );
+            emitFormula(
+              condition.right,
+              emitter,
+              emitLoadVariable,
+              functionTable,
+            );
+            emitComparisonOperator(emitter, condition.op);
+
+            emitter.emitByte(OpCode.i32store);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(SIZEOF_INT * currentRootIndex);
+          },
+        );
+      } else {
+        // For inequalities, it is adequate to just check the direction of sign change since
+        // they will remain true for an interval rather than just a moment.
+
+        // load the root
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
 
@@ -476,21 +542,40 @@ const compileCheckRoots = (events: InternalEvent[]): Emitter => {
         emitter.emitUint(MEM_ALIGNMENT);
         emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
+        // check if the root was changed
         emitter.emitI32ConstOp(0);
 
-        const direction = getEventConditionDirection(condition);
-        if (direction === 0) {
-          throw new Error("==/!= yet supported.");
-        } else if (direction > 0) {
-          emitter.emitByte(OpCode.i32ge_s);
-        } else {
-          emitter.emitByte(OpCode.i32le_s);
-        }
+        emitter.emitByte(OpCode.i32ne);
 
-        emitter.emitByte(OpCode.i32store);
-        emitter.emitUint(MEM_ALIGNMENT);
-        emitter.emitUint(SIZEOF_INT * currentRootIndex);
-      });
+        // if so, update condition
+        emitter.emitIf(OpCode.blockNoType, () => {
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
+
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getParam(ROOTS_PARAM));
+
+          emitter.emitByte(OpCode.i32load);
+          emitter.emitUint(MEM_ALIGNMENT);
+          emitter.emitUint(SIZEOF_INT * currentRootIndex);
+
+          if (condition.op === ">=" || condition.op === ">") {
+            emitter.emitI32ConstOp(0);
+            emitter.emitByte(OpCode.i32ge_s);
+          } else if (condition.op === "<=" || condition.op === "<") {
+            emitter.emitI32ConstOp(0);
+            emitter.emitByte(OpCode.i32le_s);
+          } else {
+            throw new CompileInvariantError(
+              `Unexpected comparison operator: ${condition.op}`,
+            );
+          }
+
+          emitter.emitByte(OpCode.i32store);
+          emitter.emitUint(MEM_ALIGNMENT);
+          emitter.emitUint(SIZEOF_INT * currentRootIndex);
+        });
+      }
 
       currentRootIndex += 1;
     }
@@ -520,7 +605,7 @@ const SHOULD_SKIP_EVENT_LOCAL = "shouldSkipEvent";
 const compileUpdateConditions = (
   model: InternalModel,
   events: InternalEvent[],
-  functionTable: IndexSymbolTable,
+  functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
 
@@ -672,7 +757,7 @@ const compileUpdateConditions = (
 const compileGetOption = (
   model: InternalModel,
   formula: FormulaContext,
-  functionTable: IndexSymbolTable,
+  functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
 
@@ -696,7 +781,7 @@ const compileGetAssignments = (
   event: InternalEvent,
   yIndices: IndexSymbolTable,
   pIndices: IndexSymbolTable,
-  functionTable: IndexSymbolTable,
+  functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
 

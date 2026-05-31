@@ -1,7 +1,7 @@
 import type { BuiltinFunctionName } from "antimony-language/semantic/builtins";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
-import type { IndexSymbolTable } from "./symbolTables.ts";
+import type { FunctionTable } from "./symbolTables.ts";
 
 export type ImportedFunction = {
   kind: "import";
@@ -14,12 +14,13 @@ export type ImportedFunction = {
 
 export type CompiledFunction = {
   kind: "compile";
+  /** If a function is exported it is not accessible by Antimony code. */
   isExported: boolean;
   name: string;
   params: ValType[];
   results: ValType[];
   depends?: string[];
-  compileBody: (functionTable: IndexSymbolTable) => Uint8Array;
+  compileBody: (functionTable: FunctionTable) => Uint8Array;
 };
 
 export type InlineFunction = {
@@ -30,10 +31,10 @@ export type InlineFunction = {
 
 export type WasmFunction = ImportedFunction | CompiledFunction | InlineFunction;
 
-export const POW_RESERVED_NAME = "__pow_reserved";
+export const POW_RESERVED_NAME = "$reserved_pow";
 
 const createReciprocal = (functionName: string) => {
-  return (functionsTable: IndexSymbolTable): Uint8Array => {
+  return (functionsTable: FunctionTable): Uint8Array => {
     const emitter = new Emitter();
     emitter.emitListHeader(0);
 
@@ -54,7 +55,7 @@ const createReciprocal = (functionName: string) => {
 };
 
 const createInverseReciprocal = (functionName: string) => {
-  return (functionsTable: IndexSymbolTable): Uint8Array => {
+  return (functionsTable: FunctionTable): Uint8Array => {
     const emitter = new Emitter();
     emitter.emitListHeader(0);
 
