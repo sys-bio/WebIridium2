@@ -17,6 +17,15 @@ export type EventSpec = {
 };
 
 /**
+ * These are "fake" events used by piecewise functions
+ * to keep track of which conditions are triggered.
+ */
+export type PieceEventSpec = {
+  isForPiecewise: true;
+  countRoots: number;
+};
+
+/**
  * Contains all the information needed to load and execute a model.
  * Meant to be shared between workers.
  */
@@ -25,7 +34,7 @@ export type ModelSpec = {
   p: VariableSpec[];
   /** Name of reactions. */
   reactions: string[];
-  events: EventSpec[];
+  events: (EventSpec | PieceEventSpec)[];
   wasmModule: WebAssembly.Module;
   funcImports: string[];
 };

@@ -17,15 +17,15 @@
 #include "sunlinsol/sunlinsol_dense.h"
 #include "sunmatrix/sunmatrix_dense.h"
 
-static int delegating_rhs(double t, N_Vector y, N_Vector ydot, UserData *data) {
-    return data->rhs(t, NV_DATA_S(y), NV_DATA_S(ydot), data->p);
+int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *data) {
+    return data->rhs_fn_(t, NV_DATA_S(y), NV_DATA_S(ydot), data->p_.data());
 }
 
-static int delegating_roots(double t, N_Vector y, double *gout, UserData *data) {
+int delegating_roots(double t, N_Vector y, double *gout, Model *data) {
     // TODO: we need to optimize this so we aren't recalculating everything for each event
-    data->rhs(t, NV_DATA_S(y), data->dummy_y_dot, data->p);
+    data->rhs_fn_(t, NV_DATA_S(y), data->dummy_y_dot_, data->p_.data());
 
-    data->roots(t, NV_DATA_S(y), gout, data->p);
+    data->roots_fn_(t, NV_DATA_S(y), gout, data->p_.data());
     return 0;
 }
 
@@ -47,10 +47,9 @@ Model::Model(
 
     cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
     y_ = N_VNew_Serial(y.size(), ctx_);
-    user_data_.p_len = p.size() + num_reactions_;
-    user_data_.p = new double[user_data_.p_len];
-    user_data_.rhs = (RHSFunc*)rhs;
-    user_data_.dummy_y_dot = new double[original_y_.size()];
+    p_.resize(original_p_.size() + num_reactions_);
+    rhs_fn_ = (RHSFunc*)rhs;
+    dummy_y_dot_ = new double[original_y_.size()];
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -64,7 +63,7 @@ Model::Model(
         }
 
         num_roots_ = total_conditions;
-        user_data_.roots = (RootsFn*)event_params.roots_fn;
+        roots_fn_ = (RootsFn*)event_params.roots_fn;
         events_swap_ = std::vector<WasmBool>(event_params.event_info.size());
         current_triggered_events_ = std::vector<WasmBool>(event_params.event_info.size());
     }
@@ -78,8 +77,7 @@ Model::~Model() {
     }
     SUNLinSolFree_Dense(linear_solver_);
     SUNMatDestroy_Dense(matrix_);
-    delete[] user_data_.p;
-    delete[] user_data_.dummy_y_dot;
+    delete[] dummy_y_dot_;
     N_VDestroy_Serial(y_);
     CVodeFree(&cvode_mem_);
     SUNContext_Free(&ctx_);
@@ -93,7 +91,7 @@ void Model::ResetState() {
     }
 
     for (int i = 0; i < original_p_.size(); i++) {
-        user_data_.p[i] = original_p_[i];
+        p_[i] = original_p_[i];
     }
 
     event_queue_.Clear();
@@ -115,7 +113,7 @@ void Model::SetYValue(int i, double value) {
 }
 
 void Model::SetPValue(int i, double value) {
-    user_data_.p[i] = value;
+    p_[i] = value;
 }
 
 void Model::SetAbsoluteTolerance(double value) {
@@ -135,7 +133,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
 
         CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
-        CVodeSetUserData(cvode_mem_, &user_data_);
+        CVodeSetUserData(cvode_mem_, this);
 
         has_init_ = true;
     } else {
@@ -147,7 +145,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
 
-        user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
 
         UpdateEvents();
         RunPendingEventInvocations();
@@ -163,7 +161,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     // TODO: temporary hack to get the RHS to update the `p` variables
     //       later should make separate update function
-    user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
 
     RecordToOutputArray(time_);
 
@@ -176,7 +174,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         Integrate(target_time);
 
         // dumb hack to update p values like above
-        user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
 
         RecordToOutputArray(time_);
     }
@@ -216,12 +214,12 @@ void Model::Integrate(double target_time) {
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
             // TODO: replace this with better
-            user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+            rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
 
             ((CheckRootsFn*)event_params_.value().check_roots_fn)(
                 time_,
                 NV_DATA_S(y_),
-                user_data_.p,
+                p_.data(),
                 roots_found_.data(),
                 conditions_state_.data(),
                 events_swap_.data()
@@ -241,12 +239,15 @@ void Model::EnqueueEventsFromSwap() {
     for (int i = 0; i < events_swap_.size(); i++) {
         if (events_swap_[i]) {
             if (!current_triggered_events_[i]) {
-                EnqueueEvent(event_params_.value().event_info[i]);
+                const EventInfo &info = event_params_.value().event_info[i];
+                if (!info.is_for_piecewise) {
+                    EnqueueEvent(info);
+                }
             }
         } else if (!events_swap_[i]) {
             if (current_triggered_events_[i]) {
                 const EventInfo &info = event_params_.value().event_info[i];
-                if (!info.is_persistent) {
+                if (!info.is_persistent && !info.is_for_piecewise) {
                     event_queue_.RemoveInvocationsOf(info);
                 }
             }
@@ -260,7 +261,7 @@ void Model::UpdateEvents() {
     ((UpdateConditionsFn*)event_params_.value().update_conditions_fn)(
         time_,
         NV_DATA_S(y_),
-        user_data_.p,
+        p_.data(),
         conditions_state_.data(),
         events_swap_.data()
     );
@@ -277,12 +278,12 @@ void Model::EnqueueEvent(const EventInfo &info) {
     const double delay =
         reinterpret_cast<GetOptionFn*>(info.get_delay_fn) == nullptr
             ? 0
-            : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), user_data_.p);
+            : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), p_.data());
 
     const double priority =
         reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
             ? 0
-            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), user_data_.p);
+            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), p_.data());
 
     EventInvocation invocation{
         &info,
@@ -296,7 +297,7 @@ void Model::EnqueueEvent(const EventInfo &info) {
         ((GetAssignmentsFn*)info.get_assignments_fn)(
             time_,
             NV_DATA_S(y_),
-            user_data_.p,
+            p_.data(),
             invocation.y_values.data(),
             invocation.p_values.data()
         );
@@ -314,7 +315,7 @@ void Model::RunPendingEventInvocations() {
             ((GetAssignmentsFn*)invocation.event_info->get_assignments_fn)(
                 time_,
                 NV_DATA_S(y_),
-                user_data_.p,
+                p_.data(),
                 invocation.y_values.data(),
                 invocation.p_values.data()
             );
@@ -339,12 +340,12 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
     }
 
     for (int ip = 0; ip < info->p_indices.size(); ip++) {
-        user_data_.p[info->p_indices[ip]] = invocation.p_values[ip];
+        p_[info->p_indices[ip]] = invocation.p_values[ip];
         std::cout << "p[" << info->p_indices[ip] << "] = " << invocation.p_values[ip] << std::endl;
     }
 
 
-    user_data_.rhs(time_, NV_DATA_S(y_), user_data_.dummy_y_dot, user_data_.p);
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
     UpdateEvents();
 }
 
@@ -362,11 +363,11 @@ void Model::RecordToOutputArray(double time) {
 
     std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_y_.size(), output_array_ + start);
     std::copy(
-        user_data_.p,
-        user_data_.p + user_data_.p_len,
+        p_.data(),
+        p_.data() + p_.size(),
         output_array_ + start + original_y_.size()
     );
-    output_array_[start + original_y_.size() + user_data_.p_len] = time;
+    output_array_[start + original_y_.size() + p_.size()] = time;
 
     current_output_row_ += 1;
 }

@@ -17,20 +17,6 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
 using RHSFunc = int(double t, double y[], double ydot[], double p[]);
 
-struct UserData {
-    RHSFunc *rhs;
-    // Concatentating [ boundary species | parameters | reaction rates]
-    // Everything after the parameters is just for recording. It should NOT be set.
-    double *p;
-    size_t p_len;
-
-    RootsFn *roots;
-
-    // lazy hack so we can call RHS for its side effects without reallocating
-    // a fake ydot array each time
-    double *dummy_y_dot;
-};
-
 struct EventParams {
     std::vector<EventInfo> event_info;
     uintptr_t roots_fn;
@@ -112,20 +98,32 @@ private:
 
     std::vector<double> original_y_;
     std::vector<double> original_p_;
+    int num_reactions_;
 
-    N_Vector y_;
-    UserData user_data_;
-    const int num_reactions_;
+    RHSFunc *rhs_fn_;
+    RootsFn *roots_fn_;
 
     bool has_init_ = false;
+
     double *output_array_ = nullptr; // row-major
     int current_output_row_ = -1;
 
     std::optional<EventParams> event_params_;
     int num_roots_;
 
-    // Simulation state (needs to be reset)
+    // Should be set by the wrapper
+    double abs_tol_ = 1;
+    double rel_tol_ = 1;
+
+    /* Simulation state (needs to be reset) */
     double time_;
+    N_Vector y_;
+    // lazy hack so we can call RHS for its side effects without reallocating
+    // a fake ydot array each time
+    double *dummy_y_dot_;
+    // Concatentating [ boundary species | parameters | reaction rates]
+    // Everything after the parameters is just for recording. It should NOT be set.
+    std::vector<double> p_;
     EventQueue event_queue_{};
     std::vector<WasmBool> current_triggered_events_;
     std::vector<int> roots_found_;
@@ -135,7 +133,6 @@ private:
     // and update as necessary.
     std::vector<WasmBool> events_swap_;
 
-    // Should be set by the wrapper
-    double abs_tol_ = 1;
-    double rel_tol_ = 1;
+    friend int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model);
+    friend int delegating_roots(double t, N_Vector y, double *gout, Model *model);
 };

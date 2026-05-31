@@ -21,7 +21,13 @@ using CheckRootsFn = void(
 );
 
 // Updates the conditions array and events.
-using UpdateConditionsFn = void(double time, double y[], double p[], WasmBool conditionsout[], WasmBool eventout[]);
+using UpdateConditionsFn = void(
+    double time,
+    double y[],
+    double p[],
+    WasmBool conditionsout[],
+    WasmBool eventout[]
+);
 
 // Used for getting delay/priority.
 using GetOptionFn = double(double time, double y[], double p[]);
@@ -37,6 +43,10 @@ using GetAssignmentsFn = void(
 );
 
 struct EventInfo {
+    // Special tag for events that just exist to flag piecewise functions.
+    // An event with this will never be run.
+    bool is_for_piecewise;
+
     bool is_persistent;
     bool is_t0;
     bool is_from_trigger;
