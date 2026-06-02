@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -195,6 +196,32 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     return Float64Array(
         emscripten::val(emscripten::typed_memory_view(num_points * num_variables(), output_array_))
     );
+}
+
+void Model::DumpStats() {
+    long int nsteps, nfevals, nlinsteps, netfails;
+    int qlast, qcur;
+    double hinused, hlast, hcur, tcur;
+
+    CVodePrintAllStats(cvode_mem_, stdout, SUN_OUTPUTFORMAT_TABLE);
+
+    // CVodeGetIntegratorStats(
+    //     cvode_mem_,
+    //     &nsteps, &nfevals, &nlinsteps, &netfails,
+    //     &qlast, &qcur,
+    //     &hinused, &hlast, &hcur, &tcur
+    // );
+    //
+    // std::cout
+    //     << "Number of Steps: " << nsteps << "\n"
+    //     << "Number of RHS calls: " << nfevals << "\n"
+    //     << "Number of linear solver setups: " << nlinsteps << "\n"
+    //     << "Number of error test failures: " << netfails << "\n"
+    //     << "Method order in last step: " << qlast << "\n"
+    //     << "Initial step size: " << hinused << "\n"
+    //     << "Last step size: " << hlast << "\n"
+    //     << "Next step size: " << hcur << "\n"
+    //     << "Internal time: " << tcur << std::endl;
 }
 
 void Model::Integrate(double target_time) {

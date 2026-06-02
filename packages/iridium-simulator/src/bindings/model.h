@@ -67,6 +67,8 @@ public:
     // WARNING: The returned array will be invalidated the next time you call Simulate.
     Float64Array SimulateTimeCourse(double start_time, double end_time, int num_points);
 
+    void DumpStats();
+
 private:
     void Integrate(double target_time);
 

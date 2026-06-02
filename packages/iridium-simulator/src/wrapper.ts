@@ -243,6 +243,8 @@ export class CvodeWrapper {
       numPoints,
     );
 
+    model.binding.DumpStats();
+
     // copy
     return array.slice();
   }

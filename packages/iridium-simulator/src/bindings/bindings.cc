@@ -22,7 +22,8 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .function("SetPValue", &Model::SetPValue)
         .function("SetAbsoluteTolerance", &Model::SetAbsoluteTolerance)
         .function("SetRelativeTolerance", &Model::SetRelativeTolerance)
-        .function("SimulateTimeCourse", &Model::SimulateTimeCourse);
+        .function("SimulateTimeCourse", &Model::SimulateTimeCourse)
+        .function("DumpStats", &Model::DumpStats);
     
     emscripten::value_object<EventInfo>("EventInfo")
         .field("is_for_piecewise", &EventInfo::is_for_piecewise)

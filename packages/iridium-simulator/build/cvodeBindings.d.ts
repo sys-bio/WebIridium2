@@ -24,6 +24,7 @@ export interface Model extends ClassHandle {
   SetPValue(_0: number, _1: number): void;
   SetAbsoluteTolerance(_0: number): void;
   SetRelativeTolerance(_0: number): void;
+  DumpStats(): void;
   SimulateTimeCourse(_0: number, _1: number, _2: number): Float64Array;
 }
 
