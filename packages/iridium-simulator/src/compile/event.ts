@@ -15,10 +15,7 @@ import {
   LocalsSymbolTable,
 } from "./symbolTables.ts";
 import { OpCode, ValType } from "./codes";
-import Emitter, {
-  createEmitLoadVariable,
-  type EmitLoadVariableFunction,
-} from "./Emitter";
+import Emitter from "./Emitter";
 import type { AntimonyEvent } from "antimony-language/semantic";
 import { CompileError, CompileInvariantError } from "./errors";
 import {
@@ -30,15 +27,23 @@ import {
   Y_PARAM,
   generateSymbol,
   UPDATE_CONDITIONS_NAME,
+  EVENTS_PARAM,
 } from "../names";
-import type { InternalModel } from "./model";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
-import type { EventSpec } from "../modelSpec";
+import type { EventSpec, PieceEventSpec } from "../modelSpec";
 import type { ParserRuleContext } from "antlr4ts";
+import type { Compilation } from "./Compilation.ts";
+import { Scope } from "./Scope.ts";
 
-const ROOTS_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
+const ROOTS_PARAMS = [
+  ValType.f64,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
 const ROOTS_RESULTS: ValType[] = [];
 
 const CHECK_ROOTS_PARAMS = [
@@ -60,11 +65,12 @@ const UPDATE_CONDITIONS_PARAMS = [
 ];
 const UPDATE_CONDITIONS_RESULTS: ValType[] = [];
 
-const GET_OPTION_PARAMS = [ValType.f64, ValType.i32, ValType.i32];
+const GET_OPTION_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
 const GET_OPTION_RESULTS = [ValType.f64];
 
 const GET_ASSIGNMENTS_PARAMS = [
   ValType.f64,
+  ValType.i32,
   ValType.i32,
   ValType.i32,
   ValType.i32,
@@ -89,7 +95,7 @@ type LogicTree =
   | { kind: "implies"; left: LogicTree; right: LogicTree }
   | { kind: "not"; child: LogicTree };
 
-type InternalEvent = AntimonyEvent & {
+type InternalEvent = {
   conditions: EventCondition[];
   tree: LogicTree;
 };
@@ -97,11 +103,11 @@ type InternalEvent = AntimonyEvent & {
 const emitEventConditionAsRoot = (
   condition: EventCondition,
   emitter: Emitter,
-  emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: FunctionTable,
+  compilation: Compilation,
+  scope: Scope,
 ): void => {
-  emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
-  emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+  emitFormula(condition.left, emitter, compilation, scope);
+  emitFormula(condition.right, emitter, compilation, scope);
   emitter.emitByte(OpCode.f64sub);
 
   // We need to do a little trick when we end up exactly at the event boundary.
@@ -126,9 +132,7 @@ const emitEventConditionAsRoot = (
 /**
  * Gets the conditions from a formula and a logic tree to execute it.
  */
-const getConditionsFromFormula = (
-  root: FormulaContext,
-): { tree: LogicTree; conditions: EventCondition[] } => {
+const createInternalEvent = (root: FormulaContext): InternalEvent => {
   const treeStack: LogicTree[] = [];
   const conditions: EventCondition[] = [];
 
@@ -296,30 +300,34 @@ const getConditionsFromFormula = (
   return { tree: treeStack[0], conditions };
 };
 
-const createInternalEvent = (event: AntimonyEvent): InternalEvent => {
-  const { tree, conditions } = getConditionsFromFormula(event.trigger);
-  return {
-    ...event,
-    conditions: conditions,
-    tree: tree,
-  };
-};
-
 export const compileEvents = (
-  model: InternalModel,
-): { functions: WasmFunction[]; eventSpecs: EventSpec[] } => {
-  const events = model.events.map(createInternalEvent);
-  const eventSpecs: EventSpec[] = [];
+  compilation: Compilation,
+): {
+  functions: WasmFunction[];
+  eventSpecs: (PieceEventSpec | EventSpec)[];
+} => {
+  const internalEvents: InternalEvent[] = [];
+  const eventSpecs: (PieceEventSpec | EventSpec)[] = [];
   const eventFns: WasmFunction[] = [];
 
-  for (const event of events) {
+  for (const [piece, index] of compilation.piecewisePieces) {
+    const internalEvent = createInternalEvent(piece);
+    internalEvents[index] = internalEvent;
+    eventSpecs.push({
+      isForPiecewise: true,
+      countRoots: internalEvent.conditions.length,
+    });
+  }
+
+  for (const event of compilation.events) {
+    const internalEvent = createInternalEvent(event.trigger);
     const yIndices = new IndexSymbolTable();
     const pIndices = new IndexSymbolTable();
 
     for (const [name, formula] of event.assignments) {
-      if (model.yTable.has(name)) {
+      if (compilation.yTable.has(name)) {
         yIndices.add(name);
-      } else if (model.pTable.has(name)) {
+      } else if (compilation.pTable.has(name)) {
         pIndices.add(name);
       } else if (name === TIME_NAME) {
         throw new CompileError("You cannot assign to time.", {
@@ -348,7 +356,7 @@ export const compileEvents = (
         results: GET_OPTION_RESULTS,
         compileBody: (functionTable) =>
           compileGetOption(
-            model,
+            compilation,
             event.delay as FormulaContext,
             functionTable,
           ).getOutput(),
@@ -365,7 +373,7 @@ export const compileEvents = (
         results: GET_OPTION_RESULTS,
         compileBody: (functionTable) =>
           compileGetOption(
-            model,
+            compilation,
             event.options.priority as FormulaContext,
             functionTable,
           ).getOutput(),
@@ -380,7 +388,7 @@ export const compileEvents = (
       results: GET_ASSIGNMENTS_RESULTS,
       compileBody: (functionTable) =>
         compileGetAssignments(
-          model,
+          compilation,
           event,
           yIndices,
           pIndices,
@@ -392,7 +400,7 @@ export const compileEvents = (
       getAssignmentsExport,
       getDelayExport,
       getPriorityExport,
-      countRoots: event.conditions.length,
+      countRoots: internalEvent.conditions.length,
 
       // These are actually a different set of indices.
       // We start with maybe some variables: A, B, C
@@ -401,8 +409,8 @@ export const compileEvents = (
       // Then let's say the index of A in the model is 2, B is 4, C is 10
       // In the EventSpec, we say [1: 2, 2: 4, 3: 10]
       // Now when someone else reads the double[3] array, they know the first
-      yIndices: yIndices.keys().map((y) => model.yTable.get(y)),
-      pIndices: pIndices.keys().map((p) => model.pTable.get(p)),
+      yIndices: yIndices.keys().map((y) => compilation.yTable.get(y)),
+      pIndices: pIndices.keys().map((p) => compilation.pTable.get(p)),
 
       isPersistent: event.options.persistent
         ? evaluateBoolean(event.options.persistent)
@@ -412,6 +420,8 @@ export const compileEvents = (
         : true,
       isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : true,
     });
+
+    internalEvents.push(internalEvent);
   }
 
   return {
@@ -423,7 +433,7 @@ export const compileEvents = (
         params: ROOTS_PARAMS,
         results: ROOTS_RESULTS,
         compileBody: (functionTable) =>
-          compileRoots(model, events, functionTable).getOutput(),
+          compileRoots(compilation, internalEvents, functionTable).getOutput(),
       },
       {
         kind: "compile",
@@ -432,7 +442,11 @@ export const compileEvents = (
         params: CHECK_ROOTS_PARAMS,
         results: CHECK_ROOTS_RESULTS,
         compileBody: (functionTable) =>
-          compileCheckRoots(model, events, functionTable).getOutput(),
+          compileCheckRoots(
+            compilation,
+            internalEvents,
+            functionTable,
+          ).getOutput(),
       },
       {
         kind: "compile",
@@ -441,7 +455,11 @@ export const compileEvents = (
         params: UPDATE_CONDITIONS_PARAMS,
         results: UPDATE_CONDITIONS_RESULTS,
         compileBody: (functionTable) =>
-          compileUpdateConditions(model, events, functionTable).getOutput(),
+          compileUpdateConditions(
+            compilation,
+            internalEvents,
+            functionTable,
+          ).getOutput(),
       },
       ...eventFns,
     ],
@@ -452,7 +470,7 @@ export const compileEvents = (
 const G_PARAM = "g[]";
 
 const compileRoots = (
-  model: InternalModel,
+  compilation: Compilation,
   events: InternalEvent[],
   functionTable: FunctionTable,
 ): Emitter => {
@@ -463,12 +481,13 @@ const compileRoots = (
     Y_PARAM,
     G_PARAM,
     P_PARAM,
+    EVENTS_PARAM,
   ]);
 
   // no locals
   emitter.emitListHeader(0);
 
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+  const scope = new Scope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
 
@@ -477,12 +496,7 @@ const compileRoots = (
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(G_PARAM));
 
-      emitEventConditionAsRoot(
-        condition,
-        emitter,
-        emitLoadVariable,
-        functionTable,
-      );
+      emitEventConditionAsRoot(condition, emitter, compilation, scope);
 
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint(MEM_ALIGNMENT);
@@ -497,7 +511,6 @@ const compileRoots = (
   return emitter;
 };
 
-const EVENT_OUT_PARAM = "eventout[]";
 const CONDITIONS_PARAM = "conditions[]";
 const ROOTS_PARAM = "roots[]";
 
@@ -540,7 +553,7 @@ const emitLogicTree = (
 };
 
 const compileCheckRoots = (
-  model: InternalModel,
+  compilation: Compilation,
   events: InternalEvent[],
   functionTable: FunctionTable,
 ): Emitter => {
@@ -554,10 +567,10 @@ const compileCheckRoots = (
     P_PARAM,
     ROOTS_PARAM,
     CONDITIONS_PARAM,
-    EVENT_OUT_PARAM,
+    EVENTS_PARAM,
   ]);
 
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+  const scope = new Scope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
   let currentEventIndex = 0;
@@ -611,18 +624,8 @@ const compileCheckRoots = (
             emitter.emitByte(OpCode.localget);
             emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-            emitFormula(
-              condition.left,
-              emitter,
-              emitLoadVariable,
-              functionTable,
-            );
-            emitFormula(
-              condition.right,
-              emitter,
-              emitLoadVariable,
-              functionTable,
-            );
+            emitFormula(condition.left, emitter, compilation, scope);
+            emitFormula(condition.right, emitter, compilation, scope);
             emitComparisonOperator(emitter, condition.op);
 
             emitter.emitByte(OpCode.i32store);
@@ -682,7 +685,7 @@ const compileCheckRoots = (
 
     // update the event out
     emitter.emitByte(OpCode.localget);
-    emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
+    emitter.emitUint(localsTable.getParam(EVENTS_PARAM));
 
     emitLogicTree(event.tree, emitter, localsTable, startRootIndex);
 
@@ -703,7 +706,7 @@ const RIGHT_LOCAL = "right";
 const SHOULD_SKIP_EVENT_LOCAL = "shouldSkipEvent";
 
 const compileUpdateConditions = (
-  model: InternalModel,
+  compilation: Compilation,
   events: InternalEvent[],
   functionTable: FunctionTable,
 ): Emitter => {
@@ -722,14 +725,14 @@ const compileUpdateConditions = (
     Y_PARAM,
     P_PARAM,
     CONDITIONS_PARAM,
-    EVENT_OUT_PARAM,
+    EVENTS_PARAM,
   ]);
 
   localsTable.addLocal(LEFT_LOCAL);
   localsTable.addLocal(RIGHT_LOCAL);
   localsTable.addLocal(SHOULD_SKIP_EVENT_LOCAL);
 
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+  const scope = new Scope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
   let currentEventIndex = 0;
@@ -744,11 +747,11 @@ const compileUpdateConditions = (
       // at a boundary. Instead, in the root function, we nudge the inequalities slightly so a root will be
       // found if we end up moving in the right direction. Then we can just rely on the normal root check code.
       if (condition.op === ">" || condition.op === "<") {
-        emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
+        emitFormula(condition.left, emitter, compilation, scope);
         emitter.emitByte(OpCode.localset);
         emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
 
-        emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+        emitFormula(condition.right, emitter, compilation, scope);
         emitter.emitByte(OpCode.localset);
         emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
 
@@ -803,8 +806,8 @@ const compileUpdateConditions = (
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-        emitFormula(condition.left, emitter, emitLoadVariable, functionTable);
-        emitFormula(condition.right, emitter, emitLoadVariable, functionTable);
+        emitFormula(condition.left, emitter, compilation, scope);
+        emitFormula(condition.right, emitter, compilation, scope);
         emitComparisonOperator(emitter, condition.op);
 
         emitter.emitByte(OpCode.i32store);
@@ -831,7 +834,7 @@ const compileUpdateConditions = (
       () => {
         // update the event out
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getParam(EVENT_OUT_PARAM));
+        emitter.emitUint(localsTable.getParam(EVENTS_PARAM));
 
         emitLogicTree(event.tree, emitter, localsTable, startRootIndex);
 
@@ -850,18 +853,23 @@ const compileUpdateConditions = (
 };
 
 const compileGetOption = (
-  model: InternalModel,
+  compilation: Compilation,
   formula: FormulaContext,
   functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
 
-  const localsTable = new LocalsSymbolTable([T_PARAM, Y_PARAM, P_PARAM]);
+  const localsTable = new LocalsSymbolTable([
+    T_PARAM,
+    Y_PARAM,
+    P_PARAM,
+    EVENTS_PARAM,
+  ]);
 
   emitter.emitListHeader(0);
 
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
-  emitFormula(formula, emitter, emitLoadVariable, functionTable);
+  const scope = new Scope(compilation, localsTable, functionTable);
+  emitFormula(formula, emitter, compilation, scope);
 
   emitter.emitByte(OpCode.end);
 
@@ -872,8 +880,8 @@ const Y_OUT_PARAM = "yout[]";
 const P_OUT_PARAM = "pout[]";
 
 const compileGetAssignments = (
-  model: InternalModel,
-  event: InternalEvent,
+  compilation: Compilation,
+  event: AntimonyEvent,
   yIndices: IndexSymbolTable,
   pIndices: IndexSymbolTable,
   functionTable: FunctionTable,
@@ -884,6 +892,7 @@ const compileGetAssignments = (
     T_PARAM,
     Y_PARAM,
     P_PARAM,
+    EVENTS_PARAM,
     Y_OUT_PARAM,
     P_OUT_PARAM,
   ]);
@@ -893,7 +902,8 @@ const compileGetAssignments = (
   const ordering = getAssignmentOrder(event.assignments, {
     allowSelfCycle: true,
   });
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
+
+  const scope = new Scope(compilation, localsTable, functionTable);
 
   for (const name of ordering) {
     const formula = event.assignments.get(name)!;
@@ -916,7 +926,7 @@ const compileGetAssignments = (
       });
     }
 
-    emitFormula(formula, emitter, emitLoadVariable, functionTable);
+    emitFormula(formula, emitter, compilation, scope);
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);

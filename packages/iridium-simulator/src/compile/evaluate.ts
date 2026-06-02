@@ -23,10 +23,14 @@ import {
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
-import type { InternalModel } from "./model.ts";
-import { CompileModelError, EvaluationError } from "./errors.ts";
-import { getVariableName } from "./formula.ts";
+import {
+  CompileInvariantError,
+  CompileModelError,
+  EvaluationError,
+} from "./errors.ts";
 import { builtinConstants } from "antimony-language/semantic/builtins";
+import type { Compilation } from "./Compilation.ts";
+import { getVariableName } from "./Scope.ts";
 
 // if they didn't have an assignment, give them this one
 // annoyingly, COPASI uses 1, RoadRunner uses 0
@@ -41,13 +45,13 @@ const DEFAULT_INITIAL_VALUE = 0;
  * @returns map of variable names to their initial values
  */
 export const evaluateInitialValues = (
-  model: InternalModel,
+  compilation: Compilation,
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
   const outputInitialValues: Map<string, number> = new Map();
   const evalOrder = getAssignmentOrder(
     new Map(
-      Array.from(model.variables.values())
+      Array.from(compilation.variables.values())
         .filter((v) => v.assignment?.kind !== "rule")
         .map((v) => [
           v.name,
@@ -65,7 +69,7 @@ export const evaluateInitialValues = (
 
   const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
   for (const name of evalOrder) {
-    const variable = model.variables.get(name)!;
+    const variable = compilation.variables.get(name)!;
 
     if (variable?.assignment?.kind === "rule") {
       // TODO: do we *really* want to base the initial value of rule variable on its assignment
@@ -108,7 +112,9 @@ class AssignmentEvaluatorVisitor
     } else if (ctx._op.text === "||") {
       return super.visit(ctx.formula(0)) || super.visit(ctx.formula(1));
     } else {
-      throw new Error(`Unknown logical operator: ${ctx._op.text}`);
+      throw new CompileInvariantError(
+        `Unknown logical operator: ${ctx._op.text}`,
+      );
     }
   }
 

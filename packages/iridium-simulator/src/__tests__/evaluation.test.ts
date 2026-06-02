@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { deriveModels } from "antimony-language/semantic";
 import { CompileModelError } from "../compile/errors.ts";
-import { createInternalModel } from "../compile/model.ts";
 import {
   evaluateInitialValues,
   getAssignmentOrder,
 } from "../compile/evaluate.ts";
+import { Compilation } from "../compile/Compilation.ts";
 
 const evaluateModel = (code: string) => {
   const models = deriveModels(code);
-  return evaluateInitialValues(createInternalModel(models));
+  return evaluateInitialValues(new Compilation(models));
 };
 
 const getAssignmentOrderFromCode = (
@@ -17,7 +17,7 @@ const getAssignmentOrderFromCode = (
   options?: { allowSelfCycle?: boolean },
 ): string[] => {
   const models = deriveModels(code);
-  const model = createInternalModel(models);
+  const model = new Compilation(models);
   return getAssignmentOrder(
     new Map(
       Array.from(model.variables.values())

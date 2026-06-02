@@ -9,8 +9,8 @@ import {
   type ValType,
 } from "./codes";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-import type { InternalModel } from "./model";
 import type { LocalsSymbolTable } from "./symbolTables.ts";
+import type { Compilation } from "./Compilation.ts";
 
 const INITIAL_CAPACITY = 32;
 const RESIZE_FACTOR = 2;
@@ -29,7 +29,7 @@ export type EmitLoadVariableFunction = (emitter: Emitter, name: string) => void;
  * @returns a function that can be used to emit variable load sequences
  */
 export const createEmitLoadVariable = (
-  { yTable, pTable }: InternalModel,
+  { yTable, pTable }: Compilation,
   localsTable: LocalsSymbolTable,
 ): EmitLoadVariableFunction => {
   return (emitter: Emitter, name: string): void => {

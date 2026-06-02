@@ -15,7 +15,7 @@
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
-using RHSFunc = int(double t, double y[], double ydot[], double p[]);
+using RHSFunc = int(double t, double y[], double ydot[], double p[], WasmBool events[]);
 
 struct EventParams {
     std::vector<EventInfo> event_info;

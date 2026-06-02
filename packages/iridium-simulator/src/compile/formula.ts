@@ -2,14 +2,10 @@ import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import {
   CompareContext,
-  ConstantContext,
   FormulaContext,
   LogicalContext,
-  NameContext,
   NotContext,
-  SubvariableContext,
   SumContext,
-  VariableContext,
   type AntimonyListener,
   type FunctionCallContext,
   type NegativeContext,
@@ -21,48 +17,37 @@ import {
 } from "antimony-language/grammar";
 import type Emitter from "./Emitter";
 import { OpCode, ValType } from "./codes";
-import type { FunctionTable } from "./symbolTables.ts";
 import {
   AND_RESERVED_NAME,
   OR_RESERVED_NAME,
+  PIECEWISE_NAME,
   POW_RESERVED_NAME,
 } from "./functions";
-import type { EmitLoadVariableFunction } from "./Emitter";
 import {
   predefinedFuncDefs,
   inlineFunctions,
   type InlineFunction,
 } from "./functions";
 import { CompileError } from "./errors";
+import type { Compilation } from "./Compilation.ts";
+import type { Scope } from "./Scope.ts";
+import { EVENTS_PARAM } from "../names.ts";
+import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants.ts";
 
 const TODO = () => {
   throw new Error("TODO");
 };
 
-export const getVariableName = (variableCtx: VariableContext): string => {
-  if (variableCtx instanceof NameContext) {
-    return variableCtx.NAME().text;
-  } else if (variableCtx instanceof SubvariableContext) {
-    throw new CompileError("Subvariables not yet supported here.", {
-      tree: variableCtx,
-    });
-  } else if (variableCtx instanceof ConstantContext) {
-    return getVariableName(variableCtx.variable());
-  } else {
-    throw new Error(`unknown variable type: ${variableCtx.text}`);
-  }
-};
-
 export const emitFormula = (
   formula: FormulaContext,
   emitter: Emitter,
-  emitLoadVariable: EmitLoadVariableFunction,
-  functionTable: FunctionTable,
+  compilation: Compilation,
+  scope: Scope,
 ): void => {
   const formulaListener = new FormulaCompilerListener(
     emitter,
-    emitLoadVariable,
-    functionTable,
+    compilation,
+    scope,
   );
 
   ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
@@ -88,23 +73,19 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
 
 class FormulaCompilerListener implements AntimonyListener {
   #emitter: Emitter;
-  #emitLoadVariable: EmitLoadVariableFunction;
-  #functionTable: FunctionTable;
+  #compilation: Compilation;
+  #scope: Scope;
 
-  // and/or/xor (not the operators, the function calls) are special because they are variadic.
+  // Some functions are special because they are variadic.
   // We can't really express this with normal WASM function calls so we just hard-code it.
   // When we do this we have to block their arguments from being executed which we do with this
   // flag.
   #isInsideMacro: boolean;
 
-  constructor(
-    emitter: Emitter,
-    emitLoadVariable: EmitLoadVariableFunction,
-    functionTable: FunctionTable,
-  ) {
+  constructor(emitter: Emitter, compilation: Compilation, scope: Scope) {
     this.#emitter = emitter;
-    this.#emitLoadVariable = emitLoadVariable;
-    this.#functionTable = functionTable;
+    this.#compilation = compilation;
+    this.#scope = scope;
     this.#isInsideMacro = false;
   }
 
@@ -129,8 +110,8 @@ class FormulaCompilerListener implements AntimonyListener {
           emitFormula(
             formulas[i],
             this.#emitter,
-            this.#emitLoadVariable,
-            this.#functionTable,
+            this.#compilation,
+            this.#scope,
           );
 
           this.#emitter.emitF64ConstOp(0);
@@ -163,8 +144,8 @@ class FormulaCompilerListener implements AntimonyListener {
           emitFormula(
             formulas[i],
             this.#emitter,
-            this.#emitLoadVariable,
-            this.#functionTable,
+            this.#compilation,
+            this.#scope,
           );
 
           this.#emitter.emitF64ConstOp(0);
@@ -193,8 +174,8 @@ class FormulaCompilerListener implements AntimonyListener {
           emitFormula(
             formulas[i],
             this.#emitter,
-            this.#emitLoadVariable,
-            this.#functionTable,
+            this.#compilation,
+            this.#scope,
           );
 
           this.#emitter.emitF64ConstOp(0);
@@ -207,6 +188,70 @@ class FormulaCompilerListener implements AntimonyListener {
 
         this.#emitter.emitByte(OpCode.f64convert_u_i32);
       }
+    } else if (name === PIECEWISE_NAME) {
+      this.#isInsideMacro = true;
+
+      const args = ctx.argumentList();
+      if (!args) {
+        throw new CompileError("Piecewise require at least one argument.", {
+          tree: ctx,
+        });
+      } else {
+        const formulas = args.formula();
+        if (formulas.length % 2 === 0) {
+          throw new CompileError("You must provied a fallback case.", {
+            tree: ctx,
+          });
+        }
+
+        if (formulas.length === 1) {
+          emitFormula(
+            formulas[0],
+            this.#emitter,
+            this.#compilation,
+            this.#scope,
+          );
+        } else {
+          let i = 0;
+
+          for (; i + 2 < formulas.length; i += 2) {
+            const branch = formulas[i];
+            const condition = formulas[i + 1];
+
+            const eventIndex = this.#compilation.getPiecewisePiece(condition);
+
+            // when we compile piecewise, the piecewise pieces will always be
+            // the first in the event array.
+
+            this.#emitter.emitByte(OpCode.localget);
+            this.#emitter.emitUint(
+              this.#scope.localsTable.getParam(EVENTS_PARAM),
+            );
+
+            this.#emitter.emitByte(OpCode.i32load);
+            this.#emitter.emitUint(MEM_ALIGNMENT);
+            this.#emitter.emitUint(eventIndex * SIZEOF_INT);
+
+            this.#emitter.emitByte(OpCode.if);
+            this.#emitter.emitByte(ValType.f64);
+
+            emitFormula(branch, this.#emitter, this.#compilation, this.#scope);
+
+            this.#emitter.emitByte(OpCode.else);
+          }
+
+          emitFormula(
+            formulas[formulas.length - 1],
+            this.#emitter,
+            this.#compilation,
+            this.#scope,
+          );
+
+          for (i = 0; i + 2 < formulas.length; i += 2) {
+            this.#emitter.emitByte(OpCode.end);
+          }
+        }
+      }
     }
   }
 
@@ -214,10 +259,15 @@ class FormulaCompilerListener implements AntimonyListener {
     const name = ctx.NAME().text;
     if (inlineFunctions.has(name)) {
       (predefinedFuncDefs[name] as InlineFunction).emit(this.#emitter);
-    } else if (name === "and" || name === "or" || name === "xor") {
+    } else if (
+      name === "and" ||
+      name === "or" ||
+      name === "xor" ||
+      name === PIECEWISE_NAME
+    ) {
       this.#isInsideMacro = false;
     } else {
-      const functionIndex = this.#functionTable.get(ctx.NAME().text);
+      const functionIndex = this.#scope.functionTable.get(ctx.NAME().text);
       this.#emitter.emitCallOp(functionIndex);
     }
   }
@@ -232,7 +282,7 @@ class FormulaCompilerListener implements AntimonyListener {
   exitVar(ctx: VarContext): void {
     if (this.#isInsideMacro) return;
 
-    this.#emitLoadVariable(this.#emitter, getVariableName(ctx.variable()));
+    this.#scope.emitLoadVariable(this.#emitter, ctx.variable());
   }
 
   exitPositive(_ctx: PositiveContext): void {
@@ -251,7 +301,7 @@ class FormulaCompilerListener implements AntimonyListener {
   exitPower(_ctx: PowerContext) {
     if (this.#isInsideMacro) return;
 
-    this.#emitter.emitCallOp(this.#functionTable.get(POW_RESERVED_NAME));
+    this.#emitter.emitCallOp(this.#scope.functionTable.get(POW_RESERVED_NAME));
   }
 
   exitProduct(ctx: ProductContext): void {
@@ -302,9 +352,11 @@ class FormulaCompilerListener implements AntimonyListener {
 
     const op = ctx._op.text;
     if (op === "&&") {
-      this.#emitter.emitCallOp(this.#functionTable.get(AND_RESERVED_NAME));
+      this.#emitter.emitCallOp(
+        this.#scope.functionTable.get(AND_RESERVED_NAME),
+      );
     } else if (op === "||") {
-      this.#emitter.emitCallOp(this.#functionTable.get(OR_RESERVED_NAME));
+      this.#emitter.emitCallOp(this.#scope.functionTable.get(OR_RESERVED_NAME));
     } else {
       throw new CompileError(`Unknown logical operator: ${op}`, { tree: ctx });
     }

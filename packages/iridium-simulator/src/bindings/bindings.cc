@@ -25,6 +25,7 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .function("SimulateTimeCourse", &Model::SimulateTimeCourse);
     
     emscripten::value_object<EventInfo>("EventInfo")
+        .field("is_for_piecewise", &EventInfo::is_for_piecewise)
         .field("is_persistent", &EventInfo::is_persistent)
         .field("is_t0", &EventInfo::is_t0)
         .field("is_from_trigger", &EventInfo::is_from_trigger)

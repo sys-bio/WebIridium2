@@ -63,6 +63,11 @@ export type BuiltinFunctionInfo = {
 export type BuiltinFunctionName = keyof typeof builtinFunctions;
 
 export const builtinFunctions = {
+  piecewise: {
+    description: "TODO: explain this",
+    arity: { min: 1 },
+  },
+
   abs: {
     description: "Returns the absolute value.",
     arity: 1,

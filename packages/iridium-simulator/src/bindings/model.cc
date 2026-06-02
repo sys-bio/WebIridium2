@@ -17,15 +17,27 @@
 #include "sunlinsol/sunlinsol_dense.h"
 #include "sunmatrix/sunmatrix_dense.h"
 
-int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *data) {
-    return data->rhs_fn_(t, NV_DATA_S(y), NV_DATA_S(ydot), data->p_.data());
+int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
+    return model->rhs_fn_(
+        t,
+        NV_DATA_S(y),
+        NV_DATA_S(ydot),
+        model->p_.data(),
+        model->current_triggered_events_.data()
+    );
 }
 
-int delegating_roots(double t, N_Vector y, double *gout, Model *data) {
+int delegating_roots(double t, N_Vector y, double *gout, Model *model) {
     // TODO: we need to optimize this so we aren't recalculating everything for each event
-    data->rhs_fn_(t, NV_DATA_S(y), data->dummy_y_dot_, data->p_.data());
+    model->rhs_fn_(t, NV_DATA_S(y), model->dummy_y_dot_, model->p_.data(), model->current_triggered_events_.data());
 
-    data->roots_fn_(t, NV_DATA_S(y), gout, data->p_.data());
+    model->roots_fn_(
+        t,
+        NV_DATA_S(y),
+        gout,
+        model->p_.data(),
+        model->current_triggered_events_.data()
+    );
     return 0;
 }
 
@@ -50,6 +62,7 @@ Model::Model(
     p_.resize(original_p_.size() + num_reactions_);
     rhs_fn_ = (RHSFunc*)rhs;
     dummy_y_dot_ = new double[original_y_.size()];
+    std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -145,7 +158,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
 
-        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
+        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 
         UpdateEvents();
         RunPendingEventInvocations();
@@ -161,7 +174,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     // TODO: temporary hack to get the RHS to update the `p` variables
     //       later should make separate update function
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 
     RecordToOutputArray(time_);
 
@@ -174,7 +187,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         Integrate(target_time);
 
         // dumb hack to update p values like above
-        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
+        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 
         RecordToOutputArray(time_);
     }
@@ -214,7 +227,7 @@ void Model::Integrate(double target_time) {
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
             // TODO: replace this with better
-            rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
+            rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 
             ((CheckRootsFn*)event_params_.value().check_roots_fn)(
                 time_,
@@ -285,12 +298,12 @@ void Model::EnqueueEvent(const EventInfo &info) {
     const double delay =
         reinterpret_cast<GetOptionFn*>(info.get_delay_fn) == nullptr
             ? 0
-            : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), p_.data());
+            : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
     const double priority =
         reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
             ? 0
-            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), p_.data());
+            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
     EventInvocation invocation{
         &info,
@@ -305,6 +318,7 @@ void Model::EnqueueEvent(const EventInfo &info) {
             time_,
             NV_DATA_S(y_),
             p_.data(),
+            current_triggered_events_.data(),
             invocation.y_values.data(),
             invocation.p_values.data()
         );
@@ -323,6 +337,7 @@ void Model::RunPendingEventInvocations() {
                 time_,
                 NV_DATA_S(y_),
                 p_.data(),
+                current_triggered_events_.data(),
                 invocation.y_values.data(),
                 invocation.p_values.data()
             );
@@ -352,7 +367,7 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
     }
 
 
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data());
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
     UpdateEvents();
 }
 

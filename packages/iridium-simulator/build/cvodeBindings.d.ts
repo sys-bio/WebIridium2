@@ -44,6 +44,7 @@ export interface IntVector extends ClassHandle, Iterable<number> {
 }
 
 export type EventInfo = {
+  is_for_piecewise: boolean,
   is_persistent: boolean,
   is_t0: boolean,
   is_from_trigger: boolean,

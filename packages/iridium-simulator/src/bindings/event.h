@@ -7,7 +7,7 @@
 
 // Events may have multiple roots, so len(gout) >= len(events)
 // Expresses every event condition as a root-finding problem.
-using RootsFn = void(double time, double y[], double gout[], double p[]);
+using RootsFn = void(double time, double y[], double gout[], double p[], WasmBool events[]);
 
 // Updates which event triggers hold when CVODE indicates a root found.
 // The conditions array is to hold state about which conditions hold between root finds.
@@ -26,11 +26,11 @@ using UpdateConditionsFn = void(
     double y[],
     double p[],
     WasmBool conditionsout[],
-    WasmBool eventout[]
+    WasmBool eventsout[]
 );
 
 // Used for getting delay/priority.
-using GetOptionFn = double(double time, double y[], double p[]);
+using GetOptionFn = double(double time, double y[], double p[], WasmBool events[]);
 
 // Generated for each event. Runs the events assignments and adds them to the pre-allocated
 // yout[] and pout[] array.
@@ -38,6 +38,7 @@ using GetAssignmentsFn = void(
     double time,
     double y[],
     double p[],
+    WasmBool events[],
     double yout[],
     double pout[]
 );

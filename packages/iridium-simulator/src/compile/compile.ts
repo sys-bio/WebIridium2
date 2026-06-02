@@ -4,7 +4,7 @@ import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { FunctionTable, TypeTable } from "./symbolTables.ts";
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import type { EventSpec, ModelSpec } from "../modelSpec";
+import type { EventSpec, ModelSpec, PieceEventSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import { parse } from "antimony-language/parse";
 import {
@@ -21,7 +21,6 @@ import {
   RHS_NAME,
 } from "../names";
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
-import { createInternalModel, type InternalModel } from "./model";
 import { compileEvents } from "./event";
 import {
   predefinedFuncDefs,
@@ -31,22 +30,26 @@ import {
   type WasmFunction,
   AND_RESERVED_NAME,
   OR_RESERVED_NAME,
+  PIECEWISE_NAME,
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
+import { Compilation } from "./Compilation.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
   code: string,
 ): {
-  model: InternalModel;
+  compilation: Compilation;
   imports: string[];
-  eventSpecs: EventSpec[];
+  eventSpecs: (PieceEventSpec | EventSpec)[];
   bytecode: Uint8Array;
 } => {
   const root = parse(code);
-  const internalModel = createInternalModel(deriveModelsFromParseTree(root));
+  const compilation = new Compilation(deriveModelsFromParseTree(root));
 
-  const referencedFunctions = Array.from(getReferencedFunctions(root));
+  const referencedFunctions = Array.from(
+    getReferencedFunctionsAndTrackPiecewise(compilation, root),
+  );
 
   const functions: WasmFunction[] = [
     {
@@ -56,7 +59,7 @@ export const compileIntermediate = (
       params: RHS_PARAMS,
       results: RHS_RESULTS,
       compileBody: (functionTable) =>
-        compileRhs(internalModel, functionTable).getOutput(),
+        compileRhs(compilation, functionTable).getOutput(),
     },
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {
@@ -67,15 +70,15 @@ export const compileIntermediate = (
     }),
   ];
 
-  let eventSpecs: EventSpec[] = [];
-  if (internalModel.events.length > 0) {
-    const eventsResult = compileEvents(internalModel);
+  let eventSpecs: (PieceEventSpec | EventSpec)[] = [];
+  if (compilation.piecewisePieces.size > 0 || compilation.events.length > 0) {
+    const eventsResult = compileEvents(compilation);
     functions.push(...eventsResult.functions);
     eventSpecs = eventsResult.eventSpecs;
   }
 
   return {
-    model: internalModel,
+    compilation,
     imports: referencedFunctions,
     eventSpecs,
     bytecode: compileFunctions(functions),
@@ -83,12 +86,13 @@ export const compileIntermediate = (
 };
 
 export const compile = async (code: string): Promise<ModelSpec> => {
-  const { model, imports, eventSpecs, bytecode } = compileIntermediate(code);
+  const { compilation, imports, eventSpecs, bytecode } =
+    compileIntermediate(code);
 
-  const initialValues = evaluateInitialValues(model);
+  const initialValues = evaluateInitialValues(compilation);
 
   return {
-    y: model.yVars.map((y) => {
+    y: compilation.yVars.map((y) => {
       if (y.kind === "species") {
         return {
           kind: "floating",
@@ -103,7 +107,7 @@ export const compile = async (code: string): Promise<ModelSpec> => {
         };
       }
     }),
-    p: model.pVars.map((p) => {
+    p: compilation.pVars.map((p) => {
       if (p.kind === "species") {
         return {
           kind: p.isConst ? "boundary" : "floating",
@@ -118,16 +122,19 @@ export const compile = async (code: string): Promise<ModelSpec> => {
         };
       }
     }),
-    reactions: model.reactions.map((r) => r.name),
+    reactions: compilation.reactions.map((r) => r.name),
     events: eventSpecs,
     wasmModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };
 };
 
-const getReferencedFunctions = (context: ParserRuleContext): Set<string> => {
+const getReferencedFunctionsAndTrackPiecewise = (
+  compilation: Compilation,
+  context: ParserRuleContext,
+): Set<string> => {
   const referenced = new Set<string>();
-  const listener = new GetReferencedListener(referenced);
+  const listener = new GetReferencedListener(compilation, referenced);
   ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, context);
 
   const result = new Set<string>();
@@ -155,14 +162,27 @@ const getReferencedFunctions = (context: ParserRuleContext): Set<string> => {
 };
 
 class GetReferencedListener implements AntimonyListener {
+  #compilation: Compilation;
   #referenced: Set<string>;
 
-  constructor(imported: Set<string>) {
+  constructor(compilation: Compilation, imported: Set<string>) {
+    this.#compilation = compilation;
     this.#referenced = imported;
   }
 
   enterFunctionCall(ctx: FunctionCallContext): void {
     const name = ctx.NAME().text;
+
+    if (name === PIECEWISE_NAME) {
+      const formulas = ctx.argumentList()?.formula();
+      if (formulas) {
+        for (let i = 1; i < formulas.length; i += 2) {
+          this.#compilation.addPiecewisePiece(formulas[i]);
+        }
+      }
+      return;
+    }
+
     if (
       Object.hasOwn(predefinedFuncDefs, name) &&
       predefinedFuncDefs[name].kind !== "inline"

@@ -1,0 +1,9 @@
+## start=0 end=10 points=300 atol=1e-12 rtol=1e-6 selections=A,J,J2,e1
+
+species A' = 3
+species J := piecewise(5, A>5, 10)
+species J2 := piecewise(5, 10>A && A>5, 10, 15>A && A>10, 15, 20>A && A>15, 20)
+
+species e1 = 0
+
+at A > 5: e1 = 30

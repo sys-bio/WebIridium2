@@ -1,17 +1,18 @@
 import { ValType, OpCode } from "./codes";
-import Emitter, { createEmitLoadVariable } from "./Emitter";
+import Emitter from "./Emitter";
 import { FunctionTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { getAssignmentOrder } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { emitFormula } from "./formula";
-import type { InternalModel } from "./model";
-import { P_PARAM, T_PARAM, Y_PARAM } from "../names";
+import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
 import type {
   AntimonyRateAssignment,
   AntimonyRuleAssignment,
   AntimonyVariable,
 } from "antimony-language/semantic";
 import { CompileError } from "./errors";
+import type { Compilation } from "./Compilation.ts";
+import { Scope } from "./Scope.ts";
 
 const YDOT_PTR_PARAM = "ydot[]";
 
@@ -20,14 +21,15 @@ export const RHS_PARAMS: ValType[] = [
   ValType.i32,
   ValType.i32,
   ValType.i32,
+  ValType.i32,
 ];
 export const RHS_RESULTS: ValType[] = [ValType.i32];
 
 export const compileRhs = (
-  model: InternalModel,
+  compilation: Compilation,
   functionTable: FunctionTable,
 ): Emitter => {
-  const { variables, yVars, reactions, yTable, pTable } = model;
+  const { variables, yVars, reactions, yTable, pTable } = compilation;
   const emitter = new Emitter();
 
   const reactionDetermined: AntimonyVariable[] = [];
@@ -40,7 +42,7 @@ export const compileRhs = (
     }
   }
 
-  const ruleVariables = Array.from(model.variables.values()).filter(
+  const ruleVariables = Array.from(compilation.variables.values()).filter(
     (v) => v.assignment?.kind === "rule",
   );
   const ruleMap = new Map(
@@ -56,11 +58,14 @@ export const compileRhs = (
     Y_PARAM,
     YDOT_PTR_PARAM,
     P_PARAM,
+    EVENTS_PARAM,
   ]);
 
   for (const reaction of reactions) {
     localsTable.addLocal(reaction.name);
   }
+
+  const scope = new Scope(compilation, localsTable, functionTable);
 
   // we only have one type of local: f64
   emitter.emitListHeader(1);
@@ -68,8 +73,6 @@ export const compileRhs = (
   // specify that we want these many f64s
   emitter.emitUint(reactions.length);
   emitter.emitByte(ValType.f64);
-
-  const emitLoadVariable = createEmitLoadVariable(model, localsTable);
 
   // calculate rules
 
@@ -82,8 +85,8 @@ export const compileRhs = (
     emitFormula(
       (variable.assignment as AntimonyRuleAssignment).rule,
       emitter,
-      emitLoadVariable,
-      functionTable,
+      compilation,
+      scope,
     );
 
     emitter.emitByte(OpCode.f64store);
@@ -95,7 +98,7 @@ export const compileRhs = (
 
   for (const reaction of reactions) {
     if (reaction.rate) {
-      emitFormula(reaction.rate, emitter, emitLoadVariable, functionTable);
+      emitFormula(reaction.rate, emitter, compilation, scope);
 
       emitter.emitByte(OpCode.localset);
       emitter.emitUint(localsTable.getLocal(reaction.name));
@@ -207,8 +210,8 @@ export const compileRhs = (
     emitFormula(
       (ode.assignment as AntimonyRateAssignment).rate,
       emitter,
-      emitLoadVariable,
-      functionTable,
+      compilation,
+      scope,
     );
 
     emitter.emitByte(OpCode.f64store);

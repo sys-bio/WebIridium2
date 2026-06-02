@@ -85,7 +85,10 @@ export class CvodeWrapper {
     });
 
     const funcPtrs: number[] = [];
-    const vectorsToDestroy: (IntVector | EventInfoVector)[] = [];
+    const vectorsToDestroy: (IntVector | EventInfoVector)[] = [
+      yVector,
+      pVector,
+    ];
 
     const rhsPtr = this.#bindings.addFunction(
       instance.exports[RHS_NAME],
@@ -108,51 +111,73 @@ export class CvodeWrapper {
       const eventInfo = new this.#bindings.EventInfoVector();
 
       for (const event of spec.events) {
-        const getAssignmentsPtr = this.#bindings.addFunction(
-          instance.exports[event.getAssignmentsExport],
-        ) as number;
-        funcPtrs.push(getAssignmentsPtr);
+        if ("isForPiecewise" in event) {
+          const yIndices = new this.#bindings.IntVector();
+          const pIndices = new this.#bindings.IntVector();
 
-        let getDelayPtr: number | undefined;
-        if (event.getDelayExport) {
-          getDelayPtr = this.#bindings.addFunction(
-            instance.exports[event.getDelayExport],
+          eventInfo.push_back({
+            is_for_piecewise: true,
+            num_roots: event.countRoots,
+            y_indices: yIndices,
+            p_indices: pIndices,
+            get_assignments_fn: nullptr,
+            get_delay_fn: nullptr,
+            get_priority_fn: nullptr,
+            is_from_trigger: false,
+            is_persistent: false,
+            is_t0: false,
+          });
+
+          vectorsToDestroy.push(yIndices);
+          vectorsToDestroy.push(pIndices);
+        } else {
+          const getAssignmentsPtr = this.#bindings.addFunction(
+            instance.exports[event.getAssignmentsExport],
           ) as number;
-          funcPtrs.push(getDelayPtr);
+          funcPtrs.push(getAssignmentsPtr);
+
+          let getDelayPtr: number | undefined;
+          if (event.getDelayExport) {
+            getDelayPtr = this.#bindings.addFunction(
+              instance.exports[event.getDelayExport],
+            ) as number;
+            funcPtrs.push(getDelayPtr);
+          }
+
+          let getPriorityPtr: number | undefined;
+          if (event.getPriorityExport) {
+            getPriorityPtr = this.#bindings.addFunction(
+              instance.exports[event.getPriorityExport],
+            ) as number;
+            funcPtrs.push(getPriorityPtr);
+          }
+
+          const yIndices = new this.#bindings.IntVector();
+          for (const index of event.yIndices.values()) {
+            yIndices.push_back(index);
+          }
+
+          const pIndices = new this.#bindings.IntVector();
+          for (const index of event.pIndices.values()) {
+            pIndices.push_back(index);
+          }
+
+          eventInfo.push_back({
+            is_for_piecewise: false,
+            num_roots: event.countRoots,
+            y_indices: yIndices,
+            p_indices: pIndices,
+            get_assignments_fn: getAssignmentsPtr,
+            get_delay_fn: getDelayPtr ?? nullptr,
+            get_priority_fn: getPriorityPtr ?? nullptr,
+            is_from_trigger: event.isFromTrigger,
+            is_persistent: event.isPersistent,
+            is_t0: event.isT0,
+          });
+
+          vectorsToDestroy.push(yIndices);
+          vectorsToDestroy.push(pIndices);
         }
-
-        let getPriorityPtr: number | undefined;
-        if (event.getPriorityExport) {
-          getPriorityPtr = this.#bindings.addFunction(
-            instance.exports[event.getPriorityExport],
-          ) as number;
-          funcPtrs.push(getPriorityPtr);
-        }
-
-        const yIndices = new this.#bindings.IntVector();
-        for (const index of event.yIndices.values()) {
-          yIndices.push_back(index);
-        }
-
-        const pIndices = new this.#bindings.IntVector();
-        for (const index of event.pIndices.values()) {
-          pIndices.push_back(index);
-        }
-
-        eventInfo.push_back({
-          num_roots: event.countRoots,
-          y_indices: yIndices,
-          p_indices: pIndices,
-          get_assignments_fn: getAssignmentsPtr,
-          get_delay_fn: getDelayPtr ?? nullptr,
-          get_priority_fn: getPriorityPtr ?? nullptr,
-          is_from_trigger: event.isFromTrigger,
-          is_persistent: event.isPersistent,
-          is_t0: event.isT0,
-        });
-
-        vectorsToDestroy.push(yIndices);
-        vectorsToDestroy.push(pIndices);
       }
 
       eventParams = {
@@ -186,8 +211,6 @@ export class CvodeWrapper {
     this.#updateBindingSettings();
 
     // ok to delete now since they got copied into the bindings model
-    yVector.delete();
-    pVector.delete();
     for (const vector of vectorsToDestroy) {
       vector.delete();
     }

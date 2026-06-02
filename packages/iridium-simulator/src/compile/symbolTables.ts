@@ -118,6 +118,10 @@ export class LocalsSymbolTable {
     return index;
   }
 
+  hasParam(local: string): boolean {
+    return this.#paramMap.has(local);
+  }
+
   addLocal(local: string): number {
     if (this.#localsMap.has(local)) throw new Error(`Duplicate: ${local}`);
 
