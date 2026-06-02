@@ -266,15 +266,17 @@ void Model::EnqueueEventsFromSwap() {
             if (!current_triggered_events_[i]) {
                 current_triggered_events_[i] = events_swap_[i];
                 const EventInfo &info = event_params_.value().event_info[i];
-                if (!info.is_for_piecewise) {
-                    EnqueueEvent(info);
-                }
+                EnqueueEvent(info);
             }
         } else if (!events_swap_[i]) {
             if (current_triggered_events_[i]) {
                 current_triggered_events_[i] = events_swap_[i];
                 const EventInfo &info = event_params_.value().event_info[i];
-                if (!info.is_persistent && !info.is_for_piecewise) {
+                if (info.is_for_piecewise) {
+                    // Always for piecewise we need to enqueue a dummy invocation in case
+                    // we switched branches
+                    EnqueueEvent(info);
+                } else if (!info.is_persistent) {
                     event_queue_.RemoveInvocationsOf(info);
                 }
             }
@@ -296,12 +298,12 @@ void Model::UpdateEvents() {
 
 void Model::EnqueueEvent(const EventInfo &info) {
     const double delay =
-        reinterpret_cast<GetOptionFn*>(info.get_delay_fn) == nullptr
+        info.is_for_piecewise || reinterpret_cast<GetOptionFn*>(info.get_delay_fn) == nullptr
             ? 0
             : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
     const double priority =
-        reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
+        info.is_for_piecewise || reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
             ? 0
             : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
@@ -313,7 +315,7 @@ void Model::EnqueueEvent(const EventInfo &info) {
         std::vector<double>(info.p_indices.size()),
     };
 
-    if (info.is_from_trigger) {
+    if (info.is_from_trigger && !info.is_for_piecewise) {
         ((GetAssignmentsFn*)info.get_assignments_fn)(
             time_,
             NV_DATA_S(y_),
@@ -332,6 +334,13 @@ void Model::RunPendingEventInvocations() {
 
     while (event_queue_.IsInvocationAvailable(time_)) {
         EventInvocation invocation = event_queue_.PopInvocation();
+
+        // For piecewise, just set updated to true so we know to re-init.
+        if (invocation.event_info->is_for_piecewise) {
+            updated = true;
+            continue;
+        }
+
         if (!invocation.event_info->is_from_trigger) {
             ((GetAssignmentsFn*)invocation.event_info->get_assignments_fn)(
                 time_,
@@ -349,6 +358,7 @@ void Model::RunPendingEventInvocations() {
     }
 
     if (updated) {
+        std::cout << "Re-init at " << time_ << std::endl;
         CVodeReInit(cvode_mem_, time_, y_);
     }
 }

@@ -124,8 +124,8 @@ export class CvodeWrapper {
             get_delay_fn: nullptr,
             get_priority_fn: nullptr,
             is_from_trigger: false,
-            is_persistent: false,
-            is_t0: false,
+            is_persistent: true,
+            is_t0: true,
           });
 
           vectorsToDestroy.push(yIndices);
