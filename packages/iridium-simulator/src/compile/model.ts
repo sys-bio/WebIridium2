@@ -27,26 +27,22 @@ export const createInternalModel = (models: AntimonyModel[]): InternalModel => {
   const pVars: AntimonyVariable[] = [];
 
   for (const variable of mainModel.variables.values()) {
-    if (variable.kind === "species") {
-      if (variable.isConst) {
-        pVars.push(variable);
-      } else {
-        if (variable.assignment?.kind === "rule") {
+    if (variable.assignment?.kind === "rule") {
+      pVars.push(variable);
+    } else {
+      if (variable.kind === "species") {
+        if (variable.isConst) {
           pVars.push(variable);
         } else {
           yVars.push(variable);
         }
-      }
-    } else if (variable.kind === "parameter") {
-      if (variable.assignment?.kind === "rate") {
-        yVars.push(variable);
       } else {
-        pVars.push(variable);
+        if (variable.assignment?.kind === "rate") {
+          yVars.push(variable);
+        } else {
+          pVars.push(variable);
+        }
       }
-    } else if (variable.kind === "compartment") {
-      pVars.push(variable);
-    } else {
-      throw new Error(`Unknown variable kind`);
     }
   }
 

@@ -158,11 +158,29 @@ describe("assignments", () => {
     );
   });
 
+  it("should set rate and initial assignment with declaration", () => {
+    expectModel(
+      "species A' = Z\nA = 3",
+      variables({
+        A: species.rate("3", "Z"),
+      }),
+    );
+  });
+
   it("should inherit initial assignment when setting rate", () => {
     expectModel(
       "A = Z\nA '= 3",
       variables({
         A: parameter.rate("Z", "3"),
+      }),
+    );
+  });
+
+  it("should inherit initial assignment when setting rate with declaration", () => {
+    expectModel(
+      "species A = Z\nA '= 3",
+      variables({
+        A: species.rate("Z", "3"),
       }),
     );
   });

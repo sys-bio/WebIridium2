@@ -30,15 +30,13 @@ export const compileRhs = (
   const { variables, yVars, reactions, yTable, pTable } = model;
   const emitter = new Emitter();
 
-  const floatingSpecies: AntimonyVariable[] = [];
-  const odes: AntimonyVariable[] = [];
+  const reactionDetermined: AntimonyVariable[] = [];
+  const rateDetermined: AntimonyVariable[] = [];
   for (const variable of yVars) {
-    if (variable.kind === "species") {
-      if (!variable.isConst) {
-        floatingSpecies.push(variable);
-      }
+    if (variable?.assignment?.kind === "rate") {
+      rateDetermined.push(variable);
     } else {
-      odes.push(variable);
+      reactionDetermined.push(variable);
     }
   }
 
@@ -144,7 +142,7 @@ export const compileRhs = (
     }
   }
 
-  for (const f of floatingSpecies) {
+  for (const f of reactionDetermined) {
     const reactions = involvedReactions.get(f.name);
 
     emitter.emitByte(OpCode.localget);
@@ -203,7 +201,7 @@ export const compileRhs = (
   }
 
   // do rate rules
-  for (const ode of odes) {
+  for (const ode of rateDetermined) {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
