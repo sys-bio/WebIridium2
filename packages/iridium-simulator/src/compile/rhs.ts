@@ -101,8 +101,7 @@ export const compileRhs = (
       emitter.emitUint(localsTable.getLocal(reaction.name));
     } else {
       // TODO: how to handle missing rate?
-      emitter.emitByte(OpCode.f64const);
-      emitter.emitUint(0);
+      emitter.emitF64ConstOp(0);
 
       emitter.emitByte(OpCode.localset);
       emitter.emitUint(localsTable.getLocal(reaction.name));
