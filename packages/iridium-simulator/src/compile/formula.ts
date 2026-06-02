@@ -91,6 +91,8 @@ class FormulaCompilerListener implements AntimonyListener {
 
   // hard-coding variadics
   enterFunctionCall(ctx: FunctionCallContext): void {
+    if (this.#isInsideMacro) return;
+
     const name = ctx.NAME().text;
     if (name === "and") {
       this.#isInsideMacro = true;
