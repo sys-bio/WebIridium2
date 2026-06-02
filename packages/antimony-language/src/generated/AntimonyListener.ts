@@ -43,8 +43,8 @@ import { FunctionCallContext } from "./AntimonyParser";
 import { ArgumentListContext } from "./AntimonyParser";
 import { VariableContext } from "./AntimonyParser";
 import { InCompartmentContext } from "./AntimonyParser";
+import { NameLabelContext } from "./AntimonyParser";
 import { ReactionContext } from "./AntimonyParser";
-import { ReactionNameContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
@@ -52,7 +52,6 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
-import { EventNameContext } from "./AntimonyParser";
 import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
@@ -558,6 +557,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitInCompartment?: (ctx: InCompartmentContext) => void;
 
 	/**
+	 * Enter a parse tree produced by `AntimonyParser.nameLabel`.
+	 * @param ctx the parse tree
+	 */
+	enterNameLabel?: (ctx: NameLabelContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.nameLabel`.
+	 * @param ctx the parse tree
+	 */
+	exitNameLabel?: (ctx: NameLabelContext) => void;
+
+	/**
 	 * Enter a parse tree produced by `AntimonyParser.reaction`.
 	 * @param ctx the parse tree
 	 */
@@ -567,17 +577,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitReaction?: (ctx: ReactionContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `AntimonyParser.reactionName`.
-	 * @param ctx the parse tree
-	 */
-	enterReactionName?: (ctx: ReactionNameContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.reactionName`.
-	 * @param ctx the parse tree
-	 */
-	exitReactionName?: (ctx: ReactionNameContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.reactionFormula`.
@@ -655,17 +654,6 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEvent?: (ctx: EventContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `AntimonyParser.eventName`.
-	 * @param ctx the parse tree
-	 */
-	enterEventName?: (ctx: EventNameContext) => void;
-	/**
-	 * Exit a parse tree produced by `AntimonyParser.eventName`.
-	 * @param ctx the parse tree
-	 */
-	exitEventName?: (ctx: EventNameContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.eventOptions`.

@@ -269,6 +269,34 @@ describe("declarations", () => {
       }),
     );
   });
+
+  it("should update on assignment", () => {
+    expectModel(
+      "A = 0; const species A = 5",
+      model({
+        variables: {
+          A: species.const("5"),
+        },
+      }),
+    );
+  });
+
+  it("should let you update parameter to compartment", () => {
+    expectModel(
+      "A = 0; const compartment A = 5",
+      model({
+        variables: {
+          A: compartment.const("5"),
+        },
+      }),
+    );
+  });
+
+  it("should not let you update species to compartment", () => {
+    expect(() => {
+      deriveModels("species A = 0; const compartment A = 5");
+    }).toThrow();
+  });
 });
 
 describe("$ modifier", () => {

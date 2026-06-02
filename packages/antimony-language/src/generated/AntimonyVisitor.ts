@@ -43,8 +43,8 @@ import { FunctionCallContext } from "./AntimonyParser";
 import { ArgumentListContext } from "./AntimonyParser";
 import { VariableContext } from "./AntimonyParser";
 import { InCompartmentContext } from "./AntimonyParser";
+import { NameLabelContext } from "./AntimonyParser";
 import { ReactionContext } from "./AntimonyParser";
-import { ReactionNameContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
@@ -52,7 +52,6 @@ import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
-import { EventNameContext } from "./AntimonyParser";
 import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
@@ -378,18 +377,18 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitInCompartment?: (ctx: InCompartmentContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by `AntimonyParser.nameLabel`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitNameLabel?: (ctx: NameLabelContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by `AntimonyParser.reaction`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	visitReaction?: (ctx: ReactionContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `AntimonyParser.reactionName`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitReactionName?: (ctx: ReactionNameContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.reactionFormula`.
@@ -439,13 +438,6 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEvent?: (ctx: EventContext) => Result;
-
-	/**
-	 * Visit a parse tree produced by `AntimonyParser.eventName`.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	visitEventName?: (ctx: EventNameContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.eventOptions`.

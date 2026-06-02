@@ -8,7 +8,9 @@ import {
   DeclarationNameContext,
   EventContext,
   FormulaContext,
+  InCompartmentContext,
   NameContext,
+  NameLabelContext,
   ReactantListContext,
   ReactionContext,
   SubvariableContext,
@@ -33,6 +35,9 @@ const ALLOWED_DECLARATIONS = new Set<VariableKind>([
   "parameter",
   "compartment",
 ]);
+
+const DEFAULT_COMPARTMENT_NAME = "default_compartment";
+const DEFAULT_MODEL_NAME = "__main";
 
 const getVariableName = (variableCtx: VariableContext): string[] => {
   if (variableCtx instanceof NameContext) {
@@ -63,7 +68,7 @@ export class DeriveModelListener implements AntimonyListener {
   constructor({ diagnostics }: { diagnostics?: Error[] } = {}) {
     this.#models = new Map();
     this.#baseModel = {
-      name: "__main",
+      name: DEFAULT_MODEL_NAME,
       variables: new Map(),
       reactions: new Map(),
       events: new Map(),
@@ -93,6 +98,56 @@ export class DeriveModelListener implements AntimonyListener {
     return this.#currentModel;
   }
 
+  #setVariableKind(
+    ctx: ParserRuleContext,
+    variable: AntimonyVariable,
+    kind: VariableKind,
+  ): void {
+    if (variable.kind === "species" && kind === "compartment") {
+      this.#reportError(
+        `Cannot convert ${variable.name} to compartment when it is a species.`,
+        ctx,
+      );
+    }
+    variable.kind = kind;
+  }
+
+  #getOrCreateCompartment(
+    compartmentCtx: InCompartmentContext | undefined,
+  ): string {
+    const model = this.#getActiveModel();
+
+    if (!compartmentCtx) {
+      if (!model.variables.has(DEFAULT_COMPARTMENT_NAME)) {
+        model.variables.set(DEFAULT_COMPARTMENT_NAME, {
+          kind: "compartment",
+          name: DEFAULT_COMPARTMENT_NAME,
+          isConst: false,
+          compartment: null,
+        });
+      }
+
+      return DEFAULT_COMPARTMENT_NAME;
+    } else {
+      const compartmentVariable = this.#getOrCreateVariable(
+        compartmentCtx.variable(),
+        undefined,
+      );
+
+      if (!compartmentVariable) {
+        this.#reportError(
+          "Cannot use built-in as a compartment",
+          compartmentCtx,
+        );
+        return DEFAULT_COMPARTMENT_NAME;
+      }
+
+      this.#setVariableKind(compartmentCtx, compartmentVariable, "compartment");
+
+      return compartmentVariable.name;
+    }
+  }
+
   /**
    * Get or create a variable and return it.
    * If the variable has the name of a built-in, does not create
@@ -100,6 +155,7 @@ export class DeriveModelListener implements AntimonyListener {
    */
   #getOrCreateVariable(
     variableCtx: VariableContext,
+    compartmentCtx: InCompartmentContext | undefined,
   ): AntimonyVariable | undefined {
     const model = this.#getActiveModel();
     const fullName = getVariableName(variableCtx);
@@ -108,6 +164,7 @@ export class DeriveModelListener implements AntimonyListener {
       // TODO: actually do this properly instead of making fake throwaway variable
       return {
         kind: "parameter",
+        compartment: this.#getOrCreateCompartment(compartmentCtx),
         isConst: false,
         name: fullName.slice(1).join("."),
       };
@@ -124,16 +181,19 @@ export class DeriveModelListener implements AntimonyListener {
     if (!variable) {
       variable = {
         kind: this.#currentDeclaration?.kind ?? "parameter",
+        compartment: this.#getOrCreateCompartment(compartmentCtx),
         name: name,
         isConst:
           variableCtx instanceof ConstantContext ||
           (this.#currentDeclaration?.isConst ?? false),
       };
-      model.variables.set(variable.name, variable);
+      model.variables.set(variable!.name, variable!);
+    } else {
+      variable.compartment = this.#getOrCreateCompartment(compartmentCtx);
     }
 
     if (variableCtx instanceof ConstantContext) {
-      variable.isConst = true;
+      variable!.isConst = true;
     }
 
     return variable;
@@ -168,13 +228,16 @@ export class DeriveModelListener implements AntimonyListener {
     if (!this.#currentDeclaration) return;
 
     // TODO: is it always OK to re-assign?
-    const variable = this.#getOrCreateVariable(ctx.variable());
+    const variable = this.#getOrCreateVariable(
+      ctx.variable(),
+      ctx.inCompartment(),
+    );
     if (!variable) {
       this.#reportError("Cannot use name of built-in within declaration", ctx);
       return;
     }
 
-    variable.kind = this.#currentDeclaration.kind;
+    this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
     variable.isConst = this.#currentDeclaration.isConst;
   }
 
@@ -196,14 +259,22 @@ export class DeriveModelListener implements AntimonyListener {
   */
 
   enterVar(ctx: VarContext): void {
-    this.#getOrCreateVariable(ctx.variable());
+    this.#getOrCreateVariable(ctx.variable(), undefined);
   }
 
   enterAssignment(ctx: AssignmentContext): void {
-    const variable = this.#getOrCreateVariable(ctx.variable());
+    const variable = this.#getOrCreateVariable(
+      ctx.variable(),
+      ctx.inCompartment(),
+    );
     if (!variable) {
       this.#reportError("Cannot assign to built-in.", ctx);
       return;
+    }
+
+    if (this.#currentDeclaration) {
+      this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+      variable.isConst = this.#currentDeclaration.isConst;
     }
 
     const mod = ctx._mod?.text;
@@ -257,7 +328,11 @@ export class DeriveModelListener implements AntimonyListener {
   enterReaction(ctx: ReactionContext): void {
     const model = this.#getActiveModel();
 
-    const name = this.#getOrDefaultReactionName(ctx);
+    const { name, compartment } = this.#getOrDefaultName(
+      ctx.nameLabel(),
+      this.#getActiveModel().reactions,
+      "_J",
+    );
     let reactants: AntimonyReactionTerm[] = [];
     let products: AntimonyReactionTerm[] = [];
 
@@ -273,32 +348,41 @@ export class DeriveModelListener implements AntimonyListener {
 
     model.reactions.set(name, {
       name,
+      compartment,
       reactants,
       products,
       rate: ctx.formula(),
     });
   }
 
-  #getOrDefaultReactionName(ctx: ReactionContext): string {
-    const reactionName = ctx.reactionName();
-    if (reactionName) {
-      return reactionName.NAME().text;
+  #getOrDefaultName(
+    nameLabelCtx: NameLabelContext | undefined,
+    map: Map<string, unknown>,
+    prefix: string,
+  ): { name: string; compartment: string | null } {
+    if (nameLabelCtx) {
+      return {
+        name: nameLabelCtx.NAME().text,
+        compartment: this.#getOrCreateCompartment(nameLabelCtx.inCompartment()),
+      };
     } else {
-      const model = this.#getActiveModel();
       let candidate: string;
       let i = 0;
       do {
-        candidate = `_J${i++}`;
-      } while (model.reactions.has(candidate));
+        candidate = `${prefix}${i++}`;
+      } while (map.has(candidate));
 
-      return candidate;
+      return { name: candidate, compartment: null };
     }
   }
 
   #getReactionTerms(ctx: ReactantListContext): AntimonyReactionTerm[] {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
-      const variable = this.#getOrCreateVariable(reactant.variable());
+      const variable = this.#getOrCreateVariable(
+        reactant.variable(),
+        undefined,
+      );
       if (!variable) {
         this.#reportError("Cannot use built-in within reaction.", reactant);
         continue;
@@ -320,26 +404,13 @@ export class DeriveModelListener implements AntimonyListener {
     return terms;
   }
 
-  #getOrDefaultEventName(ctx: EventContext): string {
-    const eventName = ctx.eventName();
-    if (eventName) {
-      return eventName.NAME().text;
-    } else {
-      const model = this.#getActiveModel();
-      let candidate: string;
-      let i = 0;
-      do {
-        candidate = `_E${i++}`;
-      } while (model.events.has(candidate));
-
-      return candidate;
-    }
-  }
-
   enterEvent(ctx: EventContext): void {
     const assignments = new Map<string, FormulaContext>();
     for (const assignment of ctx.eventAssignments().eventAssignment()) {
-      const variable = this.#getOrCreateVariable(assignment.variable());
+      const variable = this.#getOrCreateVariable(
+        assignment.variable(),
+        undefined,
+      );
       if (!variable) {
         this.#reportError("Cannot assign to built-in.", ctx);
         return;
@@ -362,10 +433,15 @@ export class DeriveModelListener implements AntimonyListener {
       }
     }
 
-    const name = this.#getOrDefaultEventName(ctx);
+    const { name, compartment } = this.#getOrDefaultName(
+      ctx.nameLabel(),
+      this.#getActiveModel().events,
+      "_E",
+    );
 
     this.#getActiveModel().events.set(name, {
       name,
+      compartment,
       assignments,
       trigger: ctx._trigger,
       delay: ctx._delay,

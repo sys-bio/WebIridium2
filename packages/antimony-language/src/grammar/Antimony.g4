@@ -49,10 +49,10 @@ variable : NAME #name
          ;
 
 inCompartment : IN variable;
+nameLabel     : NAME inCompartment? ':';
 
 // e.g "J1 in compartment1: 2 A + 4 B -> C; k1*20"
-reaction        : reactionName? reactionFormula ';' formula? inCompartment?;
-reactionName    : NAME inCompartment? ':';
+reaction        : nameLabel? reactionFormula ';' formula? inCompartment?;
 reactionFormula : left=reactantList? ARROW right=reactantList
                 | left=reactantList ARROW right=reactantList?
                 ;
@@ -66,10 +66,9 @@ declarationTerm : assignment #declarationAssignment
                 | variable inCompartment? #declarationName
                 ;
 
-event            : eventName? AT trigger=formula eventOptions? ':' eventAssignments
-                 | eventName? AT delay=formula AFTER trigger=formula eventOptions? ':' eventAssignments
+event            : nameLabel? AT trigger=formula eventOptions? ':' eventAssignments
+                 | nameLabel? AT delay=formula AFTER trigger=formula eventOptions? ':' eventAssignments
                  ;
-eventName        : NAME ':';
 eventOptions     : (',' eventOption)+;
 eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' eventAssignment)*;
@@ -99,6 +98,4 @@ unitFormula        : '(' unitFormula ')' #unitGroup
                    | unitFormula op=('+' | '-') unitFormula #unitSum
                    ;
 
-// The syntax is the same as reactionNamel, but the "in <compartment>" part doesn't have any semantic meaning
-// as far as I can tell. Still compiles, however.
-modelCall : reactionName NAME exportList;
+modelCall : nameLabel NAME exportList;

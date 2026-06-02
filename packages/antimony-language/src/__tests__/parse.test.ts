@@ -113,6 +113,7 @@ describe("bad models", () => {
 describe("assignment", () => {
   itShouldErrorForAll({
     space: "A B = 5",
+    missingCompartment: "A in = 5",
   });
 
   itShouldSucceedForAll({
@@ -121,6 +122,9 @@ describe("assignment", () => {
     ruleSpace: "A: =5",
     rate: "A' = 5",
     rate2: "A '= 5",
+    compartmentInitial: "A in B = 5",
+    compartmentRule: "A in B := 5",
+    compartmentRate: "A in B '= 5",
   });
 });
 
@@ -170,6 +174,7 @@ describe("declaration", () => {
     extraComma3: "var ,",
     varConst: "var const a",
     varConst2: "var const species a",
+    compartmentMissing: "species a in",
   });
 
   itShouldSucceedForAll({
@@ -187,6 +192,8 @@ describe("declaration", () => {
     ruleAssign: "species a := 5",
     multipleAssign: "species a := 5, b = 5, c = 10.3e+3",
     multipleAssignAndDeclare: "species a = 5, b, c, d = 10",
+    inCompartment: "compartment C in D",
+    inCompartmentMultiple: "compartment C in D, A in B = 5, A, B, D in A.B = 5",
   });
 });
 

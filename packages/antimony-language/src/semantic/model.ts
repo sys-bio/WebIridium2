@@ -25,9 +25,10 @@ export type VariableKind = "species" | "parameter" | "compartment";
 export type AntimonyVariable = {
   kind: VariableKind;
   name: string;
+  compartment: string | null;
   isConst: boolean;
   assignment?: AntimonyAssignment;
-};
+}
 
 export type AntimonyReactionTerm = {
   name: string;
@@ -36,6 +37,7 @@ export type AntimonyReactionTerm = {
 
 export type AntimonyEvent = {
   name: string;
+  compartment: string | null;
   trigger: FormulaContext;
   assignments: Map<string, FormulaContext>;
   delay?: FormulaContext;
@@ -44,6 +46,7 @@ export type AntimonyEvent = {
 
 export type AntimonyReaction = {
   name: string;
+  compartment: string | null;
   reactants: AntimonyReactionTerm[];
   products: AntimonyReactionTerm[];
   rate?: FormulaContext;
