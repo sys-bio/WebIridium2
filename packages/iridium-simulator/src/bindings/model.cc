@@ -16,6 +16,7 @@
 #include "sundials/sundials_nvector.h"
 #include "sundials/sundials_types.h"
 #include "sunlinsol/sunlinsol_dense.h"
+#include "sunnonlinsol/sunnonlinsol_newton.h"
 #include "sunmatrix/sunmatrix_dense.h"
 
 int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
@@ -65,6 +66,7 @@ Model::Model(
     dummy_y_dot_ = new double[original_y_.size()];
     std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
+    non_lin_solver_ = SUNNonlinSol_Newton(y_, ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
     if (!event_params_.has_value()) {
@@ -146,6 +148,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (!has_init_) {
         CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
 
+        CVodeSetNonlinearSolver(cvode_mem_, non_lin_solver_);
         CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
         CVodeSetUserData(cvode_mem_, this);
 

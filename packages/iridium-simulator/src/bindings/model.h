@@ -7,6 +7,7 @@
 #include <emscripten/val.h>
 #include "sundials/sundials_linearsolver.h"
 #include "sundials/sundials_matrix.h"
+#include "sundials/sundials_nonlinearsolver.h"
 #include "sundials/sundials_types.h"
 #include "sundials/sundials_nvector.h"
 
@@ -96,6 +97,7 @@ private:
     SUNContext ctx_;
     void *cvode_mem_;
     SUNMatrix matrix_;
+    SUNNonlinearSolver non_lin_solver_;
     SUNLinearSolver linear_solver_;
 
     std::vector<double> original_y_;

@@ -40,6 +40,7 @@ set(target_name "cvodeBindings")
 add_executable(${target_name} ${sources} ${headers})
 
 target_compile_features(${target_name} PUBLIC cxx_std_20) 
+target_compile_options(${target_name} PUBLIC "-msimd128")
 target_link_options(${target_name} PRIVATE
     "-lembind"
     "--emit-tsd=${target_name}.d.ts"
@@ -49,6 +50,7 @@ target_link_options(${target_name} PRIVATE
     "-sEXPORT_ES6"
     "-sENVIRONMENT=web,worker,node"
     "-sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmMemory"
+    "-msimd128"
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -61,6 +63,6 @@ endif()
 
 target_link_libraries(${target_name} PUBLIC SUNDIALS::cvode)
 
-execute_process(COMMAND em++ --cflags
-OUTPUT_VARIABLE EM_CFLAGS)
-set_target_properties(cvodeBindings PROPERTIES COMPILE_FLAGS "${EM_CFLAGS}")
+# execute_process(COMMAND em++ --cflags
+# OUTPUT_VARIABLE EM_CFLAGS)
+# set_target_properties(cvodeBindings PROPERTIES COMPILE_FLAGS "${EM_CFLAGS}")
