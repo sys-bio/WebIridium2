@@ -353,3 +353,118 @@ describe("events", () => {
     }).toThrow();
   });
 });
+
+describe("compartments", () => {
+  it("should add to compartment in assignment", () => {
+    expectModel(
+      "A in C = 3",
+      variables({
+        A: parameter("3").in("C"),
+        C: compartment(),
+      }),
+    );
+  });
+
+  it("should add to compartment in declaration", () => {
+    expectModel(
+      "species A in C",
+      variables({
+        A: species().in("C"),
+        C: compartment(),
+      }),
+    );
+  });
+
+  it("should be able to set reaction compartment", () => {
+    expectModel(
+      "J in comp: A -> B; k1",
+      model({
+        variables: {
+          A: species(),
+          B: species(),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: "comp",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should be able to set reaction compartment", () => {
+    expectModel(
+      "J in comp: A -> B; k1",
+      model({
+        variables: {
+          A: species(),
+          B: species(),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: "comp",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should be able to set reaction compartment at end", () => {
+    expectModel(
+      "J: A -> B; k1 in comp",
+      model({
+        variables: {
+          A: species(),
+          B: species(),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: "comp",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should inherit reaction compartment", () => {
+    expectModel(
+      "J in comp: A -> B; k1",
+      model({
+        variables: {
+          A: species().in("comp"),
+          B: species().in("comp"),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: "comp",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should inherit last reaction compartment", () => {
+    expectModel(
+      "J in comp: A -> B; k1\n" + "J2: A -> ; k2 in comp2",
+      model({
+        variables: {
+          A: species().in("comp2"),
+          B: species().in("comp"),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: "comp",
+          }),
+          J2: reaction({ A: 1 }, {}, "k2", {
+            compartment: "comp2",
+          }),
+        },
+      }),
+    );
+  });
+});

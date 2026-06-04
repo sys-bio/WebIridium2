@@ -36,8 +36,8 @@ const ALLOWED_DECLARATIONS = new Set<VariableKind>([
   "compartment",
 ]);
 
-const DEFAULT_COMPARTMENT_NAME = "default_compartment";
-const DEFAULT_MODEL_NAME = "__main";
+export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
+export const DEFAULT_MODEL_NAME = "__main";
 
 const getVariableName = (variableCtx: VariableContext): string[] => {
   if (variableCtx instanceof NameContext) {
@@ -109,29 +109,27 @@ export class DeriveModelListener implements AntimonyListener {
         ctx,
       );
     }
+
+    if (variable.kind === "compartment" && kind !== "compartment") {
+      this.#reportError(
+        `Cannot convert ${variable.name} from compartment`,
+        ctx,
+      );
+    }
+
     variable.kind = kind;
   }
 
   #getOrCreateCompartment(
     compartmentCtx: InCompartmentContext | undefined,
-  ): string {
-    const model = this.#getActiveModel();
-
+  ): string | null {
     if (!compartmentCtx) {
-      if (!model.variables.has(DEFAULT_COMPARTMENT_NAME)) {
-        model.variables.set(DEFAULT_COMPARTMENT_NAME, {
-          kind: "compartment",
-          name: DEFAULT_COMPARTMENT_NAME,
-          isConst: false,
-          compartment: null,
-        });
-      }
-
-      return DEFAULT_COMPARTMENT_NAME;
+      return null;
     } else {
       const compartmentVariable = this.#getOrCreateVariable(
         compartmentCtx.variable(),
         undefined,
+        "compartment",
       );
 
       if (!compartmentVariable) {
@@ -139,7 +137,7 @@ export class DeriveModelListener implements AntimonyListener {
           "Cannot use built-in as a compartment",
           compartmentCtx,
         );
-        return DEFAULT_COMPARTMENT_NAME;
+        return null;
       }
 
       this.#setVariableKind(compartmentCtx, compartmentVariable, "compartment");
@@ -156,6 +154,7 @@ export class DeriveModelListener implements AntimonyListener {
   #getOrCreateVariable(
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
+    defaultKind?: VariableKind,
   ): AntimonyVariable | undefined {
     const model = this.#getActiveModel();
     const fullName = getVariableName(variableCtx);
@@ -180,23 +179,44 @@ export class DeriveModelListener implements AntimonyListener {
 
     if (!variable) {
       variable = {
-        kind: this.#currentDeclaration?.kind ?? "parameter",
+        kind: defaultKind ?? this.#currentDeclaration?.kind ?? "parameter",
         compartment: this.#getOrCreateCompartment(compartmentCtx),
         name: name,
         isConst:
           variableCtx instanceof ConstantContext ||
           (this.#currentDeclaration?.isConst ?? false),
       };
-      model.variables.set(variable!.name, variable!);
+      model.variables.set(variable.name, variable);
     } else {
       variable.compartment = this.#getOrCreateCompartment(compartmentCtx);
     }
 
     if (variableCtx instanceof ConstantContext) {
-      variable!.isConst = true;
+      variable.isConst = true;
     }
 
     return variable;
+  }
+
+  #getOrDefaultName(
+    nameLabelCtx: NameLabelContext | undefined,
+    map: Map<string, unknown>,
+    prefix: string,
+  ): { name: string; compartment: string | null } {
+    if (nameLabelCtx) {
+      return {
+        name: nameLabelCtx.NAME().text,
+        compartment: this.#getOrCreateCompartment(nameLabelCtx.inCompartment()),
+      };
+    } else {
+      let candidate: string;
+      let i = 0;
+      do {
+        candidate = `${prefix}${i++}`;
+      } while (map.has(candidate));
+
+      return { name: candidate, compartment: null };
+    }
   }
 
   enterDeclaration(ctx: DeclarationContext): void {
@@ -325,57 +345,6 @@ export class DeriveModelListener implements AntimonyListener {
     }
   }
 
-  enterReaction(ctx: ReactionContext): void {
-    const model = this.#getActiveModel();
-
-    const { name, compartment } = this.#getOrDefaultName(
-      ctx.nameLabel(),
-      this.#getActiveModel().reactions,
-      "_J",
-    );
-    let reactants: AntimonyReactionTerm[] = [];
-    let products: AntimonyReactionTerm[] = [];
-
-    if (ctx.reactionFormula()._left) {
-      reactants = this.#getReactionTerms(ctx.reactionFormula()._left);
-    }
-
-    if (ctx.reactionFormula()._right) {
-      products = this.#getReactionTerms(ctx.reactionFormula()._right);
-    }
-
-    // TODO: throw when two reactions have the same name
-
-    model.reactions.set(name, {
-      name,
-      compartment,
-      reactants,
-      products,
-      rate: ctx.formula(),
-    });
-  }
-
-  #getOrDefaultName(
-    nameLabelCtx: NameLabelContext | undefined,
-    map: Map<string, unknown>,
-    prefix: string,
-  ): { name: string; compartment: string | null } {
-    if (nameLabelCtx) {
-      return {
-        name: nameLabelCtx.NAME().text,
-        compartment: this.#getOrCreateCompartment(nameLabelCtx.inCompartment()),
-      };
-    } else {
-      let candidate: string;
-      let i = 0;
-      do {
-        candidate = `${prefix}${i++}`;
-      } while (map.has(candidate));
-
-      return { name: candidate, compartment: null };
-    }
-  }
-
   #getReactionTerms(ctx: ReactantListContext): AntimonyReactionTerm[] {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
@@ -394,7 +363,7 @@ export class DeriveModelListener implements AntimonyListener {
         continue;
       }
 
-      variable.kind = "species";
+      this.#setVariableKind(reactant, variable, "species");
 
       terms.push({
         name: variable.name,
@@ -402,6 +371,55 @@ export class DeriveModelListener implements AntimonyListener {
       });
     }
     return terms;
+  }
+
+  enterReaction(ctx: ReactionContext): void {
+    const model = this.#getActiveModel();
+
+    const nameResult = this.#getOrDefaultName(
+      ctx.nameLabel(),
+      this.#getActiveModel().reactions,
+      "_J",
+    );
+
+    const name = nameResult.name;
+    let compartment = nameResult.compartment;
+
+    const compartmentCtx = ctx.inCompartment();
+    if (compartmentCtx) {
+      compartment = this.#getOrCreateCompartment(compartmentCtx);
+    }
+
+    let reactants: AntimonyReactionTerm[] = [];
+    let products: AntimonyReactionTerm[] = [];
+
+    if (ctx.reactionFormula()._left) {
+      reactants = this.#getReactionTerms(ctx.reactionFormula()._left);
+
+      for (const term of reactants) {
+        const reactant = model.variables.get(term.name)!;
+        reactant.compartment = compartment;
+      }
+    }
+
+    if (ctx.reactionFormula()._right) {
+      products = this.#getReactionTerms(ctx.reactionFormula()._right);
+
+      for (const term of products) {
+        const product = model.variables.get(term.name)!;
+        product.compartment = compartment;
+      }
+    }
+
+    // TODO: throw when two reactions have the same name
+
+    model.reactions.set(name, {
+      name,
+      compartment,
+      reactants,
+      products,
+      rate: ctx.formula(),
+    });
   }
 
   enterEvent(ctx: EventContext): void {

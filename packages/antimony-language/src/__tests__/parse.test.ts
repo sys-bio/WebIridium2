@@ -128,6 +128,18 @@ describe("assignment", () => {
   });
 });
 
+describe("reaction", () => {
+  itShouldErrorForAll({
+    missingBothSides: "->;k1",
+  });
+
+  itShouldSucceedForAll({
+    named: "_J1: A -> B; k1",
+    namedCompartment: "_J1 in comp1: A -> B; k1",
+    namedCompartment2: "_J1: A -> B; k1 in comp1",
+  });
+});
+
 describe("event", () => {
   itShouldErrorForAll({
     extraComma: "at time > 5: A = 3,",

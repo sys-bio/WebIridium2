@@ -108,12 +108,25 @@ const variableModifiers = {
   }),
 };
 
+const variableProto = {
+  in(this: Record<string, unknown>, compartment: string) {
+    this.compartment = compartment;
+    return this;
+  },
+};
+
 const createVariableFunc = (kind: string) => {
   return funcWithModifiers(
     variableModifiers,
-    function (this: VariableState, formulaOrRule?: string, rate?: string) {
+    // not the correct return type but whatever
+    function (
+      this: VariableState,
+      formulaOrRule?: string,
+      rate?: string,
+    ): typeof variableProto {
       if (formulaOrRule) {
-        return {
+        // eslint-disable-next-line
+        return Object.assign(Object.create(variableProto), {
           kind,
           isConst: this.const ?? false,
           assignment:
@@ -132,13 +145,14 @@ const createVariableFunc = (kind: string) => {
                     kind: "set",
                     initial: { text: formulaOrRule },
                   },
-        };
+        });
       }
 
-      return {
+      // eslint-disable-next-line
+      return Object.assign(Object.create(variableProto), {
         kind,
         isConst: this.const ?? false,
-      };
+      });
     },
   );
 };
@@ -153,6 +167,7 @@ export const reaction = (
   reactants: Record<string, number>,
   products: Record<string, number>,
   rate: string,
+  extra?: object,
 ) => {
   return {
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
@@ -166,6 +181,7 @@ export const reaction = (
     rate: {
       text: rate,
     },
+    ...extra,
   };
 };
 

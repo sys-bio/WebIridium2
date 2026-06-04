@@ -28,7 +28,7 @@ export type AntimonyVariable = {
   compartment: string | null;
   isConst: boolean;
   assignment?: AntimonyAssignment;
-}
+};
 
 export type AntimonyReactionTerm = {
   name: string;
