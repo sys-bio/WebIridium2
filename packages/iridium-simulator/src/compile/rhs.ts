@@ -74,7 +74,7 @@ export const compileRhs = (
   emitter.emitUint(reactions.length);
   emitter.emitByte(ValType.f64);
 
-  // calculate rules
+  // calculate assignment rules
 
   for (const variableName of ruleEvaluationOrder) {
     const variable = variables.get(variableName)!;
@@ -90,7 +90,8 @@ export const compileRhs = (
     );
 
     if (variable.kind === "species" && variable.compartment) {
-      scope.emitConvertToAmount(emitter, variable.compartment);
+      scope.emitLoadVariableFromName(emitter, variable.compartment);
+      emitter.emitUint(OpCode.f64mul);
     }
 
     emitter.emitByte(OpCode.f64store);
@@ -220,7 +221,25 @@ export const compileRhs = (
     );
 
     if (ode.kind === "species" && ode.compartment) {
-      scope.emitConvertToAmount(emitter, ode.compartment);
+      scope.emitLoadVariableFromName(emitter, ode.compartment);
+      emitter.emitByte(OpCode.f64mul);
+
+      // TODO: cache compartment rate (sort compartments first, evaluate it first, instead of re-evaluating each time)
+      // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
+      //       require differentiating the volume which is too complex of a task.
+      const compartmentVariable = variables.get(ode.compartment)!;
+      if (compartmentVariable.assignment?.kind === "rate") {
+        // product rule second term
+        scope.emitLoadVariableFromName(emitter, ode.name);
+        emitFormula(
+          compartmentVariable.assignment?.rate,
+          emitter,
+          compilation,
+          scope,
+        );
+        emitter.emitByte(OpCode.f64mul);
+        emitter.emitByte(OpCode.f64add);
+      }
     }
 
     emitter.emitByte(OpCode.f64store);

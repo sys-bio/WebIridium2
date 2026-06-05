@@ -4,5 +4,5 @@ compartment comp = 5
 
 B = 1
 -> B; B in comp
-species A = 5
+species A in comp = 5
 A := B * sin(time)

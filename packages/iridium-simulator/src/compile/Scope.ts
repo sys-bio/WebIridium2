@@ -57,7 +57,7 @@ export class Scope {
   /**
    * @returns if the name was found
    */
-  #emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
+  emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(T_PARAM));
@@ -99,18 +99,18 @@ export class Scope {
 
   emitLoadVariable(emitter: Emitter, ctx: VariableContext): void {
     const name = getVariableName(ctx);
-    if (!this.#emitLoadVariableFromName(emitter, name)) {
+    if (!this.emitLoadVariableFromName(emitter, name)) {
       throw new CompileError(`Unbound name: ${name}`, { tree: ctx });
     }
   }
 
   emitConvertToConcentration(emitter: Emitter, compartment: string): void {
-    this.#emitLoadVariableFromName(emitter, compartment);
+    this.emitLoadVariableFromName(emitter, compartment);
     emitter.emitUint(OpCode.f64div);
   }
 
   emitConvertToAmount(emitter: Emitter, compartment: string): void {
-    this.#emitLoadVariableFromName(emitter, compartment);
+    this.emitLoadVariableFromName(emitter, compartment);
     emitter.emitUint(OpCode.f64mul);
   }
 }
