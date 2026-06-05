@@ -4,17 +4,19 @@
  * TODO: how are errors handled?
  */
 
+#include <cstdint>
 #include <cstdlib>
 #include <emscripten.h>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include <sys/types.h>
 
 #include "model.h"
 #include "event.h"
 
 EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::class_<Model>("Model")
-        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, std::optional<EventParams>>(
+        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(
             emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
         .function("ResetState", &Model::ResetState)

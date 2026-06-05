@@ -26,7 +26,7 @@ import type {
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
 type DeclarationState = {
-  kind: VariableKind;
+  kind?: VariableKind;
   isConst: boolean;
 };
 
@@ -112,7 +112,7 @@ export class DeriveModelListener implements AntimonyListener {
 
     if (variable.kind === "compartment" && kind !== "compartment") {
       this.#reportError(
-        `Cannot convert ${variable.name} from compartment`,
+        `Cannot convert ${variable.name} from compartment.`,
         ctx,
       );
     }
@@ -187,7 +187,7 @@ export class DeriveModelListener implements AntimonyListener {
           (this.#currentDeclaration?.isConst ?? false),
       };
       model.variables.set(variable.name, variable);
-    } else {
+    } else if (compartmentCtx) {
       variable.compartment = this.#getOrCreateCompartment(compartmentCtx);
     }
 
@@ -221,7 +221,7 @@ export class DeriveModelListener implements AntimonyListener {
 
   enterDeclaration(ctx: DeclarationContext): void {
     let isConst = false;
-    let kind: VariableKind = "parameter";
+    let kind: VariableKind | undefined;
 
     const constModifier = ctx.CONST_MODIFIER();
     if (constModifier) {
@@ -257,7 +257,9 @@ export class DeriveModelListener implements AntimonyListener {
       return;
     }
 
-    this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+    if (this.#currentDeclaration.kind) {
+      this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+    }
     variable.isConst = this.#currentDeclaration.isConst;
   }
 
@@ -293,7 +295,9 @@ export class DeriveModelListener implements AntimonyListener {
     }
 
     if (this.#currentDeclaration) {
-      this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+      if (this.#currentDeclaration.kind) {
+        this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+      }
       variable.isConst = this.#currentDeclaration.isConst;
     }
 
@@ -396,18 +400,22 @@ export class DeriveModelListener implements AntimonyListener {
     if (ctx.reactionFormula()._left) {
       reactants = this.#getReactionTerms(ctx.reactionFormula()._left);
 
-      for (const term of reactants) {
-        const reactant = model.variables.get(term.name)!;
-        reactant.compartment = compartment;
+      if (compartment) {
+        for (const term of reactants) {
+          const reactant = model.variables.get(term.name)!;
+          reactant.compartment = compartment;
+        }
       }
     }
 
     if (ctx.reactionFormula()._right) {
       products = this.#getReactionTerms(ctx.reactionFormula()._right);
 
-      for (const term of products) {
-        const product = model.variables.get(term.name)!;
-        product.compartment = compartment;
+      if (compartment) {
+        for (const term of products) {
+          const product = model.variables.get(term.name)!;
+          product.compartment = compartment;
+        }
       }
     }
 

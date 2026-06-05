@@ -367,9 +367,10 @@ describe("compartments", () => {
 
   it("should add to compartment in declaration", () => {
     expectModel(
-      "species A in C",
+      "species A in C, B in C",
       variables({
         A: species().in("C"),
+        B: species().in("C"),
         C: compartment(),
       }),
     );
@@ -462,6 +463,24 @@ describe("compartments", () => {
           }),
           J2: reaction({ A: 1 }, {}, "k2", {
             compartment: "comp2",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("should not set compartment from reaction if none", () => {
+    expectModel(
+      "species A in comp, B in comp; J: A -> B; k1",
+      model({
+        variables: {
+          A: species().in("comp"),
+          B: species().in("comp"),
+          k1: parameter(),
+        },
+        reactions: {
+          J: reaction({ A: 1 }, { B: 1 }, "k1", {
+            compartment: null,
           }),
         },
       }),

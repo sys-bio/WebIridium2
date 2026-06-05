@@ -50,11 +50,16 @@ Model::Model(
     std::vector<double> p,
     int num_reactions,
     uintptr_t rhs,
+    uintptr_t convert_to_amounts,
+    uintptr_t convert_to_concentrations,
     std::optional<EventParams> event_params
 ) : original_y_(y),
     original_p_(p),
     event_params_(event_params),
-    num_reactions_(num_reactions)
+    num_reactions_(num_reactions),
+    rhs_fn_((RHSFunc*)rhs),
+    convert_to_amounts_fn_((ConvertToAmountsFunc*)convert_to_amounts),
+    convert_to_concentrations_fn_((ConvertToConcentrationsFunc*)convert_to_concentrations)
 {
     // TODO: handle errors?
     SUNContext_Create(SUN_COMM_NULL, &ctx_);
@@ -62,7 +67,6 @@ Model::Model(
     cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
     y_ = N_VNew_Serial(y.size(), ctx_);
     p_.resize(original_p_.size() + num_reactions_);
-    rhs_fn_ = (RHSFunc*)rhs;
     dummy_y_dot_ = new double[original_y_.size()];
     std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
@@ -145,6 +149,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (start_time >= end_time) throw std::invalid_argument("required: start_time < end_time");
     if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
+    convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
+
     if (!has_init_) {
         CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
 
@@ -159,6 +165,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_);
 
+    InitializeOutputArray(num_points);
+
     if (event_params_.has_value()) {
         CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
 
@@ -169,8 +177,6 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     }
 
     double target_time = time_ + start_time;
-
-    InitializeOutputArray(num_points);
 
     if (start_time > 0.0) {
         Integrate(target_time);
@@ -406,7 +412,6 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
         std::cout << "p[" << info->p_indices[ip] << "] = " << invocation.p_values[ip] << std::endl;
     }
 
-
     rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
     UpdateEvents();
 }
@@ -430,6 +435,11 @@ void Model::RecordToOutputArray(double time) {
         output_array_ + start + original_y_.size()
     );
     output_array_[start + original_y_.size() + p_.size()] = time;
+
+    convert_to_concentrations_fn_(
+        output_array_ + start,
+        output_array_ + start + original_y_.size()
+    );
 
     current_output_row_ += 1;
 }

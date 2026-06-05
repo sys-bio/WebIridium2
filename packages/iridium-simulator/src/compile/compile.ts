@@ -15,6 +15,8 @@ import {
 } from "antimony-language/grammar";
 import { type ParserRuleContext } from "antlr4ts";
 import {
+  CONVERT_TO_CONCENTRATIONS_NAME,
+  CONVERT_TO_AMOUNTS_NAME,
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
@@ -34,6 +36,13 @@ import {
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
 import { Compilation } from "./Compilation.ts";
+import {
+  compileConvert,
+  CONVERT_TO_CONCENTRATIONS_PARAMS,
+  CONVERT_TO_CONCENTRATIONS_RESULTS,
+  CONVERT_TO_AMOUNTS_PARAMS,
+  CONVERT_TO_AMOUNTS_RESULTS,
+} from "./compartment.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -60,6 +69,24 @@ export const compileIntermediate = (
       results: RHS_RESULTS,
       compileBody: (functionTable) =>
         compileRhs(compilation, functionTable).getOutput(),
+    },
+    {
+      kind: "compile",
+      isExported: true,
+      name: CONVERT_TO_AMOUNTS_NAME,
+      params: CONVERT_TO_AMOUNTS_PARAMS,
+      results: CONVERT_TO_AMOUNTS_RESULTS,
+      compileBody: (_functionTable) =>
+        compileConvert(compilation, true).getOutput(),
+    },
+    {
+      kind: "compile",
+      isExported: true,
+      name: CONVERT_TO_CONCENTRATIONS_NAME,
+      params: CONVERT_TO_CONCENTRATIONS_PARAMS,
+      results: CONVERT_TO_CONCENTRATIONS_RESULTS,
+      compileBody: (_functionTable) =>
+        compileConvert(compilation, false).getOutput(),
     },
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {

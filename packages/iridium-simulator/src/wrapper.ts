@@ -10,6 +10,8 @@ import type {
 } from "../build/cvodeBindings.d.ts";
 import {
   CHECK_ROOTS_NAME,
+  CONVERT_TO_CONCENTRATIONS_NAME,
+  CONVERT_TO_AMOUNTS_NAME,
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
@@ -93,10 +95,18 @@ export class CvodeWrapper {
     const rhsPtr = this.#bindings.addFunction(
       instance.exports[RHS_NAME],
     ) as number;
+    const convertToAmountsPtr = this.#bindings.addFunction(
+      instance.exports[CONVERT_TO_AMOUNTS_NAME],
+    ) as number;
+    const convertToConcentrationsPtr = this.#bindings.addFunction(
+      instance.exports[CONVERT_TO_CONCENTRATIONS_NAME],
+    ) as number;
 
     let eventParams: EventParams | undefined;
 
     funcPtrs.push(rhsPtr);
+    funcPtrs.push(convertToAmountsPtr);
+    funcPtrs.push(convertToConcentrationsPtr);
 
     if (spec.events.length > 0) {
       const rootsPtr = this.#bindings.addFunction(
@@ -203,6 +213,8 @@ export class CvodeWrapper {
         pVector,
         spec.reactions.length,
         rhsPtr,
+        convertToAmountsPtr,
+        convertToConcentrationsPtr,
         eventParams,
       ),
       funcPtrs,
@@ -243,7 +255,7 @@ export class CvodeWrapper {
       numPoints,
     );
 
-    model.binding.DumpStats();
+    // model.binding.DumpStats();
 
     // copy
     return array.slice();

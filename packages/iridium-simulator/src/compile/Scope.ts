@@ -54,8 +54,10 @@ export class Scope {
     this.functionTable = functionTable;
   }
 
-  emitLoadVariable(emitter: Emitter, ctx: VariableContext): void {
-    const name = getVariableName(ctx);
+  /**
+   * @returns if the name was found
+   */
+  #emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
     if (name === TIME_NAME) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(T_PARAM));
@@ -69,6 +71,12 @@ export class Scope {
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+
+      const variable = this.#compilation.variables.get(name);
+      const compartment = variable?.compartment;
+      if (variable?.kind === "species" && compartment) {
+        this.emitConvertToConcentration(emitter, compartment);
+      }
     } else if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(Y_PARAM));
@@ -76,8 +84,33 @@ export class Scope {
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
+
+      const variable = this.#compilation.variables.get(name);
+      const compartment = variable?.compartment;
+      if (variable?.kind === "species" && compartment) {
+        this.emitConvertToConcentration(emitter, compartment);
+      }
     } else {
+      return false;
+    }
+
+    return true;
+  }
+
+  emitLoadVariable(emitter: Emitter, ctx: VariableContext): void {
+    const name = getVariableName(ctx);
+    if (!this.#emitLoadVariableFromName(emitter, name)) {
       throw new CompileError(`Unbound name: ${name}`, { tree: ctx });
     }
+  }
+
+  emitConvertToConcentration(emitter: Emitter, compartment: string): void {
+    this.#emitLoadVariableFromName(emitter, compartment);
+    emitter.emitUint(OpCode.f64div);
+  }
+
+  emitConvertToAmount(emitter: Emitter, compartment: string): void {
+    this.#emitLoadVariableFromName(emitter, compartment);
+    emitter.emitUint(OpCode.f64mul);
   }
 }

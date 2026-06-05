@@ -35,6 +35,7 @@ import { getVariableName } from "./Scope.ts";
 // if they didn't have an assignment, give them this one
 // annoyingly, COPASI uses 1, RoadRunner uses 0
 const DEFAULT_INITIAL_VALUE = 0;
+const DEFAULT_COMPARTMENT_VALUE = 1;
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -76,12 +77,17 @@ export const evaluateInitialValues = (
       //       COPASI does this, so it shouldn't be completely wrong.
       initialValues.set(
         name,
-        variable.assignment.rule.accept(evalVisitor) ?? DEFAULT_INITIAL_VALUE,
+        variable.assignment.rule.accept(evalVisitor) ??
+          (variable.kind === "compartment"
+            ? DEFAULT_COMPARTMENT_VALUE
+            : DEFAULT_INITIAL_VALUE),
       );
     } else {
       const value =
         variable.assignment?.initial?.accept(evalVisitor) ??
-        DEFAULT_INITIAL_VALUE;
+        (variable.kind === "compartment"
+          ? DEFAULT_COMPARTMENT_VALUE
+          : DEFAULT_INITIAL_VALUE);
 
       initialValues.set(name, value);
       outputInitialValues.set(name, value);

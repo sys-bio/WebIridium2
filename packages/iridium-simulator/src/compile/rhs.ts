@@ -89,6 +89,10 @@ export const compileRhs = (
       scope,
     );
 
+    if (variable.kind === "species" && variable.compartment) {
+      scope.emitConvertToAmount(emitter, variable.compartment);
+    }
+
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
     emitter.emitUint(SIZEOF_DOUBLE * pTable.get(variableName));
@@ -203,6 +207,7 @@ export const compileRhs = (
   }
 
   // do rate rules
+
   for (const ode of rateDetermined) {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
@@ -213,6 +218,10 @@ export const compileRhs = (
       compilation,
       scope,
     );
+
+    if (ode.kind === "species" && ode.compartment) {
+      scope.emitConvertToAmount(emitter, ode.compartment);
+    }
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
