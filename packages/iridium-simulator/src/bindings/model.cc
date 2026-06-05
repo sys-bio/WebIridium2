@@ -217,6 +217,9 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         RecordToOutputArray(time_);
     }
 
+    // convert back to concentrations in case the user runs another time course with same state
+    convert_to_concentrations_fn_(NV_DATA_S(y_), p_.data());
+
     return Float64Array(
         emscripten::val(emscripten::typed_memory_view(num_points * num_variables(), output_array_))
     );
