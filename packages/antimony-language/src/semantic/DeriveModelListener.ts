@@ -9,6 +9,7 @@ import {
   EventContext,
   FormulaContext,
   InCompartmentContext,
+  InStatementContext,
   NameContext,
   NameLabelContext,
   ReactantListContext,
@@ -473,5 +474,19 @@ export class DeriveModelListener implements AntimonyListener {
       delay: ctx._delay,
       options: options,
     });
+  }
+
+  enterInStatement(ctx: InStatementContext): void {
+    const compartment = this.#getOrCreateCompartment(ctx.inCompartment());
+    const variable = this.#getOrCreateVariable(
+      ctx.variable(),
+      ctx.inCompartment(),
+    );
+    if (!variable) {
+      this.#reportError("Cannot set compartment of built-in.", ctx);
+      return;
+    }
+
+    variable.compartment = compartment;
   }
 }

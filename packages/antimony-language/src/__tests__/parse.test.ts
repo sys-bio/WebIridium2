@@ -248,3 +248,15 @@ describe("annotation", () => {
     has4: `A has "unit"`,
   });
 });
+
+describe("in statement", () => {
+  itShouldErrorForAll({
+    missingCompartment: "in B",
+    missingVariable: "A in",
+  });
+
+  itShouldSucceedForAll({
+    simple: "A in B",
+    nested: "A.V in B.C",
+  });
+});

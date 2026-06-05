@@ -45,8 +45,8 @@ export class CvodeWrapper {
   #bindings: MainModule;
   #internalModel: InternalModel | undefined;
 
-  #absoluteTolerance: number = 1e-8;
-  #relativeTolerance: number = 1e-4;
+  #absoluteTolerance: number = 1e-12;
+  #relativeTolerance: number = 1e-6;
 
   constructor(bindings: MainModule) {
     this.#bindings = bindings;

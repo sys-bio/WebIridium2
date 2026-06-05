@@ -278,7 +278,10 @@ void Model::Integrate(double target_time) {
 
             RunPendingEventInvocations();
         } else {
-            // TODO: error handling?
+            // TODO: actual error handling? useful error message?!?!
+            std::stringstream ss;
+            ss << "CVODE Error: " << result << std::endl;
+            throw std::runtime_error(ss.str());
             break;
         }
     }

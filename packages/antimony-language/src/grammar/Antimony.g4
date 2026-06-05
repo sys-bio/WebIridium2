@@ -13,6 +13,7 @@ statement : reaction
           | event
           | annotation
           | unitDeclaration
+          | inStatement
           ;
 
 // e.g
@@ -97,5 +98,7 @@ unitFormula        : '(' unitFormula ')' #unitGroup
                    | unitFormula op=('*' | '/' | '%') unitFormula #unitProduct
                    | unitFormula op=('+' | '-') unitFormula #unitSum
                    ;
+
+inStatement : variable inCompartment;
 
 modelCall : nameLabel NAME exportList;

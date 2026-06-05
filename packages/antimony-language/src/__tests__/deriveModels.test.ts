@@ -486,4 +486,19 @@ describe("compartments", () => {
       }),
     );
   });
+
+  it("should set compartment with in statement", () => {
+    expectModel(
+      "A in comp",
+      variables({
+        A: parameter().in("comp"),
+      }),
+    );
+  });
+
+  it("should not let you set built-in compartment", () => {
+    expect(() => {
+      deriveModels("true in comp");
+    }).toThrowError(SemanticError);
+  });
 });
