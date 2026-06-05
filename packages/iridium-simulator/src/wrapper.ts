@@ -283,7 +283,9 @@ export class CvodeWrapper {
 
   #updateBindingSettings(): void {
     if (this.#internalModel) {
-      this.#internalModel.binding.SetAbsoluteTolerance(this.#absoluteTolerance);
+      this.#internalModel.binding.SetAbsoluteToleranceFactor(
+        this.#absoluteTolerance,
+      );
       this.#internalModel.binding.SetRelativeTolerance(this.#relativeTolerance);
     }
   }

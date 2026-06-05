@@ -67,7 +67,7 @@ public:
 
     void SetPValue(int i, double value);
 
-    void SetAbsoluteTolerance(double value);
+    void SetAbsoluteToleranceFactor(double value);
 
     void SetRelativeTolerance(double value);
 
@@ -123,9 +123,14 @@ private:
     std::optional<EventParams> event_params_;
     int num_roots_;
 
-    // Should be set by the wrapper
-    double abs_tol_ = 1;
+    // Tolerances should be set by the wrapper
+    // "absolute tolerance adjustment factor"
+    // When we initialize the tolerances, we scale each variable by this number.
+    // If the variable is initially 0, we just set it directly to this.
+    // This seems to be a sufficient heuristic for most cases, and is what roadrunner does.
+    double abs_tol_factor_ = 1;
     double rel_tol_ = 1;
+    N_Vector abs_tol_v_;
 
     /* Simulation state (needs to be reset) */
     double time_;

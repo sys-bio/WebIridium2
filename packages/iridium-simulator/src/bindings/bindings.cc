@@ -22,7 +22,7 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .function("ResetState", &Model::ResetState)
         .function("SetYValue", &Model::SetYValue)
         .function("SetPValue", &Model::SetPValue)
-        .function("SetAbsoluteTolerance", &Model::SetAbsoluteTolerance)
+        .function("SetAbsoluteToleranceFactor", &Model::SetAbsoluteToleranceFactor)
         .function("SetRelativeTolerance", &Model::SetRelativeTolerance)
         .function("SimulateTimeCourse", &Model::SimulateTimeCourse)
         .function("DumpStats", &Model::DumpStats);

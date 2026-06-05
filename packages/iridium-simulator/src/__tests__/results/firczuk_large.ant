@@ -1,4 +1,4 @@
-## start=0 end=30 points=300 atol=1e-12 rtol=1e-6
+## start=0 end=30 points=300 atol=1e-12 rtol=1e-8
 
 // Large-model for benchmarking
 // Created by libAntimony v3.1.1

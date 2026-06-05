@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include "model.h"
 #include "event.h"
@@ -65,9 +66,12 @@ Model::Model(
     SUNContext_Create(SUN_COMM_NULL, &ctx_);
 
     cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
+
     y_ = N_VNew_Serial(y.size(), ctx_);
     p_.resize(original_p_.size() + num_reactions_);
     dummy_y_dot_ = new double[original_y_.size()];
+    abs_tol_v_ = N_VNew_Serial(y.size(), ctx_);
+
     std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
     non_lin_solver_ = SUNNonlinSol_Newton(y_, ctx_);
@@ -99,6 +103,7 @@ Model::~Model() {
     SUNMatDestroy_Dense(matrix_);
     delete[] dummy_y_dot_;
     N_VDestroy_Serial(y_);
+    N_VDestroy_Serial(abs_tol_v_);
     CVodeFree(&cvode_mem_);
     SUNContext_Free(&ctx_);
 }
@@ -136,8 +141,8 @@ void Model::SetPValue(int i, double value) {
     p_[i] = value;
 }
 
-void Model::SetAbsoluteTolerance(double value) {
-    abs_tol_ = value;
+void Model::SetAbsoluteToleranceFactor(double value) {
+    abs_tol_factor_ = value;
 }
 
 void Model::SetRelativeTolerance(double value) {
@@ -164,7 +169,16 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         CVodeReInit(cvode_mem_, time_, y_);
     }
 
-    CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_);
+    // Update tolerances using scaling factor
+    for (int i = 0; i < NV_LENGTH_S(y_); i++) {
+        double y_i = std::abs(NV_Ith_S(y_, i));
+        NV_Ith_S(abs_tol_v_, i) =
+            (y_i == 0)
+                ? abs_tol_factor_
+                : std::abs(y_i) * abs_tol_factor_;
+    }
+
+    CVodeSVtolerances(cvode_mem_, rel_tol_, abs_tol_v_);
 
     InitializeOutputArray(num_points);
 
