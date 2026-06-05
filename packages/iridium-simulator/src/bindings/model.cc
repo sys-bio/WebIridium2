@@ -149,6 +149,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (start_time >= end_time) throw std::invalid_argument("required: start_time < end_time");
     if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
     convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
 
     if (!has_init_) {
