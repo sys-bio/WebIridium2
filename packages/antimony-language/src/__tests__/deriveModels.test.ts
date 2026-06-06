@@ -297,6 +297,14 @@ describe("declarations", () => {
       deriveModels("species A = 0; const compartment A = 5");
     }).toThrow();
   });
+
+  it("should not override const if not specified", () => {
+    expectModel("const A; species A", variables({ A: species.const() }));
+  });
+
+  it("should override const if specified", () => {
+    expectModel("const A; var species A", variables({ A: species.var() }));
+  });
 });
 
 describe("$ modifier", () => {

@@ -98,6 +98,7 @@ type VariableState = {
 
 const variableModifiers = {
   const: (state: VariableState): VariableState => ({ ...state, const: true }),
+  var: (state: VariableState): VariableState => ({ ...state, const: false }),
   rate: (state: VariableState): VariableState => ({
     ...state,
     assignmentType: "rate",

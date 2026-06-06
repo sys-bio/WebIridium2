@@ -28,7 +28,7 @@ import { isBuiltinName, builtinEventOptions } from "./builtins";
 
 type DeclarationState = {
   kind?: VariableKind;
-  isConst: boolean;
+  isConst?: boolean;
 };
 
 const ALLOWED_DECLARATIONS = new Set<VariableKind>([
@@ -220,8 +220,23 @@ export class DeriveModelListener implements AntimonyListener {
     }
   }
 
+  #updateToDeclarationIfNecessary(
+    ctx: ParserRuleContext,
+    variable: AntimonyVariable,
+  ): void {
+    if (this.#currentDeclaration) {
+      if (this.#currentDeclaration.isConst !== undefined) {
+        variable.isConst = this.#currentDeclaration.isConst;
+      }
+
+      if (this.#currentDeclaration.kind !== undefined) {
+        this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+      }
+    }
+  }
+
   enterDeclaration(ctx: DeclarationContext): void {
-    let isConst = false;
+    let isConst: boolean | undefined;
     let kind: VariableKind | undefined;
 
     const constModifier = ctx.CONST_MODIFIER();
@@ -258,10 +273,7 @@ export class DeriveModelListener implements AntimonyListener {
       return;
     }
 
-    if (this.#currentDeclaration.kind) {
-      this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
-    }
-    variable.isConst = this.#currentDeclaration.isConst;
+    this.#updateToDeclarationIfNecessary(ctx, variable);
   }
 
   /*
@@ -295,12 +307,7 @@ export class DeriveModelListener implements AntimonyListener {
       return;
     }
 
-    if (this.#currentDeclaration) {
-      if (this.#currentDeclaration.kind) {
-        this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
-      }
-      variable.isConst = this.#currentDeclaration.isConst;
-    }
+    this.#updateToDeclarationIfNecessary(ctx, variable);
 
     const mod = ctx._mod?.text;
     if (mod === ":") {
