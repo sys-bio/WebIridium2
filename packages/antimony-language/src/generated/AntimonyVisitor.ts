@@ -50,6 +50,7 @@ import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
+import { DeclarationHeadContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
 import { EventContext } from "./AntimonyParser";
 import { EventOptionsContext } from "./AntimonyParser";
@@ -425,6 +426,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitDeclaration?: (ctx: DeclarationContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.declarationHead`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitDeclarationHead?: (ctx: DeclarationHeadContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.declarationTerm`.

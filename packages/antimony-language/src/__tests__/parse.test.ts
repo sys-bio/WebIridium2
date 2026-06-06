@@ -187,6 +187,7 @@ describe("declaration", () => {
     varConst: "var const a",
     varConst2: "var const species a",
     compartmentMissing: "species a in",
+    invertedSubstanceOnly: "substanceOnly species A",
   });
 
   itShouldSucceedForAll({
@@ -206,6 +207,8 @@ describe("declaration", () => {
     multipleAssignAndDeclare: "species a = 5, b, c, d = 10",
     inCompartment: "compartment C in D",
     inCompartmentMultiple: "compartment C in D, A in B = 5, A, B, D in A.B = 5",
+    substanceOnly: "species substanceOnly A",
+    singleSubstanceOnly: "substanceOnly A",
   });
 });
 

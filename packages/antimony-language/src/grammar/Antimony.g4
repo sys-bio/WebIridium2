@@ -62,7 +62,12 @@ reactant : NUMBER? variable;
 
 assignment : variable inCompartment? mod=('\'' | ':')? '=' formula;
 
-declaration     : ((CONST_MODIFIER DECL_WORD) | DECL_WORD | CONST_MODIFIER) declarationTerm (',' declarationTerm)*;
+declaration     : declarationHead declarationTerm (',' declarationTerm)*;
+declarationHead : CONST_MODIFIER DECL_WORD SUBS_ONLY?
+                | CONST_MODIFIER SUBS_ONLY?
+                | DECL_WORD SUBS_ONLY?
+                | SUBS_ONLY
+                ;
 declarationTerm : assignment #declarationAssignment
                 | variable inCompartment? #declarationName
                 ;

@@ -305,6 +305,35 @@ describe("declarations", () => {
   it("should override const if specified", () => {
     expectModel("const A; var species A", variables({ A: species.var() }));
   });
+
+  it("should set substanceOnly", () => {
+    expectModel("substanceOnly A", variables({ A: species.substanceOnly() }));
+  });
+
+  it("should set substanceOnly with species and const", () => {
+    expectModel(
+      "const species substanceOnly A",
+      variables({ A: species.substanceOnly.const() }),
+    );
+  });
+
+  it("should not allow substanceOnly on compartment", () => {
+    expect(() => {
+      deriveModels("compartment substanceOnly A");
+    }).toThrow(SemanticError);
+  });
+
+  it("should forbid declaring built-in constant", () => {
+    expect(() => {
+      deriveModels("species true");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should forbid declaring built-in function", () => {
+    expect(() => {
+      deriveModels("species piecewise");
+    }).toThrowError(SemanticError);
+  });
 });
 
 describe("$ modifier", () => {

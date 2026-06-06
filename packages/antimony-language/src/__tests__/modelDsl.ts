@@ -94,11 +94,16 @@ const funcWithModifiers = <
 type VariableState = {
   const?: boolean;
   assignmentType?: "set" | "rate" | "rule";
+  substanceOnly?: boolean;
 };
 
 const variableModifiers = {
   const: (state: VariableState): VariableState => ({ ...state, const: true }),
   var: (state: VariableState): VariableState => ({ ...state, const: false }),
+  substanceOnly: (state: VariableState): VariableState => ({
+    ...state,
+    substanceOnly: true,
+  }),
   rate: (state: VariableState): VariableState => ({
     ...state,
     assignmentType: "rate",
@@ -130,6 +135,7 @@ const createVariableFunc = (kind: string) => {
         return Object.assign(Object.create(variableProto), {
           kind,
           isConst: this.const ?? false,
+          hasSubstanceOnly: this.substanceOnly ?? false,
           assignment:
             this.assignmentType === "rule"
               ? {
@@ -153,6 +159,7 @@ const createVariableFunc = (kind: string) => {
       return Object.assign(Object.create(variableProto), {
         kind,
         isConst: this.const ?? false,
+        hasSubstanceOnly: this.substanceOnly ?? false,
       });
     },
   );

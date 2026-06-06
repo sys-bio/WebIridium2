@@ -27,6 +27,7 @@ export type AntimonyVariable = {
   name: string;
   compartment: string | null;
   isConst: boolean;
+  hasSubstanceOnly: boolean;
   assignment?: AntimonyAssignment;
 };
 

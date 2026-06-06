@@ -1,12 +1,13 @@
 lexer grammar AntimonyTokens;
 
-MODEL : 'model' | 'module';
-END   : 'end';
-IN    : 'in';
-AT    : 'at';
-AFTER : 'after';
-UNIT  : 'unit';
-HAS   : 'has';
+MODEL     : 'model' | 'module';
+END       : 'end';
+IN        : 'in';
+AT        : 'at';
+AFTER     : 'after';
+UNIT      : 'unit';
+HAS       : 'has';
+SUBS_ONLY : 'substanceOnly';
 
 CONST_MODIFIER : 'var' | 'const';
 DECL_WORD      : 'species'

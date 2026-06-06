@@ -29,13 +29,10 @@ import { isBuiltinName, builtinEventOptions } from "./builtins";
 type DeclarationState = {
   kind?: VariableKind;
   isConst?: boolean;
+  hasSubstanceOnly?: boolean;
 };
 
-const ALLOWED_DECLARATIONS = new Set<VariableKind>([
-  "species",
-  "parameter",
-  "compartment",
-]);
+const ALLOWED_DECLARATIONS = new Set<VariableKind>(["species", "compartment"]);
 
 export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
 export const DEFAULT_MODEL_NAME = "__main";
@@ -166,6 +163,7 @@ export class DeriveModelListener implements AntimonyListener {
         kind: "parameter",
         compartment: this.#getOrCreateCompartment(compartmentCtx),
         isConst: false,
+        hasSubstanceOnly: false,
         name: fullName.slice(1).join("."),
       };
     }
@@ -186,6 +184,7 @@ export class DeriveModelListener implements AntimonyListener {
         isConst:
           variableCtx instanceof ConstantContext ||
           (this.#currentDeclaration?.isConst ?? false),
+        hasSubstanceOnly: false,
       };
       model.variables.set(variable.name, variable);
     } else if (compartmentCtx) {
@@ -232,19 +231,26 @@ export class DeriveModelListener implements AntimonyListener {
       if (this.#currentDeclaration.kind !== undefined) {
         this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
       }
+
+      if (this.#currentDeclaration.hasSubstanceOnly !== undefined) {
+        variable.hasSubstanceOnly = this.#currentDeclaration.hasSubstanceOnly;
+      }
     }
   }
 
   enterDeclaration(ctx: DeclarationContext): void {
+    const head = ctx.declarationHead();
+
     let isConst: boolean | undefined;
     let kind: VariableKind | undefined;
+    let hasSubstanceOnly: boolean | undefined;
 
-    const constModifier = ctx.CONST_MODIFIER();
+    const constModifier = head.CONST_MODIFIER();
     if (constModifier) {
       isConst = constModifier.text === "const";
     }
 
-    const declWord = ctx.DECL_WORD();
+    const declWord = head.DECL_WORD();
     if (declWord) {
       if (!ALLOWED_DECLARATIONS.has(declWord.text as VariableKind)) {
         this.#reportError(`${declWord.text} is not supported.`, ctx);
@@ -253,7 +259,20 @@ export class DeriveModelListener implements AntimonyListener {
       kind = declWord.text as VariableKind;
     }
 
-    this.#currentDeclaration = { kind, isConst };
+    if (head.SUBS_ONLY()) {
+      hasSubstanceOnly = true;
+
+      if (kind === undefined) {
+        kind = "species";
+      }
+
+      if (kind !== "species") {
+        this.#reportError("substanceOnly can only be used with species.", ctx);
+        return;
+      }
+    }
+
+    this.#currentDeclaration = { kind, isConst, hasSubstanceOnly };
   }
 
   exitDeclaration(_ctx: DeclarationContext): void {
@@ -268,6 +287,7 @@ export class DeriveModelListener implements AntimonyListener {
       ctx.variable(),
       ctx.inCompartment(),
     );
+
     if (!variable) {
       this.#reportError("Cannot use name of built-in within declaration", ctx);
       return;
