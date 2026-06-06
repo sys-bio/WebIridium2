@@ -63,9 +63,9 @@ reactant : NUMBER? variable;
 assignment : variable inCompartment? mod=('\'' | ':')? '=' formula;
 
 declaration     : declarationHead declarationTerm (',' declarationTerm)*;
-declarationHead : CONST_MODIFIER DECL_WORD SUBS_ONLY?
-                | CONST_MODIFIER SUBS_ONLY?
-                | DECL_WORD SUBS_ONLY?
+declarationHead : CONST_MODIFIER SUBS_ONLY? DECL_WORD
+                | CONST_MODIFIER SUBS_ONLY? 
+                | SUBS_ONLY? DECL_WORD
                 | SUBS_ONLY
                 ;
 declarationTerm : assignment #declarationAssignment

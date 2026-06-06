@@ -89,7 +89,11 @@ export const compileRhs = (
       scope,
     );
 
-    if (variable.kind === "species" && variable.compartment) {
+    if (
+      variable.kind === "species" &&
+      !variable.hasSubstanceOnly &&
+      variable.compartment
+    ) {
       scope.emitLoadVariableFromName(emitter, variable.compartment);
       emitter.emitUint(OpCode.f64mul);
     }
@@ -220,7 +224,7 @@ export const compileRhs = (
       scope,
     );
 
-    if (ode.kind === "species" && ode.compartment) {
+    if (ode.kind === "species" && !ode.hasSubstanceOnly && ode.compartment) {
       scope.emitLoadVariableFromName(emitter, ode.compartment);
       emitter.emitByte(OpCode.f64mul);
 

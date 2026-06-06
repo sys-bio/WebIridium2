@@ -18,9 +18,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
 
 using RHSFunc = int(double t, double y[], double ydot[], double p[], WasmBool events[]);
 
-using ConvertToAmountsFunc = void(double y[], double p[]);
-
-using ConvertToConcentrationsFunc = void(double y[], double p[]);
+using ConvertFunc = void(double y[], double p[]);
 
 struct EventParams {
     std::vector<EventInfo> event_info;
@@ -43,6 +41,7 @@ public:
         uintptr_t rhs,
         uintptr_t convert_to_amounts,
         uintptr_t convert_from_amounts,
+        uintptr_t convert_reset,
         std::optional<EventParams> event_params
     );
 
@@ -111,8 +110,9 @@ private:
     int num_reactions_;
 
     RHSFunc *rhs_fn_;
-    ConvertToAmountsFunc *convert_to_amounts_fn_;
-    ConvertToConcentrationsFunc *convert_to_concentrations_fn_;
+    ConvertFunc *convert_to_amounts_fn_;
+    ConvertFunc *convert_to_concentrations_fn_;
+    ConvertFunc *convert_reset_fn_;
     RootsFn *roots_fn_;
 
     bool has_init_ = false;

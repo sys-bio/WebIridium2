@@ -74,7 +74,7 @@ export type EventParams = {
 
 interface EmbindModule {
   Model: {
-    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number, _4: number, _5: number, _6?: EventParams): Model;
+    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number, _4: number, _5: number, _6: number, _7?: EventParams): Model;
   };
   DoubleVector: {
     new(): DoubleVector;

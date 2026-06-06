@@ -6,15 +6,17 @@ import Emitter from "./Emitter";
 import { CompileInvariantError } from "./errors";
 import { LocalsSymbolTable } from "./symbolTables";
 
-export const CONVERT_TO_AMOUNTS_PARAMS = [ValType.i32, ValType.i32];
-export const CONVERT_TO_AMOUNTS_RESULTS: ValType[] = [];
-
-export const CONVERT_TO_CONCENTRATIONS_PARAMS = [ValType.i32, ValType.i32];
-export const CONVERT_TO_CONCENTRATIONS_RESULTS: ValType[] = [];
-
+export const CONVERT_PARAMS = [ValType.i32, ValType.i32];
+export const CONVERT_RESULTS: ValType[] = [];
+/**
+ * @param mode - what kind of conversion we are doing
+ *  - toAmount is used at the start of the simulation.
+ *  - toConcentrations is used for output.
+ *  - reset is used at the end of the simulation.
+ */
 export const compileConvert = (
   compilation: Compilation,
-  toAmounts: boolean,
+  mode: "toAmount" | "toConcentrations" | "reset",
 ): Emitter => {
   const { yTable, pTable } = compilation;
   const localsTable = new LocalsSymbolTable([Y_PARAM, P_PARAM]);
@@ -45,8 +47,8 @@ export const compileConvert = (
 
   for (const yVar of compilation.yVars) {
     const compartment = yVar.compartment;
-    if (yVar.kind !== "species") continue;
-    if (!compartment) continue;
+    if (yVar.kind !== "species" || !compartment) continue;
+    if (mode === "toAmount" && yVar.hasSubstanceOnly) continue;
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(Y_PARAM));
@@ -60,7 +62,7 @@ export const compileConvert = (
 
     emitCompartment(compartment);
 
-    if (toAmounts) {
+    if (mode == "toAmount") {
       emitter.emitByte(OpCode.f64mul);
     } else {
       emitter.emitByte(OpCode.f64div);
@@ -73,8 +75,8 @@ export const compileConvert = (
 
   for (const pVar of compilation.pVars) {
     const compartment = pVar.compartment;
-    if (pVar.kind !== "species") continue;
-    if (!compartment) continue;
+    if (pVar.kind !== "species" || !compartment) continue;
+    if (mode === "toAmount" && pVar.hasSubstanceOnly) continue;
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(P_PARAM));
@@ -88,7 +90,7 @@ export const compileConvert = (
 
     emitCompartment(compartment);
 
-    if (toAmounts) {
+    if (mode === "toAmount") {
       emitter.emitByte(OpCode.f64mul);
     } else {
       emitter.emitByte(OpCode.f64div);

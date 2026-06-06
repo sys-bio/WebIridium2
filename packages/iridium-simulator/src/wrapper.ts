@@ -18,6 +18,7 @@ import {
   RHS_NAME,
   ROOTS_NAME,
   UPDATE_CONDITIONS_NAME,
+  CONVERT_RESET_NAME,
 } from "./names.ts";
 import type { ModelSpec } from "./modelSpec.ts";
 import {
@@ -101,12 +102,16 @@ export class CvodeWrapper {
     const convertToConcentrationsPtr = this.#bindings.addFunction(
       instance.exports[CONVERT_TO_CONCENTRATIONS_NAME],
     ) as number;
+    const convertResetPtr = this.#bindings.addFunction(
+      instance.exports[CONVERT_RESET_NAME],
+    ) as number;
 
     let eventParams: EventParams | undefined;
 
     funcPtrs.push(rhsPtr);
     funcPtrs.push(convertToAmountsPtr);
     funcPtrs.push(convertToConcentrationsPtr);
+    funcPtrs.push(convertResetPtr);
 
     if (spec.events.length > 0) {
       const rootsPtr = this.#bindings.addFunction(
@@ -215,6 +220,7 @@ export class CvodeWrapper {
         rhsPtr,
         convertToAmountsPtr,
         convertToConcentrationsPtr,
+        convertResetPtr,
         eventParams,
       ),
       funcPtrs,

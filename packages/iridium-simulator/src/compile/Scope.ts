@@ -74,7 +74,11 @@ export class Scope {
 
       const variable = this.#compilation.variables.get(name);
       const compartment = variable?.compartment;
-      if (variable?.kind === "species" && compartment) {
+      if (
+        variable?.kind === "species" &&
+        !variable?.hasSubstanceOnly &&
+        compartment
+      ) {
         this.emitConvertToConcentration(emitter, compartment);
       }
     } else if (this.#compilation.yTable.has(name)) {
@@ -87,7 +91,11 @@ export class Scope {
 
       const variable = this.#compilation.variables.get(name);
       const compartment = variable?.compartment;
-      if (variable?.kind === "species" && compartment) {
+      if (
+        variable?.kind === "species" &&
+        !variable?.hasSubstanceOnly &&
+        compartment
+      ) {
         this.emitConvertToConcentration(emitter, compartment);
       }
     } else {

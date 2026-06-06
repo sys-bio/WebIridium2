@@ -16,7 +16,7 @@
 
 EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::class_<Model>("Model")
-        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(
+        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(
             emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
         .function("ResetState", &Model::ResetState)

@@ -21,6 +21,7 @@ import {
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
   RHS_NAME,
+  CONVERT_RESET_NAME,
 } from "../names";
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { compileEvents } from "./event";
@@ -38,11 +39,9 @@ import { CompileInvariantError, CompileModelError } from "./errors";
 import { Compilation } from "./Compilation.ts";
 import {
   compileConvert,
-  CONVERT_TO_CONCENTRATIONS_PARAMS,
-  CONVERT_TO_CONCENTRATIONS_RESULTS,
-  CONVERT_TO_AMOUNTS_PARAMS,
-  CONVERT_TO_AMOUNTS_RESULTS,
-} from "./compartment.ts";
+  CONVERT_PARAMS,
+  CONVERT_RESULTS,
+} from "./convertConcentration.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -74,19 +73,28 @@ export const compileIntermediate = (
       kind: "compile",
       isExported: true,
       name: CONVERT_TO_AMOUNTS_NAME,
-      params: CONVERT_TO_AMOUNTS_PARAMS,
-      results: CONVERT_TO_AMOUNTS_RESULTS,
+      params: CONVERT_PARAMS,
+      results: CONVERT_RESULTS,
       compileBody: (_functionTable) =>
-        compileConvert(compilation, true).getOutput(),
+        compileConvert(compilation, "toAmount").getOutput(),
     },
     {
       kind: "compile",
       isExported: true,
       name: CONVERT_TO_CONCENTRATIONS_NAME,
-      params: CONVERT_TO_CONCENTRATIONS_PARAMS,
-      results: CONVERT_TO_CONCENTRATIONS_RESULTS,
+      params: CONVERT_PARAMS,
+      results: CONVERT_RESULTS,
       compileBody: (_functionTable) =>
-        compileConvert(compilation, false).getOutput(),
+        compileConvert(compilation, "toConcentrations").getOutput(),
+    },
+    {
+      kind: "compile",
+      isExported: true,
+      name: CONVERT_RESET_NAME,
+      params: CONVERT_PARAMS,
+      results: CONVERT_RESULTS,
+      compileBody: (_functionTable) =>
+        compileConvert(compilation, "reset").getOutput(),
     },
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {

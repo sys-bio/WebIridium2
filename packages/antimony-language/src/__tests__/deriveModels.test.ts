@@ -312,14 +312,14 @@ describe("declarations", () => {
 
   it("should set substanceOnly with species and const", () => {
     expectModel(
-      "const species substanceOnly A",
+      "const substanceOnly species A",
       variables({ A: species.substanceOnly.const() }),
     );
   });
 
   it("should not allow substanceOnly on compartment", () => {
     expect(() => {
-      deriveModels("compartment substanceOnly A");
+      deriveModels("substanceOnly compartment A");
     }).toThrow(SemanticError);
   });
 

@@ -1,6 +1,9 @@
 export const RHS_NAME = "rhs";
+
 export const CONVERT_TO_AMOUNTS_NAME = "convertToAmounts";
 export const CONVERT_TO_CONCENTRATIONS_NAME = "convertToConcentrations";
+export const CONVERT_RESET_NAME = "convertReset";
+
 export const ROOTS_NAME = "roots";
 export const CHECK_ROOTS_NAME = "checkRoots";
 export const UPDATE_CONDITIONS_NAME = "updateConditions";

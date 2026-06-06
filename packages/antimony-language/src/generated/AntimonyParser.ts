@@ -1327,18 +1327,18 @@ export class AntimonyParser extends Parser {
 				{
 				this.state = 265;
 				this.match(AntimonyParser.CONST_MODIFIER);
-				this.state = 266;
-				this.match(AntimonyParser.DECL_WORD);
-				this.state = 268;
+				this.state = 267;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
 				if (_la === AntimonyParser.SUBS_ONLY) {
 					{
-					this.state = 267;
+					this.state = 266;
 					this.match(AntimonyParser.SUBS_ONLY);
 					}
 				}
 
+				this.state = 269;
+				this.match(AntimonyParser.DECL_WORD);
 				}
 				break;
 
@@ -1363,18 +1363,18 @@ export class AntimonyParser extends Parser {
 			case 3:
 				this.enterOuterAlt(_localctx, 3);
 				{
-				this.state = 274;
-				this.match(AntimonyParser.DECL_WORD);
-				this.state = 276;
+				this.state = 275;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
 				if (_la === AntimonyParser.SUBS_ONLY) {
 					{
-					this.state = 275;
+					this.state = 274;
 					this.match(AntimonyParser.SUBS_ONLY);
 					}
 				}
 
+				this.state = 277;
+				this.match(AntimonyParser.DECL_WORD);
 				}
 				break;
 
@@ -2359,8 +2359,8 @@ export class AntimonyParser extends Parser {
 		"\x0E\x11\xF2\v\x11\x03\x12\x05\x12\xF5\n\x12\x03\x12\x03\x12\x03\x13\x03" +
 		"\x13\x05\x13\xFB\n\x13\x03\x13\x05\x13\xFE\n\x13\x03\x13\x03\x13\x03\x13" +
 		"\x03\x14\x03\x14\x03\x14\x03\x14\x07\x14\u0107\n\x14\f\x14\x0E\x14\u010A" +
-		"\v\x14\x03\x15\x03\x15\x03\x15\x05\x15\u010F\n\x15\x03\x15\x03\x15\x05" +
-		"\x15\u0113\n\x15\x03\x15\x03\x15\x05\x15\u0117\n\x15\x03\x15\x05\x15\u011A" +
+		"\v\x14\x03\x15\x03\x15\x05\x15\u010E\n\x15\x03\x15\x03\x15\x03\x15\x05" +
+		"\x15\u0113\n\x15\x03\x15\x05\x15\u0116\n\x15\x03\x15\x03\x15\x05\x15\u011A" +
 		"\n\x15\x03\x16\x03\x16\x03\x16\x05\x16\u011F\n\x16\x05\x16\u0121\n\x16" +
 		"\x03\x17\x05\x17\u0124\n\x17\x03\x17\x03\x17\x03\x17\x05\x17\u0129\n\x17" +
 		"\x03\x17\x03\x17\x03\x17\x03\x17\x05\x17\u012F\n\x17\x03\x17\x03\x17\x03" +
@@ -2464,15 +2464,15 @@ export class AntimonyParser extends Parser {
 		"\x02\u0102\u0103\x05(\x15\x02\u0103\u0108\x05*\x16\x02\u0104\u0105\x07" +
 		"\x06\x02\x02\u0105\u0107\x05*\x16\x02\u0106\u0104\x03\x02\x02\x02\u0107" +
 		"\u010A\x03\x02\x02\x02\u0108\u0106\x03\x02\x02\x02\u0108\u0109\x03\x02" +
-		"\x02\x02\u0109\'\x03\x02\x02\x02\u010A\u0108\x03\x02\x02\x02\u010B\u010C" +
-		"\x07\x1B\x02\x02\u010C\u010E\x07\x1C\x02\x02\u010D\u010F\x07\x1A\x02\x02" +
-		"\u010E\u010D\x03\x02\x02\x02\u010E\u010F\x03\x02\x02\x02\u010F\u011A\x03" +
-		"\x02\x02\x02\u0110\u0112\x07\x1B\x02\x02\u0111\u0113\x07\x1A\x02\x02\u0112" +
+		"\x02\x02\u0109\'\x03\x02\x02\x02\u010A\u0108\x03\x02\x02\x02\u010B\u010D" +
+		"\x07\x1B\x02\x02\u010C\u010E\x07\x1A\x02\x02\u010D\u010C\x03\x02\x02\x02" +
+		"\u010D\u010E\x03\x02\x02\x02\u010E\u010F\x03\x02\x02\x02\u010F\u011A\x07" +
+		"\x1C\x02\x02\u0110\u0112\x07\x1B\x02\x02\u0111\u0113\x07\x1A\x02\x02\u0112" +
 		"\u0111\x03\x02\x02\x02\u0112\u0113\x03\x02\x02\x02\u0113\u011A\x03\x02" +
-		"\x02\x02\u0114\u0116\x07\x1C\x02\x02\u0115\u0117\x07\x1A\x02\x02\u0116" +
-		"\u0115\x03\x02\x02\x02\u0116\u0117\x03\x02\x02\x02\u0117\u011A\x03\x02" +
+		"\x02\x02\u0114\u0116\x07\x1A\x02\x02\u0115\u0114\x03\x02\x02\x02\u0115" +
+		"\u0116\x03\x02\x02\x02\u0116\u0117\x03\x02\x02\x02\u0117\u011A\x07\x1C" +
 		"\x02\x02\u0118\u011A\x07\x1A\x02\x02\u0119\u010B\x03\x02\x02\x02\u0119" +
-		"\u0110\x03\x02\x02\x02\u0119\u0114\x03\x02\x02\x02\u0119\u0118\x03\x02" +
+		"\u0110\x03\x02\x02\x02\u0119\u0115\x03\x02\x02\x02\u0119\u0118\x03\x02" +
 		"\x02\x02\u011A)\x03\x02\x02\x02\u011B\u0121\x05$\x13\x02\u011C\u011E\x05" +
 		"\x16\f\x02\u011D\u011F\x05\x18\r\x02\u011E\u011D\x03\x02\x02\x02\u011E" +
 		"\u011F\x03\x02\x02\x02\u011F\u0121\x03\x02\x02\x02\u0120\u011B\x03\x02" +
@@ -2537,7 +2537,7 @@ export class AntimonyParser extends Parser {
 		"\u01A4\u01A5\x05\x18\r\x02\u01A5I\x03\x02\x02\x02\u01A6\u01A7\x05\x1A" +
 		"\x0E\x02\u01A7\u01A8\x07\x1D\x02\x02\u01A8\u01A9\x05\x0E\b\x02\u01A9K" +
 		"\x03\x02\x02\x028MQU^afptx\x83\x86\x98\xA9\xAB\xB1\xBA\xC1\xC8\xD0\xD5" +
-		"\xDA\xDD\xE0\xE7\xE9\xF0\xF4\xFA\xFD\u0108\u010E\u0112\u0116\u0119\u011E" +
+		"\xDA\xDD\xE0\xE7\xE9\xF0\xF4\xFA\xFD\u0108\u010D\u0112\u0115\u0119\u011E" +
 		"\u0120\u0123\u0128\u012E\u0135\u013A\u0140\u0149\u0151\u015B\u0166\u016E" +
 		"\u0173\u017A\u0182\u018B\u0193\u019E\u01A0";
 	public static __ATN: ATN;

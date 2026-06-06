@@ -53,14 +53,16 @@ Model::Model(
     uintptr_t rhs,
     uintptr_t convert_to_amounts,
     uintptr_t convert_to_concentrations,
+    uintptr_t convert_reset,
     std::optional<EventParams> event_params
 ) : original_y_(y),
     original_p_(p),
     event_params_(event_params),
     num_reactions_(num_reactions),
     rhs_fn_((RHSFunc*)rhs),
-    convert_to_amounts_fn_((ConvertToAmountsFunc*)convert_to_amounts),
-    convert_to_concentrations_fn_((ConvertToConcentrationsFunc*)convert_to_concentrations)
+    convert_to_amounts_fn_((ConvertFunc*)convert_to_amounts),
+    convert_to_concentrations_fn_((ConvertFunc*)convert_to_concentrations),
+    convert_reset_fn_((ConvertFunc*)convert_reset)
 {
     // TODO: handle errors?
     SUNContext_Create(SUN_COMM_NULL, &ctx_);
@@ -218,7 +220,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     }
 
     // convert back to concentrations in case the user runs another time course with same state
-    convert_to_concentrations_fn_(NV_DATA_S(y_), p_.data());
+    convert_reset_fn_(NV_DATA_S(y_), p_.data());
 
     return Float64Array(
         emscripten::val(emscripten::typed_memory_view(num_points * num_variables(), output_array_))
