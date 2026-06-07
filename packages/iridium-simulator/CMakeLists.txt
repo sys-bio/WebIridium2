@@ -40,7 +40,7 @@ set(target_name "cvodeBindings")
 add_executable(${target_name} ${sources} ${headers})
 
 target_compile_features(${target_name} PUBLIC cxx_std_20) 
-target_compile_options(${target_name} PUBLIC "-msimd128")
+target_compile_options(${target_name} PRIVATE "-msimd128")
 target_link_options(${target_name} PRIVATE
     "-lembind"
     "--emit-tsd=${target_name}.d.ts"
@@ -59,9 +59,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         "-sDISABLE_EXCEPTION_CATCHING=0"
         "-g3"
     )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_options(${target_name} PRIVATE "-flto")
+    target_compile_options(${target_name} PRIVATE "-flto")
 endif()
 
-target_link_libraries(${target_name} PUBLIC SUNDIALS::cvode)
+target_link_libraries(${target_name} PRIVATE SUNDIALS::cvode)
 
 # execute_process(COMMAND em++ --cflags
 # OUTPUT_VARIABLE EM_CFLAGS)
