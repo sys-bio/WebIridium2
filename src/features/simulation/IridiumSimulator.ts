@@ -74,7 +74,7 @@ export class IridiumSimulator extends Simulator {
       if (yVar.initialValue) {
         variables.push({
           type: "settable",
-          defaultDisplayName: yVar.name,
+          defaultDisplayName: yVar.displayName ?? yVar.name,
           name: yVar.name,
           category: getVariableCategory(yVar, "ODEs"),
           setName: yVar.name,
@@ -83,7 +83,7 @@ export class IridiumSimulator extends Simulator {
       } else {
         variables.push({
           type: "normal",
-          defaultDisplayName: yVar.name,
+          defaultDisplayName: yVar.displayName ?? yVar.name,
           name: yVar.name,
           category: getVariableCategory(yVar, "ODEs"),
         });
@@ -94,7 +94,7 @@ export class IridiumSimulator extends Simulator {
       if (pVar.initialValue) {
         variables.push({
           type: "settable",
-          defaultDisplayName: pVar.name,
+          defaultDisplayName: pVar.displayName ?? pVar.name,
           name: pVar.name,
           category: getVariableCategory(pVar, "Parameters"),
           setName: pVar.name,
@@ -103,7 +103,7 @@ export class IridiumSimulator extends Simulator {
       } else {
         variables.push({
           type: "normal",
-          defaultDisplayName: pVar.name,
+          defaultDisplayName: pVar.displayName ?? pVar.name,
           name: pVar.name,
           category: getVariableCategory(pVar, "Parameters"),
         });

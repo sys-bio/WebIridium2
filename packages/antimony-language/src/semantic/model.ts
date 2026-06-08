@@ -25,6 +25,7 @@ export type VariableKind = "species" | "parameter" | "compartment";
 export type AntimonyVariable = {
   kind: VariableKind;
   name: string;
+  displayName?: string;
   compartment: string | null;
   isConst: boolean;
   hasSubstanceOnly: boolean;

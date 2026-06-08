@@ -1,6 +1,7 @@
 export type VariableSpec = {
   kind: "floating" | "boundary" | "parameter" | "compartment";
   name: string;
+  displayName?: string;
   initialValue?: number;
 };
 

@@ -212,7 +212,7 @@ describe("declaration", () => {
   });
 });
 
-describe("annotation", () => {
+describe("annotations", () => {
   itShouldErrorForAll({
     extraComma: `A is "test",`,
     unterminatedString: `A is "hey;`,
@@ -228,6 +228,7 @@ describe("annotation", () => {
     extraDot2: `A is. "test"`,
     hasNothing: "A has",
     hasOperator: "A has +",
+    escapeBacktick: "A is ```\\````",
   });
 
   itShouldSucceedForAll({
@@ -249,6 +250,7 @@ describe("annotation", () => {
     has2: "A has 1 meter / second^2",
     has3: "A has ```unit```",
     has4: `A has "unit"`,
+    escape: `A is "me\\""`,
   });
 });
 

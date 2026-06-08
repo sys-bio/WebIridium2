@@ -539,3 +539,18 @@ describe("compartments", () => {
     }).toThrowError(SemanticError);
   });
 });
+
+describe("annotations", () => {
+  it("should set displayName", () => {
+    expectModel(
+      'species A; A is "dog"',
+      variables({ A: species().display("dog") }),
+    );
+  });
+
+  it("should not allow multiple strings in `is`", () => {
+    expect(() => {
+      deriveModels('species A; A is "dog", "cat"');
+    }).toThrowError(SemanticError);
+  });
+});

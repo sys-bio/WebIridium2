@@ -119,6 +119,10 @@ const variableProto = {
     this.compartment = compartment;
     return this;
   },
+  display(this: Record<string, unknown>, displayName: string) {
+    this.displayName = displayName;
+    return this;
+  },
 };
 
 const createVariableFunc = (kind: string) => {

@@ -2,6 +2,7 @@ import { SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import { ParserRuleContext } from "antlr4ts";
 import {
+  AnnotationContext,
   AssignmentContext,
   ConstantContext,
   DeclarationContext,
@@ -14,6 +15,7 @@ import {
   NameLabelContext,
   ReactantListContext,
   ReactionContext,
+  StringContext,
   SubvariableContext,
   VarContext,
   VariableContext,
@@ -515,5 +517,51 @@ export class DeriveModelListener implements AntimonyListener {
     }
 
     variable.compartment = compartment;
+  }
+
+  #getContentFromString(stringCtx: StringContext): string {
+    const normalString = stringCtx.STRING();
+    if (normalString) {
+      return normalString.text.slice(1, -1).replaceAll(/\\(.)/g, "$1");
+    }
+
+    const longString = stringCtx.LONG_STRING();
+    if (longString) {
+      return longString.text.slice(3, -3);
+    }
+
+    this.#reportError("Bad string.", stringCtx);
+    return "";
+  }
+
+  enterAnnotation(ctx: AnnotationContext): void {
+    const variableAnnotatation = ctx.variableAnnotation();
+    if (variableAnnotatation) {
+      const variableCtx = variableAnnotatation.variable();
+      const body = variableAnnotatation.annotationBody();
+      const item = body.annotationItem();
+      const strings = body.string();
+
+      if (item.text === "is") {
+        if (strings.length > 1) {
+          // TODO: this error sucks
+          this.#reportError(
+            "is annotation can only be used with one string.",
+            ctx,
+          );
+          // we don't want to early return, just use the best name available
+        }
+
+        const variable = this.#getActiveModel().variables.get(
+          getVariableName(variableCtx)[0],
+        );
+        if (!variable) {
+          // TODO: fix variable annotations and unify namespaces
+          return;
+        }
+
+        variable.displayName = this.#getContentFromString(strings[0]);
+      } // ignore everything else for now, maybe validate later
+    }
   }
 }
