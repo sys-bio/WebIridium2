@@ -62,7 +62,10 @@ Model::Model(
     rhs_fn_((RHSFunc*)rhs),
     convert_to_amounts_fn_((ConvertFunc*)convert_to_amounts),
     convert_to_concentrations_fn_((ConvertFunc*)convert_to_concentrations),
-    convert_reset_fn_((ConvertFunc*)convert_reset)
+    convert_reset_fn_((ConvertFunc*)convert_reset),
+    event_queue_([this](EventInvocation &invocation) {
+        invocation.priority = CalculatePriority(invocation);
+    })
 {
     // TODO: handle errors?
     SUNContext_Create(SUN_COMM_NULL, &ctx_);
@@ -121,7 +124,7 @@ void Model::ResetState() {
         p_[i] = original_p_[i];
     }
 
-    event_queue_.Clear();
+    event_queue_.Reset();
 
     if (event_params_.has_value()) {
         const EventParams &params = event_params_.value();
@@ -343,6 +346,22 @@ void Model::EnqueueEventsFromSwap() {
     }
 }
 
+double Model::CalculatePriority(const EventInvocation &invocation) {
+    if (
+        invocation.event_info->is_for_piecewise ||
+        reinterpret_cast<GetOptionFn*>(invocation.event_info->get_priority_fn) == nullptr
+    ) {
+        return 0.0;
+    } else {
+        return reinterpret_cast<GetOptionFn*>(invocation.event_info->get_priority_fn)(
+            time_,
+            NV_DATA_S(y_),
+            p_.data(),
+            current_triggered_events_.data()
+        );
+    }
+}
+
 void Model::UpdateEvents() {
     ((UpdateConditionsFn*)event_params_.value().update_conditions_fn)(
         time_,
@@ -361,15 +380,11 @@ void Model::EnqueueEvent(const EventInfo &info) {
             ? 0
             : ((GetOptionFn*)info.get_delay_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
-    const double priority =
-        info.is_for_piecewise || reinterpret_cast<GetOptionFn*>(info.get_priority_fn) == nullptr
-            ? 0
-            : ((GetOptionFn*)info.get_priority_fn)(time_, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
 
     EventInvocation invocation{
         &info,
         time_ + delay,
-        priority,
+        0.0, // dummy value
         std::vector<double>(info.y_indices.size()),
         std::vector<double>(info.p_indices.size()),
     };
@@ -391,7 +406,9 @@ void Model::EnqueueEvent(const EventInfo &info) {
 void Model::RunPendingEventInvocations() {
     bool updated = false;
 
-    while (event_queue_.IsInvocationAvailable(time_)) {
+    event_queue_.AdvanceTime(time_);
+
+    while (event_queue_.IsInvocationAvailable()) {
         EventInvocation invocation = event_queue_.PopInvocation();
 
         // For piecewise, just set updated to true so we know to re-init.
@@ -436,7 +453,10 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
     }
 
     rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+
     UpdateEvents();
+
+    event_queue_.UpdatePriorities();
 }
 
 void Model::InitializeOutputArray(int num_points) {

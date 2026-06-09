@@ -1,7 +1,7 @@
 #pragma once
 
-#include <queue>
 #include <vector>
+#include <functional>
 
 #include "wasm.h"
 
@@ -69,10 +69,12 @@ struct EventInvocation {
 
 class EventQueue {
 public:
-    EventQueue() = default;
+    EventQueue(std::function<void(EventInvocation&)> update_priority_fn);
     ~EventQueue() = default;
     EventQueue(const EventQueue&) = delete;
     EventQueue& operator=(const EventQueue&) = delete;
+
+    double time() const { return time_; }
 
     // Returns the time for the next event, or `-1` if there is none.
     double GetNextInvocationTime() const;
@@ -83,30 +85,45 @@ public:
     // Removes all EventInvocation associated with the given Event.
     void RemoveInvocationsOf(const EventInfo &event_info);
 
-    // Returns if an invocation is available to run at this time.
-    bool IsInvocationAvailable(double time) const;
+    // Sets the internal time of the EventQueue.
+    void AdvanceTime(double time);
 
-    // Pops and returns the most recent event invocation.
+    // Returns if an invocation is available to run at the event queues time.
+    bool IsInvocationAvailable() const;
+
+    // Pops and returns the highest priority invocation that is available.
     EventInvocation PopInvocation();
 
-    // Clears all invocations.
-    void Clear();
+    // Update the priorities of everything that can run at this time.
+    void UpdatePriorities();
+
+    // Reset the EventQueue's time to 0 and clear all events.
+    void Reset();
 
 private:
-    class CompareEventInvocation {
+    class ComparePriority {
     public:
         bool operator()(const EventInvocation &a, const EventInvocation &b) const {
-            if (a.time == b.time) {
-                return a.priority < b.priority;
-            } else {
-                return a.time > b.time;
-            }
+            return a.priority < b.priority;
         }
     };
 
-    std::priority_queue<
-        EventInvocation,
-        std::vector<EventInvocation>,
-        CompareEventInvocation
-    > queue_;
+    class CompareDelay {
+    public:
+        bool operator()(const EventInvocation &a, const EventInvocation &b) const {
+            return a.time > b.time;
+        }
+    };
+
+    double time_ = 0.0;
+
+    std::function<void(EventInvocation&)> update_priority_fn_;
+
+    // Heap for invocations that are now available at the current time, sorted by
+    // priority.
+    std::vector<EventInvocation> priority_heap_;
+
+    // Heap for invocations that are delayed, will be moved to priority_heap_ when
+    // ready.
+    std::vector<EventInvocation> delay_heap_;
 };

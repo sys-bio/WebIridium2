@@ -81,6 +81,8 @@ private:
     // Enqueues any events as indicated by the event swap buffer.
     void EnqueueEventsFromSwap();
 
+    double CalculatePriority(const EventInvocation &invocation);
+
     // Updates all event states, adds any to the queue.
     // This is meant to be used whenever any discontinuous changes are made.
     // Rely on Integrate for event updates during simulation.
@@ -141,7 +143,7 @@ private:
     // Concatentating [ boundary species | parameters | reaction rates]
     // Everything after the parameters is just for recording. It should NOT be set.
     std::vector<double> p_;
-    EventQueue event_queue_{};
+    EventQueue event_queue_;
     std::vector<WasmBool> current_triggered_events_;
     std::vector<int> roots_found_;
     std::vector<WasmBool> conditions_state_;
