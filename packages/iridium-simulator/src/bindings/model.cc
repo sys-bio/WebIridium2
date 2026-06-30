@@ -46,6 +46,8 @@ int delegating_roots(double t, N_Vector y, double *gout, Model *model) {
 
 static double const kEpsilon = std::numeric_limits<double>::epsilon();
 
+static int const kMaxInvocationsInOneStep = 2048;
+
 Model::Model(
     std::vector<double> y,
     std::vector<double> p,
@@ -404,11 +406,13 @@ void Model::EnqueueEvent(const EventInfo &info) {
 }
 
 void Model::RunPendingEventInvocations() {
+    int invocation_count = 0;
     bool updated = false;
 
     event_queue_.AdvanceTime(time_);
 
     while (event_queue_.IsInvocationAvailable()) {
+        invocation_count++;
         EventInvocation invocation = event_queue_.PopInvocation();
 
         // For piecewise, just set updated to true so we know to re-init.
@@ -431,6 +435,10 @@ void Model::RunPendingEventInvocations() {
         RunEventInvocation(invocation);
 
         updated = true;
+
+        if (invocation_count > kMaxInvocationsInOneStep) {
+            throw std::runtime_error("Max events exceeded in one step.");
+        }
     }
 
     if (updated) {
