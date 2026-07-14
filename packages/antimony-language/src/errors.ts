@@ -14,3 +14,7 @@ export class ParseTreeError extends Error {
 }
 
 export class SemanticError extends ParseTreeError {}
+
+export class CompileError extends ParseTreeError {}
+
+export class CompileInvariantError extends Error {}

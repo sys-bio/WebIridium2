@@ -134,3 +134,113 @@ export const event = <T = unknown>(
     ...options,
   };
 };
+
+export const expr = {
+  num: <T = unknown>(value: number, metadata?: T): IridiumExpression<T> => ({
+    kind: "number",
+    value,
+    metadata,
+  }),
+  var: <T = unknown>(name: string, metadata?: T): IridiumExpression<T> => ({
+    kind: "variable",
+    name,
+    metadata,
+  }),
+  add: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "add",
+    left,
+    right,
+    metadata,
+  }),
+  sub: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "sub",
+    left,
+    right,
+    metadata,
+  }),
+  mul: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "mul",
+    left,
+    right,
+    metadata,
+  }),
+  div: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "div",
+    left,
+    right,
+    metadata,
+  }),
+  pow: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "pow",
+    left,
+    right,
+    metadata,
+  }),
+  and: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "and",
+    left,
+    right,
+    metadata,
+  }),
+  or: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "or",
+    left,
+    right,
+    metadata,
+  }),
+  xor: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "xor",
+    left,
+    right,
+    metadata,
+  }),
+  neg: <T = unknown>(
+    expr: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({ kind: "unary", op: "neg", expr, metadata }),
+  call: <T = unknown>(
+    name: string,
+    args: IridiumExpression[],
+    metadata?: T,
+  ): IridiumExpression<T> => ({ kind: "call", name, args, metadata }),
+} as const;

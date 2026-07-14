@@ -8,7 +8,7 @@ export type IridiumExpression<Metadata = unknown> =
       right: IridiumExpression;
       metadata?: Metadata;
     }
-  | { kind: "unary"; op: string; right: IridiumExpression; metadata?: Metadata }
+  | { kind: "unary"; op: string; expr: IridiumExpression; metadata?: Metadata }
   | {
       kind: "call";
       name: string;

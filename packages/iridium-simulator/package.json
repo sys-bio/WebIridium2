@@ -3,7 +3,10 @@
   "description": "simulator for iridium using CVODE and WASM JIT",
   "version": "0.0.0",
   "type": "module",
-  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "dsl": "./src/ir/dsl.ts"
+  },
   "dependencies": {
     "antimony-language": "*"
   }
