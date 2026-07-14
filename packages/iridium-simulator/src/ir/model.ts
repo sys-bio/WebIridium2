@@ -1,50 +1,61 @@
 import type { IridiumExpression } from "./ast";
 
-export type IridiumModel = {
-  parameters: IridiumParameter[];
-  species: IridiumSpecies[];
-  reactions: IridiumReaction[];
-  events: IridiumEvent[];
+export type IridiumModel<Metadata = unknown> = {
+  parameters: IridiumParameter<Metadata>[];
+  species: IridiumSpecies<Metadata>[];
+  reactions: IridiumReaction<Metadata>[];
+  events: IridiumEvent<Metadata>[];
 };
 
-export type IridiumParameter = {
+export type IridiumParameterValue<Metadata = unknown> =
+  | { kind: "initial"; initial: IridiumExpression<Metadata> }
+  | {
+      kind: "rate";
+      initial: IridiumExpression<Metadata>;
+      rate: IridiumExpression<Metadata>;
+    }
+  | { kind: "assignment"; assignment: IridiumExpression<Metadata> };
+
+export type IridiumParameter<Metadata = unknown> = {
   name: string;
-  assignment: IridiumAssignment;
+  value: IridiumParameterValue<Metadata>;
+  metadata?: Metadata;
 };
 
-export type IridiumAssignment =
-  | { kind: "initial"; initial: number }
-  | { kind: "rate"; initial: number; rate: IridiumExpression }
-  | { kind: "rule"; expr: IridiumExpression };
+export type IridiumSpecies<Metadata = unknown> = {
+  name: string;
+  initial: IridiumExpression<Metadata>;
+  metadata?: Metadata;
+};
 
-export type IridiumSpecies =
-  | { isConst: false; name: string; assignment: Extract<IridiumAssignment, { kind: "initial" }> }
-  | { isConst: true; name: string; assignment: IridiumAssignment };
-
-export type IridiumReactionTerm = {
+export type IridiumReactionTerm<Metadata = unknown> = {
   name: string;
   stoichiometry: number;
+  metadata?: Metadata;
 };
 
-export type IridiumReaction = {
+export type IridiumReaction<Metadata = unknown> = {
   name: string;
-  reactants: IridiumReactionTerm[];
-  products: IridiumReactionTerm[];
-  rate: IridiumExpression;
-}
-
-export type IridiumEventAssignment = {
-  name: string;
-  value: IridiumExpression;
+  reactants: IridiumReactionTerm<Metadata>[];
+  products: IridiumReactionTerm<Metadata>[];
+  rate: IridiumExpression<Metadata>;
+  metadata?: Metadata;
 };
 
-export type IridiumEvent = {
+export type IridiumEventAssignment<Metadata = unknown> = {
   name: string;
-  trigger: IridiumExpression;
-  assignments: IridiumEventAssignment[];
-  delay?: IridiumExpression;
-  priority?: IridiumExpression;
+  value: IridiumExpression<Metadata>;
+  metadata?: Metadata;
+};
+
+export type IridiumEvent<Metadata = unknown> = {
+  name: string;
+  trigger: IridiumExpression<Metadata>;
+  assignments: IridiumEventAssignment<Metadata>[];
+  delay?: IridiumExpression<Metadata>;
+  priority?: IridiumExpression<Metadata>;
   isT0: boolean;
   isPersistent: boolean;
   isFromTrigger: boolean;
-}
+  metadata?: Metadata;
+};
