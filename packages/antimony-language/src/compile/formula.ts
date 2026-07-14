@@ -1,9 +1,187 @@
+import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
+import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
+import {
+  CompareContext,
+  ConstantContext,
+  FormulaContext,
+  LogicalContext,
+  NameContext,
+  NotContext,
+  SubvariableContext,
+  SumContext,
+  VariableContext,
+  type AntimonyListener,
+  type FunctionCallContext,
+  type NegativeContext,
+  type NumberContext,
+  type PositiveContext,
+  type PowerContext,
+  type ProductContext,
+  type VarContext,
+} from "../grammar";
 import type { IridiumExpression } from "iridium-simulator";
-import type { FormulaContext } from "../grammar";
 import type { Metadata } from "./metadata";
+import { CompileInvariantError } from "../errors";
 
 export const compileFormula = (
   formula: FormulaContext,
 ): IridiumExpression<Metadata> => {
-  throw new Error("TODO");
+  const formulaListener = new FormulaCompilerListener();
+  ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
+  return formulaListener.getResult();
 };
+
+const getVariableName = (ctx: VariableContext): string => {
+  if (ctx instanceof NameContext) {
+    return ctx.NAME().text;
+  } else if (ctx instanceof SubvariableContext) {
+    throw new CompileInvariantError("Not yet supported.");
+  } else if (ctx instanceof ConstantContext) {
+    return getVariableName(ctx.variable());
+  }
+  throw new CompileInvariantError("Unknown variable.");
+};
+
+class FormulaCompilerListener implements AntimonyListener {
+  #stack: IridiumExpression<Metadata>[];
+
+  constructor() {
+    this.#stack = [];
+  }
+
+  getResult(): IridiumExpression<Metadata> {
+    return this.#stack.pop()!;
+  }
+
+  exitFunctionCall(ctx: FunctionCallContext): void {
+    const count = ctx.argumentList()?.formula()?.length ?? 0;
+    const args: IridiumExpression<Metadata>[] = [];
+
+    for (let i = 0; i < count; i++) {
+      args.push(this.#stack.pop()!);
+    }
+
+    args.reverse();
+
+    this.#stack.push({
+      kind: "call",
+      args: args,
+      name: ctx.NAME().text,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitNumber(ctx: NumberContext): void {
+    this.#stack.push({
+      kind: "number",
+      value: Number(ctx.NUMBER().text),
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitVar(ctx: VarContext): void {
+    this.#stack.push({
+      kind: "variable",
+      name: getVariableName(ctx.variable()),
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitPositive(_ctx: PositiveContext): void {
+    // skip this it doesn't do anything
+  }
+
+  exitNegative(ctx: NegativeContext): void {
+    this.#stack.push({
+      kind: "unary",
+      op: "neg",
+      expr: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitPower(ctx: PowerContext) {
+    this.#stack.push({
+      kind: "binary",
+      op: "pow",
+      right: this.#stack.pop()!,
+      left: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitProduct(ctx: ProductContext): void {
+    this.#stack.push({
+      kind: "binary",
+      op:
+        ctx._op.text === "*"
+          ? "mul"
+          : ctx._op.text === "/"
+            ? "div"
+            : ctx._op.text === "%"
+              ? "mod"
+              : "unknown",
+      right: this.#stack.pop()!,
+      left: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitSum(ctx: SumContext): void {
+    this.#stack.push({
+      kind: "binary",
+      op:
+        ctx._op.text === "+" ? "add" : ctx._op.text === "-" ? "sub" : "unknown",
+      right: this.#stack.pop()!,
+      left: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitCompare(ctx: CompareContext): void {
+    this.#stack.push({
+      kind: "binary",
+      op:
+        ctx._op.text === ">="
+          ? "ge"
+          : ctx._op.text === "<="
+            ? "le"
+            : ctx._op.text === ">"
+              ? "gt"
+              : ctx._op.text === "<"
+                ? "lt"
+                : ctx._op.text === "=="
+                  ? "eq"
+                  : ctx._op.text === "!="
+                    ? "neq"
+                    : "unknown",
+      right: this.#stack.pop()!,
+      left: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitNot(ctx: NotContext): void {
+    this.#stack.push({
+      kind: "unary",
+      op: "not",
+      expr: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+
+  exitLogical(ctx: LogicalContext): void {
+    this.#stack.push({
+      kind: "binary",
+      op:
+        ctx._op.text === "&&"
+          ? "and"
+          : ctx._op.text === "||"
+            ? "or"
+            : "unknown",
+      right: this.#stack.pop()!,
+      left: this.#stack.pop()!,
+      metadata: { tree: ctx },
+    });
+  }
+}

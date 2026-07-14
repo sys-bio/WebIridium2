@@ -8,11 +8,11 @@ import type {
 } from "./model";
 import type { IridiumExpression } from "./ast";
 
-type DslSpecies = Omit<IridiumSpecies, "name">;
-type DslParameter = Omit<IridiumParameter, "name">;
-type DslReaction = Omit<IridiumReaction, "name">;
-type DslEvent = Omit<IridiumEvent, "name">;
-type DslExpression = IridiumExpression;
+export type DslSpecies = Omit<IridiumSpecies, "name">;
+export type DslParameter = Omit<IridiumParameter, "name">;
+export type DslReaction = Omit<IridiumReaction, "name">;
+export type DslEvent = Omit<IridiumEvent, "name">;
+export type DslExpression = IridiumExpression;
 
 export const model = (parts: {
   species?: { [name: string]: DslSpecies };
@@ -148,7 +148,7 @@ export const expr = {
   }),
   add: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -159,7 +159,7 @@ export const expr = {
   }),
   sub: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -170,7 +170,7 @@ export const expr = {
   }),
   mul: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -181,7 +181,7 @@ export const expr = {
   }),
   div: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -190,9 +190,20 @@ export const expr = {
     right,
     metadata,
   }),
+  mod: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "mod",
+    left,
+    right,
+    metadata,
+  }),
   pow: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -203,7 +214,7 @@ export const expr = {
   }),
   and: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -214,7 +225,7 @@ export const expr = {
   }),
   or: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
@@ -223,13 +234,68 @@ export const expr = {
     right,
     metadata,
   }),
-  xor: <T = unknown>(
+  eq: <T = unknown>(
     left: IridiumExpression<T>,
-    right: IridiumExpression,
+    right: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({
     kind: "binary",
-    op: "xor",
+    op: "eq",
+    left,
+    right,
+    metadata,
+  }),
+  neq: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "neq",
+    left,
+    right,
+    metadata,
+  }),
+  ge: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "ge",
+    left,
+    right,
+    metadata,
+  }),
+  gt: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "gt",
+    left,
+    right,
+    metadata,
+  }),
+  le: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "le",
+    left,
+    right,
+    metadata,
+  }),
+  lt: <T = unknown>(
+    left: IridiumExpression<T>,
+    right: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "binary",
+    op: "lt",
     left,
     right,
     metadata,
@@ -238,9 +304,13 @@ export const expr = {
     expr: IridiumExpression<T>,
     metadata?: T,
   ): IridiumExpression<T> => ({ kind: "unary", op: "neg", expr, metadata }),
+  not: <T = unknown>(
+    expr: IridiumExpression<T>,
+    metadata?: T,
+  ): IridiumExpression<T> => ({ kind: "unary", op: "not", expr, metadata }),
   call: <T = unknown>(
     name: string,
-    args: IridiumExpression[],
+    args: IridiumExpression<T>[],
     metadata?: T,
   ): IridiumExpression<T> => ({ kind: "call", name, args, metadata }),
 } as const;

@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "dsl": "./src/ir/dsl.ts"
+    "./dsl": "./src/ir/dsl.ts"
   },
   "dependencies": {
     "antimony-language": "*"

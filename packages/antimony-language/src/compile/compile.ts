@@ -6,6 +6,7 @@ import type {
   IridiumExpression,
   IridiumParameterValue,
   IridiumEvent,
+  IridiumReactionTerm,
 } from "iridium-simulator";
 import type { AntimonyModel } from "../semantic/model";
 import { compileFormula } from "./formula";
@@ -57,18 +58,26 @@ export const compileToIridium = (
       rate = { kind: "number", value: 0 };
     }
 
+    const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
+      // Ignore const since they won't be affected by the reaction.
+      if (mainModel.variables.get(reactant.name)?.isConst) continue;
       reactionInvolvedVariables.add(reactant.name);
+      reactants.push(reactant);
     }
 
+    const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
+      // Ignore const since they won't be affected by the reaction.
+      if (mainModel.variables.get(product.name)?.isConst) continue;
       reactionInvolvedVariables.add(product.name);
+      products.push(product);
     }
 
     reactions.push({
       name,
-      reactants: reaction.reactants,
-      products: reaction.products,
+      reactants,
+      products,
       rate,
     });
   }
@@ -82,12 +91,24 @@ export const compileToIridium = (
         variable.assignment === undefined ||
         variable.assignment?.kind === "set"
       ) {
-        species.push({
-          name,
-          initial: variable.assignment
-            ? compileFormula(variable.assignment.initial)
-            : { kind: "number", value: 0 },
-        });
+        if (reactionInvolvedVariables.has(name)) {
+          species.push({
+            name,
+            initial: variable.assignment
+              ? compileFormula(variable.assignment.initial)
+              : { kind: "number", value: 0 },
+          });
+        } else {
+          parameters.push({
+            name,
+            value: {
+              kind: "initial",
+              initial: variable.assignment
+                ? compileFormula(variable.assignment.initial)
+                : { kind: "number", value: 0 },
+            },
+          });
+        }
       } else {
         if (reactionInvolvedVariables.has(name)) {
           throw new CompileError(
