@@ -1,27 +1,5 @@
 // TOOD: write tests for this
 
-import { AbstractParseTreeVisitor } from "antlr4ts/tree/AbstractParseTreeVisitor";
-import {
-  type AntimonyListener,
-  type AntimonyVisitor,
-  LogicalContext,
-  FormulaContext,
-  CompareContext,
-  SumContext,
-  ProductContext,
-  PositiveContext,
-  NegativeContext,
-  ConstantContext,
-  PowerContext,
-  NumberContext,
-  VarContext,
-  GroupContext,
-  NameContext,
-  NotContext,
-  CallContext,
-} from "antimony-language/grammar";
-import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
-import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { TIME_NAME } from "../names.ts";
 import {
   CompileInvariantError,
@@ -30,12 +8,13 @@ import {
 } from "./errors.ts";
 import { builtinConstants } from "antimony-language/semantic/builtins";
 import type { Compilation } from "./Compilation.ts";
-import { getVariableName } from "./Scope.ts";
-
-// if they didn't have an assignment, give them this one
-// annoyingly, COPASI uses 1, RoadRunner uses 0
-const DEFAULT_INITIAL_VALUE = 0;
-const DEFAULT_COMPARTMENT_VALUE = 1;
+import {
+  visitExpression,
+  walkExpression,
+  type IridiumExpression,
+  type IridiumExpressionListener,
+  type IridiumExpressionVisitor,
+} from "../ir/ast.ts";
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -50,210 +29,188 @@ export const evaluateInitialValues = (
 ): Map<string, number> => {
   const initialValues: Map<string, number> = new Map();
   const outputInitialValues: Map<string, number> = new Map();
-  const evalOrder = getAssignmentOrder(
-    new Map(
-      Array.from(compilation.variables.values())
-        .filter((v) => v.assignment?.kind !== "rule")
-        .map((v) => [
-          v.name,
-          v.assignment?.kind === "rule"
-            ? v.assignment.rule
-            : v.assignment?.initial,
-        ]),
-    ),
-  );
+  const assignments = new Map<string, IridiumExpression>();
+  for (const species of compilation.species.values()) {
+    assignments.set(species.name, species.initial);
+  }
+  for (const parameter of compilation.parameters.values()) {
+    if (parameter.value.kind === "initial" || parameter.value.kind === "rate") {
+      assignments.set(parameter.name, parameter.value.initial);
+    } else if (parameter.value.kind === "assignment") {
+      assignments.set(parameter.name, parameter.value.assignment);
+    }
+  }
+  const evalOrder = getAssignmentOrder(assignments);
 
   // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
   // UPDATE(05-26-2026): I think this should be fine because even when you set the initial time, the simulation
   //                     should still start at 0. No other reasonable behavior imo.
   initialValues.set(TIME_NAME, 0);
 
-  const evalVisitor = new AssignmentEvaluatorVisitor(initialValues);
   for (const name of evalOrder) {
-    const variable = compilation.variables.get(name)!;
-
-    if (variable?.assignment?.kind === "rule") {
-      // TODO: do we *really* want to base the initial value of rule variable on its assignment
-      //       COPASI does this, so it shouldn't be completely wrong.
-      initialValues.set(
-        name,
-        variable.assignment.rule.accept(evalVisitor) ??
-          (variable.kind === "compartment"
-            ? DEFAULT_COMPARTMENT_VALUE
-            : DEFAULT_INITIAL_VALUE),
-      );
-    } else {
-      const value =
-        variable.assignment?.initial?.accept(evalVisitor) ??
-        (variable.kind === "compartment"
-          ? DEFAULT_COMPARTMENT_VALUE
-          : DEFAULT_INITIAL_VALUE);
-
+    const species = compilation.species.get(name);
+    if (species) {
+      const value = evaluateExpression(initialValues, species.initial);
       initialValues.set(name, value);
       outputInitialValues.set(name, value);
+      continue;
+    }
+
+    const parameter = compilation.parameters.get(name);
+    if (parameter) {
+      if (
+        parameter.value.kind === "initial" ||
+        parameter.value.kind === "rate"
+      ) {
+        const value = evaluateExpression(
+          initialValues,
+          parameter.value.initial,
+        );
+        initialValues.set(name, value);
+        outputInitialValues.set(name, value);
+        assignments.set(parameter.name, parameter.value.initial);
+      } else if (parameter.value.kind === "assignment") {
+        initialValues.set(
+          name,
+          evaluateExpression(initialValues, parameter.value.assignment),
+        );
+      }
     }
   }
 
   return outputInitialValues;
 };
 
-class AssignmentEvaluatorVisitor
-  extends AbstractParseTreeVisitor<number>
-  implements AntimonyVisitor<number>
-{
-  #variables: Map<string, number>;
+const evaluateExpression = (
+  variables: Map<string, number>,
+  expression: IridiumExpression,
+): number => {
+  const evaluteVisitor: IridiumExpressionVisitor<number> = {
+    visitNumber: ({ value }) => value,
+    visitVariable: ({ name, metadata }) => {
+      if (Object.hasOwn(builtinConstants, name)) {
+        return builtinConstants[name].value;
+      }
 
-  constructor(variables: Map<string, number>) {
-    super();
-    this.#variables = variables;
-  }
-
-  defaultResult(): number {
-    throw new CompileModelError("All nodes must evaluate.");
-  }
-
-  visitLogical(ctx: LogicalContext): number {
-    if (ctx._op.text === "&&") {
-      return super.visit(ctx.formula(0)) && super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "||") {
-      return super.visit(ctx.formula(0)) || super.visit(ctx.formula(1));
-    } else {
+      if (!variables.has(name)) {
+        throw new EvaluationError(`Unbound name: ${name}`, metadata);
+      }
+      return variables.get(name)!;
+    },
+    visitBinary: ({ op, left, right }) => {
+      switch (op) {
+        case "add":
+          return (
+            visitExpression(left, evaluteVisitor) +
+            visitExpression(right, evaluteVisitor)
+          );
+        case "sub":
+          return (
+            visitExpression(left, evaluteVisitor) -
+            visitExpression(right, evaluteVisitor)
+          );
+        case "mul":
+          return (
+            visitExpression(left, evaluteVisitor) *
+            visitExpression(right, evaluteVisitor)
+          );
+        case "div":
+          return (
+            visitExpression(left, evaluteVisitor) /
+            visitExpression(right, evaluteVisitor)
+          );
+        case "mod":
+          // TODO: is this correct behavior?
+          return (
+            visitExpression(left, evaluteVisitor) %
+            visitExpression(right, evaluteVisitor)
+          );
+        case "pow":
+          return (
+            visitExpression(left, evaluteVisitor) **
+            visitExpression(right, evaluteVisitor)
+          );
+        case "and":
+          return (
+            visitExpression(left, evaluteVisitor) &&
+            visitExpression(right, evaluteVisitor)
+          );
+        case "or":
+          return (
+            visitExpression(left, evaluteVisitor) ||
+            visitExpression(right, evaluteVisitor)
+          );
+        case "eq":
+          return visitExpression(left, evaluteVisitor) ==
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+        case "neq":
+          return visitExpression(left, evaluteVisitor) !=
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+        case "le":
+          return visitExpression(left, evaluteVisitor) <=
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+        case "lt":
+          return visitExpression(left, evaluteVisitor) <
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+        case "ge":
+          return visitExpression(left, evaluteVisitor) >=
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+        case "gt":
+          return visitExpression(left, evaluteVisitor) >
+            visitExpression(right, evaluteVisitor)
+            ? 1
+            : 0;
+      }
+    },
+    visitUnary: ({ op, expr }) => {
+      switch (op) {
+        case "neg":
+          return -visitExpression(expr, evaluteVisitor);
+        case "not":
+          return Number(!visitExpression(expr, evaluteVisitor));
+      }
+    },
+    visitCall: () => {
       throw new CompileInvariantError(
-        `Unknown logical operator: ${ctx._op.text}`,
+        "Calls not yet supported in interpreter.",
       );
-    }
-  }
+    },
+  };
 
-  visitCompare(ctx: CompareContext): number {
-    let wasTrue = false;
-    if (ctx._op.text === ">=") {
-      wasTrue = super.visit(ctx.formula(0)) >= super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "<=") {
-      wasTrue = super.visit(ctx.formula(0)) <= super.visit(ctx.formula(1));
-    } else if (ctx._op.text === ">") {
-      wasTrue = super.visit(ctx.formula(0)) > super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "<") {
-      wasTrue = super.visit(ctx.formula(0)) < super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "==") {
-      wasTrue = super.visit(ctx.formula(0)) == super.visit(ctx.formula(1));
-    } else {
-      throw new Error(`Unknown comparison operator: ${ctx._op.text}`);
-    }
+  return visitExpression(expression, evaluteVisitor);
+};
 
-    return wasTrue ? 1 : 0;
-  }
-
-  visitSum(ctx: SumContext): number {
-    if (ctx._op.text === "+") {
-      return super.visit(ctx.formula(0)) + super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "-") {
-      return super.visit(ctx.formula(0)) - super.visit(ctx.formula(1));
-    } else {
-      throw new Error(`Unknown operator: ${ctx._op.text}`);
-    }
-  }
-
-  visitProduct(ctx: ProductContext): number {
-    if (ctx._op.text === "*") {
-      return super.visit(ctx.formula(0)) * super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "/") {
-      return super.visit(ctx.formula(0)) / super.visit(ctx.formula(1));
-    } else if (ctx._op.text === "%") {
-      // TODO: does this behave how we want for negatives?
-      return super.visit(ctx.formula(0)) % super.visit(ctx.formula(1));
-    } else {
-      throw new Error(`Unknown operator: ${ctx._op.text}`);
-    }
-  }
-
-  visitGroup(ctx: GroupContext): number {
-    return super.visit(ctx.formula());
-  }
-
-  visitPower(ctx: PowerContext): number {
-    return super.visit(ctx.formula(0)) ** super.visit(ctx.formula(1));
-  }
-
-  visitNegative(ctx: NegativeContext): number {
-    return -super.visit(ctx.formula());
-  }
-
-  // literally does nothing
-  visitPositive(ctx: PositiveContext): number {
-    return super.visit(ctx.formula());
-  }
-
-  visitNot(ctx: NotContext): number {
-    return Number(!super.visit(ctx.formula()));
-  }
-
-  visitCall(_ctx: CallContext): number {
-    // TODO: implement function calls
-    throw new CompileModelError("Function calls not yet implemented.");
-  }
-
-  visitConstant(ctx: ConstantContext): number {
-    return super.visit(ctx.variable());
-  }
-
-  visitVar(ctx: VarContext): number {
-    const name = getVariableName(ctx.variable());
-    if (Object.hasOwn(builtinConstants, name)) {
-      return builtinConstants[name].value;
-    }
-
-    const got = this.#variables.get(name);
-    if (got === undefined) {
-      throw new EvaluationError(`Unbound name: ${name}`, { tree: ctx });
-    }
-    return got;
-  }
-
-  visitNumber(ctx: NumberContext): number {
-    return Number(ctx.NUMBER().text);
-  }
-}
-
-const INVALID_BOOLEAN_MESSAGE =
-  "You can only use the values `true` or `false` here.";
-
-/**
- * Evaluates a boolean formula.
- *
- * @throws if the formula is neither exactly `true` or `false`
- */
-export const evaluateBoolean = (formula: FormulaContext): boolean => {
-  if (formula.childCount !== 1) {
-    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
-  }
-
-  const child = formula.getChild(0);
-  if (!(child instanceof NameContext)) {
-    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
-  }
-
-  if (child.text === "true") {
-    return true;
-  } else if (child.text === "false") {
-    return false;
-  } else {
-    throw new EvaluationError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
-  }
+const getReferencedVariables = (expression: IridiumExpression): Set<string> => {
+  const referenced = new Set<string>();
+  const listener: IridiumExpressionListener = {
+    afterVariable: ({ name }) => referenced.add(name),
+  };
+  walkExpression(expression, listener);
+  return referenced;
 };
 
 /**
  * Returns toplogically sorted evaluation for assignments. Assignments are represented
- * by a map of names to (optional) formulas. If the formula for a variable is undefined,
- * it is assumed to be default initialized and listed first. Formulas may also contain variables
- * not listed in the assignments. In that case, these variables are assumed to already have a value
- * and not listed in the output.
+ * by a map of names to (optional) expressions.Expressions may also contain variables
+ * not listed in the assignments. In that case, these variables are assumed to already
+ * have a value and not listed in the output.
  *
  * @throws CompileError - if there is a cycle in the assignments
- * @param assignments - map of variable names to (optional) assignment formulas
+ * @param assignments - map of variable names to (optional) assignment expressions
  * @returns toplogically sorted assignment ordering
  */
 export const getAssignmentOrder = (
-  assignments: Map<string, FormulaContext | undefined>,
+  assignments: Map<string, IridiumExpression>,
   { allowSelfCycle = false } = {},
 ): string[] => {
   const graph: Record<string, Set<string>> = {};
@@ -265,15 +222,7 @@ export const getAssignmentOrder = (
   }
 
   for (const [name, assignment] of assignments) {
-    if (!assignment) continue;
-
-    const variableListener = new VariableGrabberListener();
-    ParseTreeWalker.DEFAULT.walk(
-      variableListener as ParseTreeListener,
-      assignment,
-    );
-
-    for (const neighbor of variableListener.getVariables()) {
+    for (const neighbor of getReferencedVariables(assignment)) {
       if (allowSelfCycle && neighbor === name) continue;
 
       if (Object.hasOwn(graph, neighbor)) {
@@ -305,26 +254,9 @@ export const getAssignmentOrder = (
   }
 
   if (order.length !== assignments.size) {
+    // TODO: add more specific error for where the cycle occurred?
     throw new CompileModelError("Cycle detected in assignments.");
   }
 
   return order;
 };
-
-class VariableGrabberListener implements AntimonyListener {
-  #variables: Set<string>;
-
-  constructor() {
-    this.#variables = new Set<string>();
-  }
-
-  getVariables(): Set<string> {
-    return this.#variables;
-  }
-
-  enterVar(ctx: VarContext): void {
-    if (ctx.text !== TIME_NAME) {
-      this.#variables.add(getVariableName(ctx.variable()));
-    }
-  }
-}

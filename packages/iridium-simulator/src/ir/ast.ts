@@ -8,16 +8,32 @@ export type IridiumExpressionVariable<Metadata = unknown> = {
   name: string;
   metadata?: Metadata;
 };
+export type IridiumBinaryOperator =
+  | "add"
+  | "sub"
+  | "mul"
+  | "div"
+  | "mod"
+  | "pow"
+  | "and"
+  | "or"
+  | "eq"
+  | "neq"
+  | "ge"
+  | "gt"
+  | "le"
+  | "lt";
 export type IridiumExpressionBinary<Metadata = unknown> = {
   kind: "binary";
-  op: string;
+  op: IridiumBinaryOperator;
   left: IridiumExpression<Metadata>;
   right: IridiumExpression<Metadata>;
   metadata?: Metadata;
 };
+export type IridiumUnaryOperator = "neg" | "not";
 export type IridiumExpressionUnary<Metadata = unknown> = {
   kind: "unary";
-  op: string;
+  op: IridiumUnaryOperator;
   expr: IridiumExpression<Metadata>;
   metadata?: Metadata;
 };

@@ -1,19 +1,8 @@
-import { deriveModelsFromParseTree } from "antimony-language/semantic";
 import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { FunctionTable, TypeTable } from "./symbolTables.ts";
-import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
-import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import type { EventSpec, ModelSpec, PieceEventSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
-import { parse } from "antimony-language/parse";
-import {
-  LogicalContext,
-  type AntimonyListener,
-  type FunctionCallContext,
-  type PowerContext,
-} from "antimony-language/grammar";
-import { type ParserRuleContext } from "antlr4ts";
 import {
   CONVERT_TO_CONCENTRATIONS_NAME,
   CONVERT_TO_AMOUNTS_NAME,
@@ -42,21 +31,22 @@ import {
   CONVERT_PARAMS,
   CONVERT_RESULTS,
 } from "./convertConcentration.ts";
+import type { IridiumModel } from "../ir/model.ts";
+import { walkExpression, type IridiumExpressionListener } from "../ir/ast.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
-  code: string,
+  ir: IridiumModel,
 ): {
   compilation: Compilation;
   imports: string[];
   eventSpecs: (PieceEventSpec | EventSpec)[];
   bytecode: Uint8Array;
 } => {
-  const root = parse(code);
-  const compilation = new Compilation(deriveModelsFromParseTree(root));
+  const compilation = new Compilation(ir);
 
   const referencedFunctions = Array.from(
-    getReferencedFunctionsAndTrackPiecewise(compilation, root),
+    getReferencedFunctionsAndTrackPiecewise(compilation),
   );
 
   const functions: WasmFunction[] = [
@@ -106,7 +96,7 @@ export const compileIntermediate = (
   ];
 
   let eventSpecs: (PieceEventSpec | EventSpec)[] = [];
-  if (compilation.piecewisePieces.size > 0 || compilation.events.length > 0) {
+  if (compilation.piecewisePieces.size > 0 || compilation.events.size > 0) {
     const eventsResult = compileEvents(compilation);
     functions.push(...eventsResult.functions);
     eventSpecs = eventsResult.eventSpecs;
@@ -120,9 +110,9 @@ export const compileIntermediate = (
   };
 };
 
-export const compile = async (code: string): Promise<ModelSpec> => {
+export const compile = async (ir: IridiumModel): Promise<ModelSpec> => {
   const { compilation, imports, eventSpecs, bytecode } =
-    compileIntermediate(code);
+    compileIntermediate(ir);
 
   const initialValues = evaluateInitialValues(compilation);
 
@@ -170,11 +160,33 @@ export const compile = async (code: string): Promise<ModelSpec> => {
 
 const getReferencedFunctionsAndTrackPiecewise = (
   compilation: Compilation,
-  context: ParserRuleContext,
 ): Set<string> => {
   const referenced = new Set<string>();
-  const listener = new GetReferencedListener(compilation, referenced);
-  ParseTreeWalker.DEFAULT.walk(listener as ParseTreeListener, context);
+  const listener: IridiumExpressionListener = {
+    beforeCall({ name, args }) {
+      if (name === PIECEWISE_NAME) {
+        for (let i = 1; i < args.length; i += 2) {
+          compilation.addPiecewisePiece(args[i]);
+        }
+      } else if (
+        Object.hasOwn(predefinedFuncDefs, name) &&
+        predefinedFuncDefs[name].kind !== "inline"
+      ) {
+        referenced.add(name);
+      }
+    },
+    beforeBinary({ op }) {
+      if (op === "pow") {
+        referenced.add(POW_RESERVED_NAME);
+      } else if (op === "and") {
+        referenced.add(AND_RESERVED_NAME);
+      } else if (op === "or") {
+        referenced.add(OR_RESERVED_NAME);
+      }
+    },
+  };
+
+  compilation.forAllExpressions((expr) => walkExpression(expr, listener));
 
   const result = new Set<string>();
 
@@ -199,50 +211,6 @@ const getReferencedFunctionsAndTrackPiecewise = (
 
   return result;
 };
-
-class GetReferencedListener implements AntimonyListener {
-  #compilation: Compilation;
-  #referenced: Set<string>;
-
-  constructor(compilation: Compilation, imported: Set<string>) {
-    this.#compilation = compilation;
-    this.#referenced = imported;
-  }
-
-  enterFunctionCall(ctx: FunctionCallContext): void {
-    const name = ctx.NAME().text;
-
-    if (name === PIECEWISE_NAME) {
-      const formulas = ctx.argumentList()?.formula();
-      if (formulas) {
-        for (let i = 1; i < formulas.length; i += 2) {
-          this.#compilation.addPiecewisePiece(formulas[i]);
-        }
-      }
-      return;
-    }
-
-    if (
-      Object.hasOwn(predefinedFuncDefs, name) &&
-      predefinedFuncDefs[name].kind !== "inline"
-    ) {
-      this.#referenced.add(name);
-    }
-  }
-
-  enterPower(_ctx: PowerContext): void {
-    this.#referenced.add(POW_RESERVED_NAME);
-  }
-
-  enterLogical(ctx: LogicalContext): void {
-    const op = ctx._op.text;
-    if (op === "&&") {
-      this.#referenced.add(AND_RESERVED_NAME);
-    } else if (op === "||") {
-      this.#referenced.add(OR_RESERVED_NAME);
-    }
-  }
-}
 
 /**
  * Compiles a list of functions into a WebAssembly module.

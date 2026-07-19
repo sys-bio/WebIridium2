@@ -1,9 +1,3 @@
-import {
-  ConstantContext,
-  NameContext,
-  SubvariableContext,
-  type VariableContext,
-} from "antimony-language/grammar";
 import type { Compilation } from "./Compilation";
 import { CompileError, CompileInvariantError } from "./errors";
 import type { FunctionTable, LocalsSymbolTable } from "./symbolTables";
@@ -12,20 +6,7 @@ import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
 import { builtinConstants } from "antimony-language/semantic/builtins";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-
-export const getVariableName = (ctx: VariableContext): string => {
-  if (ctx instanceof NameContext) {
-    return ctx.NAME().text;
-  } else if (ctx instanceof SubvariableContext) {
-    throw new CompileError("Subvariables not yet supported here.", {
-      tree: ctx,
-    });
-  } else if (ctx instanceof ConstantContext) {
-    return getVariableName(ctx.variable());
-  } else {
-    throw new CompileInvariantError(`unknown variable type: ${ctx.text}`);
-  }
-};
+import type { IridiumExpressionVariable } from "../ir/ast";
 
 export class Scope {
   #compilation: Compilation;
@@ -72,15 +53,7 @@ export class Scope {
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
 
-      const variable = this.#compilation.variables.get(name);
-      const compartment = variable?.compartment;
-      if (
-        variable?.kind === "species" &&
-        !variable?.hasSubstanceOnly &&
-        compartment
-      ) {
-        this.emitConvertToConcentration(emitter, compartment);
-      }
+      // TODO: add back concentration stuff
     } else if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(Y_PARAM));
@@ -89,15 +62,7 @@ export class Scope {
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
 
-      const variable = this.#compilation.variables.get(name);
-      const compartment = variable?.compartment;
-      if (
-        variable?.kind === "species" &&
-        !variable?.hasSubstanceOnly &&
-        compartment
-      ) {
-        this.emitConvertToConcentration(emitter, compartment);
-      }
+      // TODO: add back concentration stuff
     } else {
       return false;
     }
@@ -105,20 +70,9 @@ export class Scope {
     return true;
   }
 
-  emitLoadVariable(emitter: Emitter, ctx: VariableContext): void {
-    const name = getVariableName(ctx);
-    if (!this.emitLoadVariableFromName(emitter, name)) {
-      throw new CompileError(`Unbound name: ${name}`, { tree: ctx });
+  emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
+    if (!this.emitLoadVariableFromName(emitter, expr.name)) {
+      throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
     }
-  }
-
-  emitConvertToConcentration(emitter: Emitter, compartment: string): void {
-    this.emitLoadVariableFromName(emitter, compartment);
-    emitter.emitUint(OpCode.f64div);
-  }
-
-  emitConvertToAmount(emitter: Emitter, compartment: string): void {
-    this.emitLoadVariableFromName(emitter, compartment);
-    emitter.emitUint(OpCode.f64mul);
   }
 }

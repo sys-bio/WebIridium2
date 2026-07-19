@@ -1,14 +1,23 @@
-import { ParseTreeError } from "antimony-language/errors";
+export class IridiumError<Metadata = unknown> extends Error {
+  metadata: Metadata;
+
+  constructor(message: string, metadata: Metadata) {
+    super(message);
+    this.metadata = metadata;
+  }
+}
 
 /**
  * Represents a compile error that occurs at a specific point.
  */
-export class CompileError extends ParseTreeError {}
+export class CompileError<Metadata = unknown> extends IridiumError<Metadata> {}
 
 /**
  * Represents error evaluating an expression.
  */
-export class EvaluationError extends ParseTreeError {}
+export class EvaluationError<
+  Metadata = unknown,
+> extends IridiumError<Metadata> {}
 
 /**
  * Represents a compile error that occurs for the whole model.
