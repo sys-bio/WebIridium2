@@ -20,7 +20,7 @@ export type RuntimeEvent = {
  * to keep track of which conditions are triggered.
  */
 export type RuntimePieceEvent = {
-  isForPiecwise: true;
+  isForPiecewise: true;
   numRoots: number;
 };
 

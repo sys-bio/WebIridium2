@@ -1,13 +1,13 @@
-import "./env.d.ts";
+import "../env.d.ts";
 
-import createBindings from "../build/cvodeBindings.js";
+import createBindings from "../../build/cvodeBindings.js";
 import type {
   EventInfoVector,
   EventParams,
   IntVector,
   MainModule,
   Model,
-} from "../build/cvodeBindings.d.ts";
+} from "../../build/cvodeBindings.d.ts";
 import {
   CHECK_ROOTS_NAME,
   CONVERT_TO_CONCENTRATIONS_NAME,
@@ -19,19 +19,19 @@ import {
   ROOTS_NAME,
   UPDATE_CONDITIONS_NAME,
   CONVERT_RESET_NAME,
-} from "./names.ts";
-import type { ModelSpec } from "./modelSpec.ts";
+} from "../names.ts";
 import {
   predefinedFuncDefs,
   type ImportedFunction,
-} from "./compile/functions.ts";
+} from "../compile/functions.ts";
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
-import { IndexSymbolTable } from "./compile/symbolTables.ts";
+import { IndexSymbolTable } from "../compile/symbolTables.ts";
+import type { RuntimeModel } from "./model.ts";
 
 const nullptr = 0;
 
 interface InternalModel {
-  spec: ModelSpec;
+  runtimeModel: RuntimeModel;
   yIndices: IndexSymbolTable;
   pIndices: IndexSymbolTable;
 
@@ -42,7 +42,7 @@ interface InternalModel {
   funcPtrs: number[];
 }
 
-export class CvodeWrapper {
+export class CvodeSimulator {
   #bindings: MainModule;
   #internalModel: InternalModel | undefined;
 
@@ -53,34 +53,34 @@ export class CvodeWrapper {
     this.#bindings = bindings;
   }
 
-  getModel(): ModelSpec | undefined {
-    return this.#internalModel?.spec;
+  getModel(): RuntimeModel | undefined {
+    return this.#internalModel?.runtimeModel;
   }
 
-  async setModel(spec: ModelSpec): Promise<void> {
+  async setModel(runtimeModel: RuntimeModel): Promise<void> {
     this.#disposeCurrentModel();
 
     const yIndices = new IndexSymbolTable();
     const yVector = new this.#bindings.DoubleVector();
-    for (const y of spec.y) {
+    for (const y of runtimeModel.y) {
       yIndices.add(y.name);
       yVector.push_back(y.initialValue ?? 0);
     }
 
     const pIndices = new IndexSymbolTable();
     const pVector = new this.#bindings.DoubleVector();
-    for (const p of spec.p) {
+    for (const p of runtimeModel.p) {
       pIndices.add(p.name);
       pVector.push_back(p.initialValue ?? 0);
     }
 
-    const instance = await WebAssembly.instantiate(spec.wasmModule, {
+    const instance = await WebAssembly.instantiate(runtimeModel.wasmModule, {
       [CORE_NAMESPACE]: {
         // eslint-disable-next-line
         [MEMORY_IMPORT_NAME]: this.#bindings.wasmMemory,
       },
       [IMPORT_NAMESPACE]: Object.fromEntries(
-        spec.funcImports.map((name) => [
+        runtimeModel.funcImports.map((name) => [
           name,
           (predefinedFuncDefs[name] as ImportedFunction).js,
         ]),
@@ -113,7 +113,7 @@ export class CvodeWrapper {
     funcPtrs.push(convertToConcentrationsPtr);
     funcPtrs.push(convertResetPtr);
 
-    if (spec.events.length > 0) {
+    if (runtimeModel.events.length > 0) {
       const rootsPtr = this.#bindings.addFunction(
         instance.exports[ROOTS_NAME],
       ) as number;
@@ -125,14 +125,14 @@ export class CvodeWrapper {
       ) as number;
       const eventInfo = new this.#bindings.EventInfoVector();
 
-      for (const event of spec.events) {
+      for (const event of runtimeModel.events) {
         if ("isForPiecewise" in event) {
           const yIndices = new this.#bindings.IntVector();
           const pIndices = new this.#bindings.IntVector();
 
           eventInfo.push_back({
             is_for_piecewise: true,
-            num_roots: event.countRoots,
+            num_roots: event.numRoots,
             y_indices: yIndices,
             p_indices: pIndices,
             get_assignments_fn: nullptr,
@@ -179,7 +179,7 @@ export class CvodeWrapper {
 
           eventInfo.push_back({
             is_for_piecewise: false,
-            num_roots: event.countRoots,
+            num_roots: event.numRoots,
             y_indices: yIndices,
             p_indices: pIndices,
             get_assignments_fn: getAssignmentsPtr,
@@ -210,17 +210,21 @@ export class CvodeWrapper {
     }
 
     this.#internalModel = {
-      spec,
+      runtimeModel,
       yIndices,
       pIndices,
       binding: new this.#bindings.Model(
         yVector,
         pVector,
-        spec.reactions.length,
+        runtimeModel.reactions.length,
         rhsPtr,
-        convertToAmountsPtr,
-        convertToConcentrationsPtr,
-        convertResetPtr,
+        // TODO: add concentration things these back
+        // convertToAmountsPtr,
+        // convertToConcentrationsPtr,
+        // convertResetPtr,
+        nullptr,
+        nullptr,
+        nullptr,
         eventParams,
       ),
       funcPtrs,
@@ -307,7 +311,7 @@ export class CvodeWrapper {
   }
 }
 
-export const createCvodeWrapper = async (): Promise<CvodeWrapper> => {
+export const createCvodeSimulator = async (): Promise<CvodeSimulator> => {
   const locateFile = (name: string, root: string) => {
     const isNode = typeof process === "object" && !process.browser;
     if (name.endsWith(".wasm")) {
@@ -317,5 +321,5 @@ export const createCvodeWrapper = async (): Promise<CvodeWrapper> => {
   };
 
   const bindings = await createBindings({ locateFile });
-  return new CvodeWrapper(bindings);
+  return new CvodeSimulator(bindings);
 };

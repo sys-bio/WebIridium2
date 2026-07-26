@@ -338,7 +338,7 @@ export const compileEvents = (
     const internalEvent = createInternalEvent(piece);
     internalEvents[index] = internalEvent;
     runtimeEvents.push({
-      isForPiecwise: true,
+      isForPiecewise: true,
       numRoots: internalEvent.conditions.length,
     });
   }
