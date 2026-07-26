@@ -3,16 +3,11 @@ import Emitter from "./Emitter";
 import { FunctionTable, LocalsSymbolTable } from "./symbolTables.ts";
 import { getAssignmentOrder } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-import { emitFormula } from "./formula";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
-import type {
-  AntimonyRateAssignment,
-  AntimonyRuleAssignment,
-  AntimonyVariable,
-} from "antimony-language/semantic";
-import { CompileError } from "./errors";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";
+import type { IridiumParameter, IridiumParameterValue } from "../ir/model.ts";
+import { emitExpression } from "./expression.ts";
 
 const YDOT_PTR_PARAM = "ydot[]";
 
@@ -25,33 +20,35 @@ export const RHS_PARAMS: ValType[] = [
 ];
 export const RHS_RESULTS: ValType[] = [ValType.i32];
 
+type RateDeterminedParameter = Omit<IridiumParameter, "value"> & {
+  value: Extract<IridiumParameterValue, { kind: "rate" }>;
+};
+type AssignmentDeterminedParameter = Omit<IridiumParameter, "value"> & {
+  value: Extract<IridiumParameterValue, { kind: "assignment" }>;
+};
+
 export const compileRhs = (
   compilation: Compilation,
   functionTable: FunctionTable,
 ): Emitter => {
-  const { variables, yVars, reactions, yTable, pTable } = compilation;
+  const { species, parameters, reactions, yTable, pTable } = compilation;
   const emitter = new Emitter();
 
-  const reactionDetermined: AntimonyVariable[] = [];
-  const rateDetermined: AntimonyVariable[] = [];
-  for (const variable of yVars) {
-    if (variable?.assignment?.kind === "rate") {
-      rateDetermined.push(variable);
-    } else {
-      reactionDetermined.push(variable);
-    }
-  }
+  const rateDetermined: RateDeterminedParameter[] = Array.from(
+    parameters.values(),
+  ).filter((p): p is RateDeterminedParameter => p.value.kind === "rate");
 
-  const ruleVariables = Array.from(compilation.variables.values()).filter(
-    (v) => v.assignment?.kind === "rule",
+  const assignmentDetermined: AssignmentDeterminedParameter[] = Array.from(
+    parameters.values(),
+  ).filter(
+    (p): p is AssignmentDeterminedParameter => p.value.kind === "assignment",
   );
-  const ruleMap = new Map(
-    ruleVariables.map((v) => [
-      v.name,
-      (v.assignment as AntimonyRuleAssignment).rule,
-    ]),
+
+  const assignmentMap = new Map(
+    assignmentDetermined.map((v) => [v.name, v.value.assignment]),
   );
-  const ruleEvaluationOrder = getAssignmentOrder(ruleMap);
+
+  const assignmentEvaluationOrder = getAssignmentOrder(assignmentMap);
 
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
@@ -61,7 +58,7 @@ export const compileRhs = (
     EVENTS_PARAM,
   ]);
 
-  for (const reaction of reactions) {
+  for (const reaction of reactions.values()) {
     localsTable.addLocal(reaction.name);
   }
 
@@ -71,60 +68,50 @@ export const compileRhs = (
   emitter.emitListHeader(1);
 
   // specify that we want these many f64s
-  emitter.emitUint(reactions.length);
+  emitter.emitUint(reactions.size);
   emitter.emitByte(ValType.f64);
 
   // calculate assignment rules
 
-  for (const variableName of ruleEvaluationOrder) {
-    const variable = variables.get(variableName)!;
+  for (const parameterName of assignmentEvaluationOrder) {
+    const parameter = parameters.get(
+      parameterName,
+    ) as AssignmentDeterminedParameter;
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(P_PARAM));
 
-    emitFormula(
-      (variable.assignment as AntimonyRuleAssignment).rule,
-      emitter,
-      compilation,
-      scope,
-    );
+    emitExpression(parameter.value.assignment, emitter, compilation, scope);
 
-    if (
-      variable.kind === "species" &&
-      !variable.hasSubstanceOnly &&
-      variable.compartment
-    ) {
-      scope.emitLoadVariableFromName(emitter, variable.compartment);
-      emitter.emitUint(OpCode.f64mul);
-    }
+    // TODO: add back multiplying by compartment size for species
+    // if (
+    //   variable.kind === "species" &&
+    //   !variable.hasSubstanceOnly &&
+    //   variable.compartment
+    // ) {
+    //   scope.emitLoadVariableFromName(emitter, variable.compartment);
+    //   emitter.emitUint(OpCode.f64mul);
+    // }
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * pTable.get(variableName));
+    emitter.emitUint(SIZEOF_DOUBLE * pTable.get(parameterName));
   }
 
   // calculate all the reaction rates
 
-  for (const reaction of reactions) {
-    if (reaction.rate) {
-      emitFormula(reaction.rate, emitter, compilation, scope);
+  for (const reaction of reactions.values()) {
+    emitExpression(reaction.rate, emitter, compilation, scope);
 
-      emitter.emitByte(OpCode.localset);
-      emitter.emitUint(localsTable.getLocal(reaction.name));
-    } else {
-      // TODO: how to handle missing rate?
-      emitter.emitF64ConstOp(0);
-
-      emitter.emitByte(OpCode.localset);
-      emitter.emitUint(localsTable.getLocal(reaction.name));
-    }
+    emitter.emitByte(OpCode.localset);
+    emitter.emitUint(localsTable.getLocal(reaction.name));
   }
 
   // assign to ydot
 
   const involvedReactions: Map<string, Map<string, number>> = new Map();
 
-  for (const reaction of reactions) {
+  for (const reaction of reactions.values()) {
     for (const reactant of reaction.reactants) {
       const reactantMap = involvedReactions.get(reactant.name);
       if (reactantMap) {
@@ -153,25 +140,13 @@ export const compileRhs = (
     }
   }
 
-  for (const f of reactionDetermined) {
-    const reactions = involvedReactions.get(f.name);
+  for (const speciesName of species.keys()) {
+    const reactions = involvedReactions.get(speciesName);
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
     if (reactions) {
-      if (f.assignment?.kind === "rate") {
-        throw new CompileError(
-          "Species cannot simultaneously be defined by rate rule and reaction.",
-          { tree: f.assignment.rate.parent },
-        );
-      } else if (ruleMap.has(f.name)) {
-        throw new CompileError(
-          "Species cannot simultaneously be defined by assignment rule and reaction.",
-          { tree: (f.assignment as AntimonyRuleAssignment).rule.parent },
-        );
-      }
-
       let isFirst = true;
       for (const [reaction, stoichiometry] of reactions) {
         if (stoichiometry === 0) continue;
@@ -208,51 +183,48 @@ export const compileRhs = (
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(f.name));
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(speciesName));
   }
 
   // do rate rules
 
-  for (const ode of rateDetermined) {
+  for (const parameter of rateDetermined) {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
-    emitFormula(
-      (ode.assignment as AntimonyRateAssignment).rate,
-      emitter,
-      compilation,
-      scope,
-    );
+    emitExpression(parameter.value.rate, emitter, compilation, scope);
 
-    if (ode.kind === "species" && !ode.hasSubstanceOnly && ode.compartment) {
-      scope.emitLoadVariableFromName(emitter, ode.compartment);
-      emitter.emitByte(OpCode.f64mul);
+    // TODO: add back compartment product rule
 
-      // TODO: cache compartment rate (sort compartments first, evaluate it first, instead of re-evaluating each time)
-      // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
-      //       require differentiating the volume which is too complex of a task.
-      const compartmentVariable = variables.get(ode.compartment)!;
-      if (compartmentVariable.assignment?.kind === "rate") {
-        // product rule second term
-        scope.emitLoadVariableFromName(emitter, ode.name);
-        emitFormula(
-          compartmentVariable.assignment?.rate,
-          emitter,
-          compilation,
-          scope,
-        );
-        emitter.emitByte(OpCode.f64mul);
-        emitter.emitByte(OpCode.f64add);
-      }
-    }
+    // if (ode.kind === "species" && !ode.hasSubstanceOnly && ode.compartment) {
+    //   scope.emitLoadVariableFromName(emitter, ode.compartment);
+    //   emitter.emitByte(OpCode.f64mul);
+    //
+    //   // TODO: cache compartment rate (sort compartments first, evaluate it first, instead of re-evaluating each time)
+    //   // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
+    //   //       require differentiating the volume which is too complex of a task.
+    //   const compartmentVariable = variables.get(ode.compartment)!;
+    //   if (compartmentVariable.assignment?.kind === "rate") {
+    //     // product rule second term
+    //     scope.emitLoadVariableFromName(emitter, ode.name);
+    //     emitFormula(
+    //       compartmentVariable.assignment?.rate,
+    //       emitter,
+    //       compilation,
+    //       scope,
+    //     );
+    //     emitter.emitByte(OpCode.f64mul);
+    //     emitter.emitByte(OpCode.f64add);
+    //   }
+    // }
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(ode.name));
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(parameter.name));
   }
 
   // add to reactions to p (for output)
-  for (const reaction of reactions) {
+  for (const reaction of reactions.values()) {
     const index = pTable.get(reaction.name);
 
     emitter.emitByte(OpCode.localget);
