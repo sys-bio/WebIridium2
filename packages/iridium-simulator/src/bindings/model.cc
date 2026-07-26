@@ -162,7 +162,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
     rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
-    convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
+    // TODO: re-enable
+    // convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
 
     if (!has_init_) {
         CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
@@ -224,8 +225,9 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         RecordToOutputArray(time_);
     }
 
+    // TODO: re-enable
     // convert back to concentrations in case the user runs another time course with same state
-    convert_reset_fn_(NV_DATA_S(y_), p_.data());
+    // convert_reset_fn_(NV_DATA_S(y_), p_.data());
 
     return Float64Array(
         emscripten::val(emscripten::typed_memory_view(num_points * num_variables(), output_array_))
@@ -487,10 +489,11 @@ void Model::RecordToOutputArray(double time) {
     );
     output_array_[start + original_y_.size() + p_.size()] = time;
 
-    convert_to_concentrations_fn_(
-        output_array_ + start,
-        output_array_ + start + original_y_.size()
-    );
+    // TODO: re-enable
+    // convert_to_concentrations_fn_(
+    //     output_array_ + start,
+    //     output_array_ + start + original_y_.size()
+    // );
 
     current_output_row_ += 1;
 }
