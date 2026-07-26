@@ -20,7 +20,6 @@ import {
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
-import type { EventSpec, PieceEventSpec } from "../modelSpec";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";
 import {
@@ -31,6 +30,7 @@ import {
 } from "../ir/ast.ts";
 import { emitComparisonOperator, emitExpression } from "./expression.ts";
 import type { IridiumEvent } from "../ir/model.ts";
+import type { RuntimeEvent, RuntimePieceEvent } from "../runtime/model.ts";
 
 const ROOTS_PARAMS = [
   ValType.f64,
@@ -328,18 +328,18 @@ export const compileEvents = (
   compilation: Compilation,
 ): {
   functions: WasmFunction[];
-  eventSpecs: (PieceEventSpec | EventSpec)[];
+  runtimeEvents: (RuntimeEvent | RuntimePieceEvent)[];
 } => {
   const internalEvents: InternalEvent[] = [];
-  const eventSpecs: (PieceEventSpec | EventSpec)[] = [];
+  const runtimeEvents: (RuntimeEvent | RuntimePieceEvent)[] = [];
   const eventFns: WasmFunction[] = [];
 
   for (const [piece, index] of compilation.piecewisePieces) {
     const internalEvent = createInternalEvent(piece);
     internalEvents[index] = internalEvent;
-    eventSpecs.push({
-      isForPiecewise: true,
-      countRoots: internalEvent.conditions.length,
+    runtimeEvents.push({
+      isForPiecwise: true,
+      numRoots: internalEvent.conditions.length,
     });
   }
 
@@ -417,11 +417,11 @@ export const compileEvents = (
         ).getOutput(),
     });
 
-    eventSpecs.push({
+    runtimeEvents.push({
       getAssignmentsExport,
       getDelayExport,
       getPriorityExport,
-      countRoots: internalEvent.conditions.length,
+      numRoots: internalEvent.conditions.length,
 
       // These are actually a different set of indices.
       // We start with maybe some variables: A, B, C
@@ -480,7 +480,7 @@ export const compileEvents = (
       },
       ...eventFns,
     ],
-    eventSpecs,
+    runtimeEvents,
   };
 };
 

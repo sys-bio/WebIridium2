@@ -1,16 +1,15 @@
 import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { FunctionTable, TypeTable } from "./symbolTables.ts";
-import type { EventSpec, ModelSpec, PieceEventSpec } from "../modelSpec";
 import { evaluateInitialValues } from "./evaluate";
 import {
-  CONVERT_TO_CONCENTRATIONS_NAME,
-  CONVERT_TO_AMOUNTS_NAME,
+  // CONVERT_TO_CONCENTRATIONS_NAME,
+  // CONVERT_TO_AMOUNTS_NAME,
   CORE_NAMESPACE,
   IMPORT_NAMESPACE,
   MEMORY_IMPORT_NAME,
   RHS_NAME,
-  CONVERT_RESET_NAME,
+  // CONVERT_RESET_NAME,
 } from "../names";
 import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
 import { compileEvents } from "./event";
@@ -26,13 +25,18 @@ import {
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
 import { Compilation } from "./Compilation.ts";
-import {
-  compileConvert,
-  CONVERT_PARAMS,
-  CONVERT_RESULTS,
-} from "./convertConcentration.ts";
+// import {
+//   compileConvert,
+//   CONVERT_PARAMS,
+//   CONVERT_RESULTS,
+// } from "./convertConcentration.ts";
 import type { IridiumModel } from "../ir/model.ts";
 import { walkExpression, type IridiumExpressionListener } from "../ir/ast.ts";
+import type {
+  RuntimeEvent,
+  RuntimeModel,
+  RuntimePieceEvent,
+} from "../runtime/model.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -40,7 +44,7 @@ export const compileIntermediate = (
 ): {
   compilation: Compilation;
   imports: string[];
-  eventSpecs: (PieceEventSpec | EventSpec)[];
+  runtimeEvents: (RuntimePieceEvent | RuntimeEvent)[];
   bytecode: Uint8Array;
 } => {
   const compilation = new Compilation(ir);
@@ -59,33 +63,33 @@ export const compileIntermediate = (
       compileBody: (functionTable) =>
         compileRhs(compilation, functionTable).getOutput(),
     },
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_TO_AMOUNTS_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "toAmount").getOutput(),
-    },
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_TO_CONCENTRATIONS_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "toConcentrations").getOutput(),
-    },
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_RESET_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "reset").getOutput(),
-    },
+    // {
+    //   kind: "compile",
+    //   isExported: true,
+    //   name: CONVERT_TO_AMOUNTS_NAME,
+    //   params: CONVERT_PARAMS,
+    //   results: CONVERT_RESULTS,
+    //   compileBody: (_functionTable) =>
+    //     compileConvert(compilation, "toAmount").getOutput(),
+    // },
+    // {
+    //   kind: "compile",
+    //   isExported: true,
+    //   name: CONVERT_TO_CONCENTRATIONS_NAME,
+    //   params: CONVERT_PARAMS,
+    //   results: CONVERT_RESULTS,
+    //   compileBody: (_functionTable) =>
+    //     compileConvert(compilation, "toConcentrations").getOutput(),
+    // },
+    // {
+    //   kind: "compile",
+    //   isExported: true,
+    //   name: CONVERT_RESET_NAME,
+    //   params: CONVERT_PARAMS,
+    //   results: CONVERT_RESULTS,
+    //   compileBody: (_functionTable) =>
+    //     compileConvert(compilation, "reset").getOutput(),
+    // },
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {
         return predefinedFuncDefs[name];
@@ -95,64 +99,38 @@ export const compileIntermediate = (
     }),
   ];
 
-  let eventSpecs: (PieceEventSpec | EventSpec)[] = [];
+  let runtimeEvents: (RuntimePieceEvent | RuntimeEvent)[] = [];
   if (compilation.piecewisePieces.size > 0 || compilation.events.size > 0) {
     const eventsResult = compileEvents(compilation);
     functions.push(...eventsResult.functions);
-    eventSpecs = eventsResult.eventSpecs;
+    runtimeEvents = eventsResult.runtimeEvents;
   }
 
   return {
     compilation,
     imports: referencedFunctions,
-    eventSpecs,
+    runtimeEvents: runtimeEvents,
     bytecode: compileFunctions(functions),
   };
 };
 
-export const compile = async (ir: IridiumModel): Promise<ModelSpec> => {
-  const { compilation, imports, eventSpecs, bytecode } =
+export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
+  const { compilation, imports, runtimeEvents, bytecode } =
     compileIntermediate(ir);
 
   const initialValues = evaluateInitialValues(compilation);
 
   return {
-    y: compilation.yVars.map((y) => {
-      if (y.kind === "species") {
-        return {
-          kind: "floating",
-          name: y.name,
-          displayName: y.displayName,
-          initialValue: initialValues.get(y.name),
-        };
-      } else {
-        return {
-          kind: y.kind,
-          name: y.name,
-          displayName: y.displayName,
-          initialValue: initialValues.get(y.name),
-        };
-      }
-    }),
-    p: compilation.pVars.map((p) => {
-      if (p.kind === "species") {
-        return {
-          kind: p.isConst ? "boundary" : "floating",
-          name: p.name,
-          displayName: p.displayName,
-          initialValue: initialValues.get(p.name),
-        };
-      } else {
-        return {
-          kind: p.kind,
-          name: p.name,
-          displayName: p.displayName,
-          initialValue: initialValues.get(p.name),
-        };
-      }
-    }),
-    reactions: compilation.reactions.map((r) => r.name),
-    events: eventSpecs,
+    y: compilation.yVars.map((name) => ({
+      name,
+      initialValue: initialValues.get(name) ?? 0,
+    })),
+    p: compilation.pVars.map((name) => ({
+      name,
+      initialValue: initialValues.get(name) ?? 0,
+    })),
+    reactions: Array.from(compilation.reactions.values()).map((r) => r.name),
+    events: runtimeEvents,
     wasmModule: await WebAssembly.compile(bytecode),
     funcImports: imports,
   };
