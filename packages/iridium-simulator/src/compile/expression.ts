@@ -20,7 +20,7 @@ import { CompileError } from "./errors";
 import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
 
-const emitComparisonOperator = (emitter: Emitter, op: string): void => {
+export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   if (op === ">=") {
     emitter.emitByte(OpCode.f64ge);
   } else if (op === "<=") {

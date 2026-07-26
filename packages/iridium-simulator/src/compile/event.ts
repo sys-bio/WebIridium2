@@ -1,22 +1,10 @@
 import {
-  ArgumentListContext,
-  CallContext,
-  CompareContext,
-  EventAssignmentContext,
-  FormulaContext,
-  GroupContext,
-  LogicalContext,
-  NotContext,
-} from "antimony-language/grammar";
-import { emitComparisonOperator, emitFormula } from "./formula";
-import {
   FunctionTable,
   IndexSymbolTable,
   LocalsSymbolTable,
 } from "./symbolTables.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
-import type { AntimonyEvent } from "antimony-language/semantic";
 import { CompileError, CompileInvariantError } from "./errors";
 import {
   ROOTS_NAME,
@@ -30,12 +18,19 @@ import {
   EVENTS_PARAM,
 } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
-import { evaluateBoolean, getAssignmentOrder } from "./evaluate";
+import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { EventSpec, PieceEventSpec } from "../modelSpec";
-import type { ParserRuleContext } from "antlr4ts";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";
+import {
+  visitExpression,
+  type IridiumExpression,
+  type IridiumExpressionBinary,
+  type IridiumExpressionVisitor,
+} from "../ir/ast.ts";
+import { emitComparisonOperator, emitExpression } from "./expression.ts";
+import type { IridiumEvent } from "../ir/model.ts";
 
 const ROOTS_PARAMS = [
   ValType.f64,
@@ -78,12 +73,19 @@ const GET_ASSIGNMENTS_PARAMS = [
 ];
 const GET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
-type ComparisonOperator = ">" | ">=" | "<" | "<=" | "==" | "!=";
-
-type EventCondition = {
+type ComparisonOperator =
+  | "and"
+  | "or"
+  | "lt"
+  | "le"
+  | "gt"
+  | "ge"
+  | "eq"
+  | "neq";
+type Condition = {
   op: ComparisonOperator;
-  left: FormulaContext;
-  right: FormulaContext;
+  left: IridiumExpression;
+  right: IridiumExpression;
 };
 
 type LogicTree =
@@ -96,18 +98,18 @@ type LogicTree =
   | { kind: "not"; child: LogicTree };
 
 type InternalEvent = {
-  conditions: EventCondition[];
+  conditions: Condition[];
   tree: LogicTree;
 };
 
-const emitEventConditionAsRoot = (
-  condition: EventCondition,
+const emitConditionAsRoot = (
+  expression: Condition,
   emitter: Emitter,
   compilation: Compilation,
   scope: Scope,
 ): void => {
-  emitFormula(condition.left, emitter, compilation, scope);
-  emitFormula(condition.right, emitter, compilation, scope);
+  emitExpression(expression.left, emitter, compilation, scope);
+  emitExpression(expression.right, emitter, compilation, scope);
   emitter.emitByte(OpCode.f64sub);
 
   // We need to do a little trick when we end up exactly at the event boundary.
@@ -120,24 +122,38 @@ const emitEventConditionAsRoot = (
   // I think it is fair to give up. What RoadRunner seems to do is have its events as
   // discontinuous function that is 1 on true and -1 on false. We can also do that,
   // it will actually be way less of a headache.
-  if (condition.op === ">") {
+  if (expression.op === "gt") {
     emitter.emitF64ConstOp(Number.EPSILON);
     emitter.emitByte(OpCode.f64sub);
-  } else if (condition.op === "<") {
+  } else if (expression.op === "lt") {
     emitter.emitF64ConstOp(Number.EPSILON);
     emitter.emitByte(OpCode.f64add);
   }
 };
 
+const isComparisonExpression = (
+  expr: IridiumExpression,
+): expr is IridiumExpressionBinary => {
+  return (
+    expr.kind === "binary" &&
+    (expr.op === "eq" ||
+      expr.op === "neq" ||
+      expr.op === "lt" ||
+      expr.op === "le" ||
+      expr.op === "gt" ||
+      expr.op == "ge")
+  );
+};
+
 /**
  * Gets the conditions from a formula and a logic tree to execute it.
  */
-const createInternalEvent = (root: FormulaContext): InternalEvent => {
+const createInternalEvent = (root: IridiumExpression): InternalEvent => {
   const treeStack: LogicTree[] = [];
-  const conditions: EventCondition[] = [];
+  const conditions: Condition[] = [];
 
   const pushBinaryLogicalOp = (
-    ctx: ParserRuleContext,
+    expr: IridiumExpression,
     kind: "and" | "or",
   ): void => {
     const right = treeStack.pop();
@@ -145,155 +161,163 @@ const createInternalEvent = (root: FormulaContext): InternalEvent => {
     if (left === undefined || right === undefined) {
       throw new CompileError(
         "Invalid event trigger. Must evaluate to boolean.",
-        { tree: ctx },
+        expr.metadata,
       );
     }
     treeStack.push({ kind, left, right });
   };
 
-  const walkVariadicFunction = (
-    defaultValue: boolean,
-    kind: "or" | "xor" | "and",
-    args: ArgumentListContext | undefined,
-  ): void => {
-    if (!args) {
-      treeStack.push(defaultValue);
-    } else {
-      const formulas = args.formula();
-      for (let i = 0; i < formulas.length; i++) {
-        walkFormula(formulas[i]);
+  const visitor: IridiumExpressionVisitor<void> = {
+    visitBinary(expr) {
+      const { op, left, right } = expr;
+      switch (op) {
+        case "and":
+          visitExpression(left, visitor);
+          visitExpression(right, visitor);
 
-        if (i > 0) {
-          const right = treeStack.pop() as LogicTree;
-          const left = treeStack.pop() as LogicTree;
-          treeStack.push({ kind, left, right });
-        }
+          pushBinaryLogicalOp(expr, "and");
+          break;
+        case "or":
+          visitExpression(left, visitor);
+          visitExpression(right, visitor);
+
+          pushBinaryLogicalOp(expr, "or");
+          break;
+        case "eq":
+        case "neq":
+        case "lt":
+        case "le":
+        case "gt":
+        case "ge":
+          if (isComparisonExpression(left)) {
+            visitExpression(left, visitor);
+          }
+
+          if (isComparisonExpression(right)) {
+            visitExpression(right, visitor);
+          }
+
+          treeStack.push(conditions.length);
+
+          // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
+          if (isComparisonExpression(left)) {
+            conditions.push({
+              op: op as ComparisonOperator,
+              left: left.right,
+              right: right,
+            });
+          } else {
+            // We flip the != so it is false more often than it is true.
+            // This is so they are more likely to fire when they should
+            // (it is not perfect though)
+            if (op === "neq") {
+              treeStack.push({
+                kind: "not",
+                child: treeStack.pop() as LogicTree,
+              });
+            }
+
+            conditions.push({
+              op: op as ComparisonOperator,
+              left,
+              right,
+            });
+          }
+          break;
+        default:
+          throw new CompileError("Expected boolean expression.", expr.metadata);
       }
-    }
-  };
-
-  const walkFormula = (ctx: FormulaContext): void => {
-    if (ctx instanceof GroupContext) {
-      walkFormula(ctx.formula());
-    } else if (ctx instanceof LogicalContext) {
-      const left = ctx.formula(0);
-      const right = ctx.formula(1);
-
-      walkFormula(left);
-      walkFormula(right);
-
-      const op = ctx._op.text;
-      if (op === "&&") {
-        pushBinaryLogicalOp(ctx, "and");
-      } else if (op === "||") {
-        pushBinaryLogicalOp(ctx, "or");
-      }
-    } else if (ctx instanceof CompareContext) {
-      const op = ctx._op.text as ComparisonOperator;
-      const left = ctx.formula(0);
-      const right = ctx.formula(1);
-
-      if (left instanceof CompareContext) {
-        walkFormula(left);
-      }
-
-      if (right instanceof CompareContext) {
-        walkFormula(right);
-      }
-
-      treeStack.push(conditions.length);
-
-      // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
-      if (left instanceof CompareContext) {
-        const leftRight = left.getChild(1, FormulaContext);
-        // TODO: what if someone does `0 < (x < 5)`? Should this be allowed?
-
-        conditions.push({
-          op: op,
-          left: leftRight,
-          right: ctx.getChild(1, FormulaContext),
-        });
-
-        pushBinaryLogicalOp(ctx, "and");
-      } else {
-        // We flip the != so it is false more often than it is true.
-        // This is so they are more likely to fire when they should
-        // (it is not perfect though)
-        if (op === "!=") {
+    },
+    visitUnary(expr) {
+      const { op, expr: child } = expr;
+      switch (op) {
+        case "not":
+          visitExpression(child, visitor);
           treeStack.push({
             kind: "not",
             child: treeStack.pop() as LogicTree,
           });
-        }
-
-        conditions.push({
-          op: op,
-          left: ctx.getChild(0, FormulaContext),
-          right: ctx.getChild(1, FormulaContext),
-        });
+          break;
+        default:
+          throw new CompileError("Expected boolean expression.", expr.metadata);
       }
-    } else if (ctx instanceof NotContext) {
-      walkFormula(ctx.formula());
-
-      treeStack.push({
-        kind: "not",
-        child: treeStack.pop() as LogicTree,
-      });
-    } else if (ctx instanceof CallContext) {
-      const name = ctx.functionCall().NAME().text;
+    },
+    visitCall(expr) {
+      const { name, args } = expr;
       if (name === "and") {
-        walkVariadicFunction(true, "and", ctx.functionCall().argumentList());
+        visitVariadicFunction(true, "and", args);
       } else if (name === "or") {
-        walkVariadicFunction(false, "or", ctx.functionCall().argumentList());
+        visitVariadicFunction(false, "or", args);
       } else if (name === "xor") {
-        walkVariadicFunction(false, "xor", ctx.functionCall().argumentList());
+        visitVariadicFunction(false, "xor", args);
       } else if (name === "implies") {
-        const formulas = ctx.functionCall().argumentList()?.formula();
-        if (!formulas || formulas.length !== 2) {
-          throw new CompileError("Expected 2 argumentes for implies.", {
-            tree: ctx,
-          });
+        if (args.length !== 2) {
+          throw new CompileError(
+            "Expected 2 argument for implies.",
+            expr.metadata,
+          );
         }
 
-        walkFormula(formulas[0]);
-        walkFormula(formulas[1]);
+        visitExpression(args[0], visitor);
+        visitExpression(args[1], visitor);
 
-        const right = treeStack.pop() as LogicTree;
-        const left = treeStack.pop() as LogicTree;
+        const right = treeStack.pop()!;
+        const left = treeStack.pop()!;
         treeStack.push({
           kind: "implies",
           left,
           right,
         });
       } else if (name === "not") {
-        const formulas = ctx.functionCall().argumentList()?.formula();
-        if (!formulas || formulas.length !== 1) {
-          throw new CompileError("Expected 1 argumentes for not.", {
-            tree: ctx,
-          });
+        if (args.length !== 1) {
+          throw new CompileError("Expected 1 argument for not.", expr.metadata);
         }
 
-        walkFormula(formulas[0]);
+        visitExpression(args[0], visitor);
 
-        const child = treeStack.pop() as LogicTree;
+        const child = treeStack.pop()!;
         treeStack.push({
           kind: "not",
           child,
         });
       } else {
-        throw new CompileError("Expected boolean expression.", { tree: ctx });
+        throw new CompileError("Expected boolean expression.", expr.metadata);
       }
+    },
+    visitNumber(expr) {
+      throw new CompileError("Expected boolean expression.", expr.metadata);
+    },
+    visitVariable(expr) {
+      throw new CompileError("Expected boolean expression.", expr.metadata);
+    },
+  };
+
+  const visitVariadicFunction = (
+    defaultValue: boolean,
+    kind: "or" | "xor" | "and",
+    args: IridiumExpression[],
+  ): void => {
+    if (args.length === 0) {
+      treeStack.push(defaultValue);
     } else {
-      throw new CompileError("Expected boolean expression.", { tree: ctx });
+      for (let i = 0; i < args.length; i++) {
+        visitExpression(args[i], visitor);
+
+        if (i > 0) {
+          const right = treeStack.pop()!;
+          const left = treeStack.pop()!;
+          treeStack.push({ kind, left, right });
+        }
+      }
     }
   };
 
-  walkFormula(root);
+  visitExpression(root, visitor);
 
   if (treeStack.length !== 1) {
     throw new CompileError(
       "Unexpected error. Please report this bug with code.",
-      { tree: root },
+      root.metadata,
     );
   }
 
@@ -319,26 +343,23 @@ export const compileEvents = (
     });
   }
 
-  for (const event of compilation.events) {
+  for (const event of compilation.events.values()) {
     const internalEvent = createInternalEvent(event.trigger);
     const yIndices = new IndexSymbolTable();
     const pIndices = new IndexSymbolTable();
 
-    for (const [name, formula] of event.assignments) {
+    for (const { name, metadata: assignmentMetadata } of event.assignments) {
       if (compilation.yTable.has(name)) {
         yIndices.add(name);
       } else if (compilation.pTable.has(name)) {
         pIndices.add(name);
       } else if (name === TIME_NAME) {
-        throw new CompileError("You cannot assign to time.", {
-          tree: formula.parent,
-        });
+        throw new CompileError(
+          "You cannot assign to time.",
+          assignmentMetadata,
+        );
       } else {
-        throw new CompileError(`Unbound name: ${name}`, {
-          tree: (
-            formula?.parent as EventAssignmentContext | undefined
-          )?.variable?.(),
-        });
+        throw new CompileError(`Unbound name: ${name}.`, assignmentMetadata);
       }
     }
 
@@ -357,13 +378,13 @@ export const compileEvents = (
         compileBody: (functionTable) =>
           compileGetOption(
             compilation,
-            event.delay as FormulaContext,
+            event.delay!,
             functionTable,
           ).getOutput(),
       });
     }
 
-    if (event.options.priority) {
+    if (event.priority) {
       getPriorityExport = generateSymbol("getPriority");
       eventFns.push({
         kind: "compile",
@@ -374,7 +395,7 @@ export const compileEvents = (
         compileBody: (functionTable) =>
           compileGetOption(
             compilation,
-            event.options.priority as FormulaContext,
+            event.priority!,
             functionTable,
           ).getOutput(),
       });
@@ -412,13 +433,9 @@ export const compileEvents = (
       yIndices: yIndices.keys().map((y) => compilation.yTable.get(y)),
       pIndices: pIndices.keys().map((p) => compilation.pTable.get(p)),
 
-      isPersistent: event.options.persistent
-        ? evaluateBoolean(event.options.persistent)
-        : true,
-      isFromTrigger: event.options.fromTrigger
-        ? evaluateBoolean(event.options.fromTrigger)
-        : true,
-      isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : true,
+      isPersistent: event.isPersistent,
+      isFromTrigger: event.isFromTrigger,
+      isT0: event.isT0,
     });
 
     internalEvents.push(internalEvent);
@@ -496,7 +513,7 @@ const compileRoots = (
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(G_PARAM));
 
-      emitEventConditionAsRoot(condition, emitter, compilation, scope);
+      emitConditionAsRoot(condition, emitter, compilation, scope);
 
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint(MEM_ALIGNMENT);
@@ -579,7 +596,7 @@ const compileCheckRoots = (
     const startRootIndex = currentRootIndex;
 
     for (const condition of event.conditions) {
-      if (condition.op === "==" || condition.op === "!=") {
+      if (condition.op === "eq" || condition.op === "neq") {
         // For equality, we want to check the condition again if it is true
         // even if no root was hit since we may not be equal anymore (which wouldn't
         // be detected by the root-finder usually)
@@ -609,7 +626,7 @@ const compileCheckRoots = (
             emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
             emitter.emitI32ConstOp(0);
-            if (condition.op === "!=") {
+            if (condition.op === "neq") {
               emitter.emitByte(OpCode.i32eq);
             } else {
               emitter.emitByte(OpCode.i32ne);
@@ -624,8 +641,8 @@ const compileCheckRoots = (
             emitter.emitByte(OpCode.localget);
             emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-            emitFormula(condition.left, emitter, compilation, scope);
-            emitFormula(condition.right, emitter, compilation, scope);
+            emitExpression(condition.left, emitter, compilation, scope);
+            emitExpression(condition.right, emitter, compilation, scope);
             emitComparisonOperator(emitter, condition.op);
 
             emitter.emitByte(OpCode.i32store);
@@ -662,10 +679,10 @@ const compileCheckRoots = (
           emitter.emitUint(MEM_ALIGNMENT);
           emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
-          if (condition.op === ">=" || condition.op === ">") {
+          if (condition.op === "ge" || condition.op === "gt") {
             emitter.emitI32ConstOp(0);
             emitter.emitByte(OpCode.i32ge_s);
-          } else if (condition.op === "<=" || condition.op === "<") {
+          } else if (condition.op === "le" || condition.op === "lt") {
             emitter.emitI32ConstOp(0);
             emitter.emitByte(OpCode.i32le_s);
           } else {
@@ -746,12 +763,12 @@ const compileUpdateConditions = (
       // without stepping an infitesimal step forward. Our strategy is to NOT do anything if we end up
       // at a boundary. Instead, in the root function, we nudge the inequalities slightly so a root will be
       // found if we end up moving in the right direction. Then we can just rely on the normal root check code.
-      if (condition.op === ">" || condition.op === "<") {
-        emitFormula(condition.left, emitter, compilation, scope);
+      if (condition.op === "gt" || condition.op === "lt") {
+        emitExpression(condition.left, emitter, compilation, scope);
         emitter.emitByte(OpCode.localset);
         emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
 
-        emitFormula(condition.right, emitter, compilation, scope);
+        emitExpression(condition.right, emitter, compilation, scope);
         emitter.emitByte(OpCode.localset);
         emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
 
@@ -806,8 +823,8 @@ const compileUpdateConditions = (
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-        emitFormula(condition.left, emitter, compilation, scope);
-        emitFormula(condition.right, emitter, compilation, scope);
+        emitExpression(condition.left, emitter, compilation, scope);
+        emitExpression(condition.right, emitter, compilation, scope);
         emitComparisonOperator(emitter, condition.op);
 
         emitter.emitByte(OpCode.i32store);
@@ -854,7 +871,7 @@ const compileUpdateConditions = (
 
 const compileGetOption = (
   compilation: Compilation,
-  formula: FormulaContext,
+  expression: IridiumExpression,
   functionTable: FunctionTable,
 ): Emitter => {
   const emitter = new Emitter();
@@ -869,7 +886,7 @@ const compileGetOption = (
   emitter.emitListHeader(0);
 
   const scope = new Scope(compilation, localsTable, functionTable);
-  emitFormula(formula, emitter, compilation, scope);
+  emitExpression(expression, emitter, compilation, scope);
 
   emitter.emitByte(OpCode.end);
 
@@ -881,7 +898,7 @@ const P_OUT_PARAM = "pout[]";
 
 const compileGetAssignments = (
   compilation: Compilation,
-  event: AntimonyEvent,
+  event: IridiumEvent,
   yIndices: IndexSymbolTable,
   pIndices: IndexSymbolTable,
   functionTable: FunctionTable,
@@ -899,14 +916,18 @@ const compileGetAssignments = (
 
   emitter.emitListHeader(0);
 
-  const ordering = getAssignmentOrder(event.assignments, {
-    allowSelfCycle: true,
-  });
+  const ordering = getAssignmentOrder(
+    new Map(event.assignments.map((a) => [a.name, a.value])),
+    {
+      allowSelfCycle: true,
+    },
+  );
 
   const scope = new Scope(compilation, localsTable, functionTable);
 
+  const assignmentMap = new Map(event.assignments.map((a) => [a.name, a]));
   for (const name of ordering) {
-    const formula = event.assignments.get(name)!;
+    const assignment = assignmentMap.get(name)!;
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
@@ -915,18 +936,12 @@ const compileGetAssignments = (
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(P_OUT_PARAM));
     } else if (name === TIME_NAME) {
-      throw new CompileError("You cannot assign to time.", {
-        tree: formula.parent,
-      });
+      throw new CompileError("You cannot assign to time.", assignment.metadata);
     } else {
-      throw new CompileError("Unexpected assignment.", {
-        tree: (
-          formula?.parent as EventAssignmentContext | undefined
-        )?.variable?.(),
-      });
+      throw new CompileError("Unexpected assignment.", assignment.metadata);
     }
 
-    emitFormula(formula, emitter, compilation, scope);
+    emitExpression(assignment.value, emitter, compilation, scope);
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
