@@ -2,8 +2,8 @@ import { TIME_NAME } from "../names";
 import type { RuntimeModel } from "./model";
 
 const escapeCsv = (text: string): string => {
-  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
-    return "\"" + text.replaceAll("\"", "\"\"") + "\"";
+  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+    return '"' + text.replaceAll('"', '""') + '"';
   } else {
     return text;
   }
@@ -43,7 +43,10 @@ export class TimeCourseOutput {
 
   get columnCount() {
     return (
-      1 + this.model.y.length + this.model.p.length + this.model.reactions.length
+      1 +
+      this.model.y.length +
+      this.model.p.length +
+      this.model.reactions.length
     );
   }
 
@@ -115,14 +118,14 @@ export class TimeCourseOutput {
     const colCount = this.columnCount;
     const rowCount = this.rowCount;
 
-    lines.push(this.columnNames.map(escapeCsv).join(","))
+    lines.push(this.columnNames.map(escapeCsv).join(","));
 
     for (let y = 0; y < rowCount; y++) {
       const line = [];
       for (let x = 0; x < colCount; x++) {
         line.push(this.buffer[x + y * colCount]);
       }
-      lines.push(line.join(","))
+      lines.push(line.join(","));
     }
 
     return lines.join("\n");

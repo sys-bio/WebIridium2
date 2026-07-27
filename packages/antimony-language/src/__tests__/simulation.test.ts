@@ -109,7 +109,9 @@ describe("simulation results", () => {
     return columns;
   };
 
-  const getColumnsFromTimeCourseOutput = (output: TimeCourseOutput): Columns => {
+  const getColumnsFromTimeCourseOutput = (
+    output: TimeCourseOutput,
+  ): Columns => {
     const columns: Columns = {};
 
     columns["Time"] = output.sliceColumn("time");
@@ -155,10 +157,7 @@ describe("simulation results", () => {
 
         const base = path.basename(fileName, ".ant");
         const outputPath = path.join(resultsDir, `${base}.csv`);
-        await fs.writeFile(
-          outputPath,
-          output.toCsv(),
-        );
+        await fs.writeFile(outputPath, output.toCsv());
       }
 
       for (const [name, column] of Object.entries(expectedColumns)) {

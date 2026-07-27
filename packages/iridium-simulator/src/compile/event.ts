@@ -206,6 +206,8 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
               left: left.right,
               right: right,
             });
+
+            pushBinaryLogicalOp(expr, "and");
           } else {
             // We flip the != so it is false more often than it is true.
             // This is so they are more likely to fire when they should

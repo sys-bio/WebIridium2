@@ -180,7 +180,7 @@ export const compileToIridium = (
   const events: IridiumEvent<Metadata>[] = [];
 
   for (const [name, event] of mainModel.events) {
-    events.push({
+    const iridiumEvent: IridiumEvent<Metadata> = {
       name,
       trigger: compileFormula(event.trigger),
       assignments: Array.from(event.assignments.entries()).map(
@@ -196,7 +196,17 @@ export const compileToIridium = (
         ? evaluateBoolean(event.options.fromTrigger)
         : true,
       isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : true,
-    });
+    };
+
+    if (event.delay) {
+      iridiumEvent.delay = compileFormula(event.delay);
+    }
+
+    if (event.options.priority) {
+      iridiumEvent.priority = compileFormula(event.options.priority);
+    }
+
+    events.push(iridiumEvent);
   }
 
   return { species, parameters, reactions, events };
