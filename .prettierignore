@@ -8,5 +8,5 @@ DEVINSTRUCTIONS/**/*.md
 manual/theme/**/*
 manual/book/**/*
 packages/antimony-language/src/generated/
+packages/antimony-language/scripts/
 packages/iridium-simulator/build/
-packages/iridium-simulator/scripts/

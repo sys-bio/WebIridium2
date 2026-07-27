@@ -17,6 +17,7 @@ export type DslExpression = IridiumExpression;
 export const model = (parts: {
   species?: { [name: string]: DslSpecies };
   parameters?: { [name: string]: DslParameter };
+  compartments?: { [name: string]: string[] };
   reactions?: { [name: string]: DslReaction };
   events?: { [name: string]: DslEvent };
 }): IridiumModel => {
@@ -30,6 +31,13 @@ export const model = (parts: {
       name,
       ...data,
     })),
+
+    compartments: Object.entries(parts?.compartments ?? {}).map(
+      ([name, data]) => ({
+        parameter: name,
+        variables: data,
+      }),
+    ),
 
     reactions: Object.entries(parts?.reactions ?? {}).map(([name, data]) => ({
       name,

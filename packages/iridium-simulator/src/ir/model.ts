@@ -3,6 +3,7 @@ import type { IridiumExpression } from "./ast";
 export type IridiumModel<Metadata = unknown> = {
   parameters: IridiumParameter<Metadata>[];
   species: IridiumSpecies<Metadata>[];
+  compartments: IridiumCompartment<Metadata>[];
   reactions: IridiumReaction<Metadata>[];
   events: IridiumEvent<Metadata>[];
 };
@@ -26,6 +27,11 @@ export type IridiumSpecies<Metadata = unknown> = {
   name: string;
   initial: IridiumExpression<Metadata>;
   metadata?: Metadata;
+};
+
+export type IridiumCompartment = {
+  parameter: string;
+  variables: string[];
 };
 
 export type IridiumReactionTerm<Metadata = unknown> = {

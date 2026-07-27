@@ -198,119 +198,143 @@ describe("ir", () => {
     });
   });
 
-  describe("ir", () => {
-    it("should compile species and reactions", () => {
-      expectCompilesTo(
-        "species A = 1, B = 1; J: A -> B; k1",
-        model({
-          species: {
-            A: species(1),
-            B: species(1),
-          },
-          reactions: {
-            J: reaction({ A: 1 }, { B: 1 }, expr.var("k1")),
-          },
-        }),
-      );
+  describe("models", () => {
+    describe("species and parameters", () => {
+      it("should compile species and reactions", () => {
+        expectCompilesTo(
+          "species A = 1, B = 1; J: A -> B; k1",
+          model({
+            species: {
+              A: species(1),
+              B: species(1),
+            },
+            reactions: {
+              J: reaction({ A: 1 }, { B: 1 }, expr.var("k1")),
+            },
+          }),
+        );
+      });
+
+      it("should compile species as parameter if not involved in reaction", () => {
+        expectCompilesTo(
+          "species A, B",
+          model({
+            parameters: {
+              A: parameter(0),
+              B: parameter(0),
+            },
+          }),
+        );
+      });
+
+      it("should compile default values", () => {
+        expectCompilesTo(
+          "A -> B; 3",
+          model({
+            species: {
+              A: species(0),
+              B: species(0),
+            },
+          }),
+        );
+      });
     });
 
-    it("should compile species as parameter if not involved in reaction", () => {
-      expectCompilesTo(
-        "species A, B",
-        model({
-          parameters: {
-            A: parameter(0),
-            B: parameter(0),
-          },
-        }),
-      );
+    describe("compartments", () => {
+      it("should compile compartments", () => {
+        expectCompilesTo(
+          "A = 10; C in B = 5; B = 30; A in B",
+          model({
+            parameters: {
+              A: parameter(10),
+              B: parameter(30),
+              C: parameter(5),
+            },
+            compartments: {
+              B: ["A", "C"],
+            },
+          }),
+        );
+      });
     });
 
-    it("should compile default values", () => {
-      expectCompilesTo(
-        "A -> B; 3",
-        model({
-          species: {
-            A: species(0),
-            B: species(0),
-          },
-        }),
-      );
+    describe("reactions", () => {
+      it("should compile stoichiometries", () => {
+        expectCompilesTo(
+          "J: 100 A -> 200 B; k1",
+          model({
+            species: {
+              A: species(0),
+              B: species(0),
+            },
+            reactions: {
+              J: reaction({ A: 100 }, { B: 200 }, expr.var("k1")),
+            },
+          }),
+        );
+      });
+
+      // TODO: test - is this valid behavior?
+      it("should omit boundary species from reactions", () => {
+        expectCompilesTo(
+          "species A = 1, $B = 1; J: A -> B; k1",
+          model({
+            species: {
+              A: species(1),
+            },
+            parameters: {
+              B: parameter(1),
+            },
+            reactions: {
+              J: reaction({ A: 1 }, {}, expr.var("k1")),
+            },
+          }),
+        );
+      });
     });
 
-    it("should compile stoichiometries", () => {
-      expectCompilesTo(
-        "J: 100 A -> 200 B; k1",
-        model({
-          species: {
-            A: species(0),
-            B: species(0),
-          },
-          reactions: {
-            J: reaction({ A: 100 }, { B: 200 }, expr.var("k1")),
-          },
-        }),
-      );
-    });
-
-    // TODO: test - is this valid behavior?
-    it("should omit boundary species from reactions", () => {
-      expectCompilesTo(
-        "species A = 1, $B = 1; J: A -> B; k1",
-        model({
-          species: {
-            A: species(1),
-          },
-          parameters: {
-            B: parameter(1),
-          },
-          reactions: {
-            J: reaction({ A: 1 }, {}, expr.var("k1")),
-          },
-        }),
-      );
-    });
-
-    it("should compile events", () => {
-      expectCompilesTo(
-        "E: at A > 5: B = 3",
-        model({
-          parameters: {
-            A: parameter(0),
-            B: parameter(0),
-          },
-          events: {
-            E: event(expr.gt(expr.var("A"), expr.num(5)), {
-              B: expr.num(3),
-            }),
-          },
-        }),
-      );
-    });
-
-    it("should compile events with options", () => {
-      expectCompilesTo(
-        "E: at A > 5, fromTrigger=false, persistent=false, t0=false: B = 3",
-        model({
-          parameters: {
-            A: parameter(0),
-            B: parameter(0),
-          },
-          events: {
-            E: event(
-              expr.gt(expr.var("A"), expr.num(5)),
-              {
+    describe("events", () => {
+      it("should compile events", () => {
+        expectCompilesTo(
+          "E: at A > 5: B = 3",
+          model({
+            parameters: {
+              A: parameter(0),
+              B: parameter(0),
+            },
+            events: {
+              E: event(expr.gt(expr.var("A"), expr.num(5)), {
                 B: expr.num(3),
-              },
-              {
-                isFromTrigger: false,
-                isPersistent: false,
-                isT0: false,
-              },
-            ),
-          },
-        }),
-      );
+              }),
+            },
+          }),
+        );
+      });
+
+      it("should compile events with options", () => {
+        expectCompilesTo(
+          "E: at A > 5, fromTrigger=false, persistent=false, t0=false: B = 3",
+          model({
+            parameters: {
+              A: parameter(0),
+              B: parameter(0),
+            },
+            events: {
+              E: event(
+                expr.gt(expr.var("A"), expr.num(5)),
+                {
+                  B: expr.num(3),
+                },
+                {
+                  isFromTrigger: false,
+                  isPersistent: false,
+                  isT0: false,
+                },
+              ),
+            },
+          }),
+        );
+      });
     });
   });
 });

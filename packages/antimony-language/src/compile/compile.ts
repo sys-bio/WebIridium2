@@ -87,6 +87,7 @@ export const compileToIridium = (
 
   const species: IridiumSpecies<Metadata>[] = [];
   const parameters: IridiumParameter<Metadata>[] = [];
+  const compartments: Map<string, string[]> = new Map();
 
   for (const [name, variable] of mainModel.variables) {
     if (variable.kind === "species") {
@@ -146,7 +147,10 @@ export const compileToIridium = (
 
         parameters.push({ name, value });
       }
-    } else if (variable.kind === "parameter") {
+    } else if (
+      variable.kind === "parameter" ||
+      variable.kind === "compartment"
+    ) {
       let value: IridiumParameterValue<Metadata>;
 
       if (variable.assignment === undefined) {
@@ -174,6 +178,14 @@ export const compileToIridium = (
       }
 
       parameters.push({ name, value });
+    }
+
+    if (variable.compartment) {
+      if (!compartments.has(variable.compartment)) {
+        compartments.set(variable.compartment, [variable.name]);
+      } else {
+        compartments.get(variable.compartment)!.push(variable.name);
+      }
     }
   }
 
@@ -209,7 +221,15 @@ export const compileToIridium = (
     events.push(iridiumEvent);
   }
 
-  return { species, parameters, reactions, events };
+  return {
+    species,
+    parameters,
+    reactions,
+    events,
+    compartments: Array.from(compartments.entries()).map(
+      ([parameter, variables]) => ({ parameter, variables }),
+    ),
+  };
 };
 
 export const compile = async (source: string): Promise<RuntimeModel> => {
