@@ -1,20 +1,34 @@
 // TOOD: write tests for this
 
-import { TIME_NAME } from "../names.ts";
 import {
-  CompileInvariantError,
-  CompileModelError,
-  EvaluationError,
-} from "./errors.ts";
-import { builtinConstants } from "antimony-language/semantic/builtins";
-import type { Compilation } from "./Compilation.ts";
+  CORE_NAMESPACE,
+  EVENTS_PARAM,
+  IMPORT_NAMESPACE,
+  MEMORY_IMPORT_NAME,
+  P_PARAM,
+  T_PARAM,
+  Y_PARAM,
+} from "../names.ts";
+import { CompileModelError } from "./errors.ts";
+import { Compilation } from "./Compilation.ts";
 import {
-  visitExpression,
   walkExpression,
   type IridiumExpression,
   type IridiumExpressionListener,
-  type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
+import { compileFunctions, getReferencedFunctions } from "./compile.ts";
+import { Scope } from "./Scope.ts";
+import {
+  predefinedFuncDefs,
+  type ImportedFunction,
+  type WasmFunction,
+} from "./functions.ts";
+import { OpCode, ValType } from "./codes.ts";
+import { LocalsSymbolTable, type FunctionTable } from "./symbolTables.ts";
+import { emitExpression } from "./expression.ts";
+import Emitter from "./Emitter.ts";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants.ts";
+import { WASM_PAGE_SIZE } from "./wasm.ts";
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -24,11 +38,9 @@ import {
  * @param model - the model to evaluate the initial values of
  * @returns map of variable names to their initial values
  */
-export const evaluateInitialValues = (
+export const evaluateInitialValues = async (
   compilation: Compilation,
-): Map<string, number> => {
-  const initialValues: Map<string, number> = new Map();
-  const outputInitialValues: Map<string, number> = new Map();
+): Promise<Map<string, number>> => {
   const assignments = new Map<string, IridiumExpression>();
   for (const variable of compilation.variables.values()) {
     if (
@@ -43,142 +55,145 @@ export const evaluateInitialValues = (
   }
   const evalOrder = getAssignmentOrder(assignments);
 
-  // TODO: is this correct? what if simulation start time is different? relevant for assignment rules
-  // UPDATE(05-26-2026): I think this should be fine because even when you set the initial time, the simulation
-  //                     should still start at 0. No other reasonable behavior imo.
-  initialValues.set(TIME_NAME, 0);
+  return await evaluateFromOrdering(compilation, assignments, evalOrder);
+};
 
-  for (const name of evalOrder) {
-    const variable = compilation.variables.get(name);
-    if (variable) {
-      if (
-        variable.value.kind === "initial" ||
-        variable.value.kind === "reaction" ||
-        variable.value.kind === "rate"
-      ) {
-        const value = evaluateExpression(initialValues, variable.value.initial);
-        initialValues.set(name, value);
-        outputInitialValues.set(name, value);
-        assignments.set(variable.name, variable.value.initial);
-      } else if (variable.value.kind === "assignment") {
-        initialValues.set(
-          name,
-          evaluateExpression(initialValues, variable.value.assignment),
-        );
+const EVALUATE_NAME = "evaluateInitialValues";
+const EVALUATE_PARAMS = [ValType.f64, ValType.i32, ValType.i32, ValType.i32];
+const EVALUATE_RESULTS = [] as ValType[];
+
+const evaluateFromOrdering = async (
+  compilation: Compilation,
+  variables: Map<string, IridiumExpression>,
+  order: string[],
+): Promise<Map<string, number>> => {
+  const referencedFunctions = Array.from(
+    getReferencedFunctions(compilation, { shouldTrackPiecewise: false }),
+  );
+
+  const functions: WasmFunction[] = [
+    {
+      kind: "compile",
+      isExported: true,
+      name: EVALUATE_NAME,
+      params: EVALUATE_PARAMS,
+      results: EVALUATE_RESULTS,
+      compileBody: (functionTable) =>
+        compileEvaluateFromOrdering(
+          compilation,
+          functionTable,
+          variables,
+          order,
+        ),
+    },
+    ...referencedFunctions.map((name) => {
+      if (Object.hasOwn(predefinedFuncDefs, name)) {
+        return predefinedFuncDefs[name];
+      } else {
+        throw new CompileModelError(`Unbound function: ${name}`);
       }
+    }),
+  ];
+
+  const bytecode = compileFunctions(functions);
+  const memory = new WebAssembly.Memory({
+    initial: Math.ceil(
+      WASM_PAGE_SIZE /
+        Math.max(
+          1,
+          SIZEOF_DOUBLE * (compilation.yVars.length + compilation.pVars.length),
+        ),
+    ),
+  });
+  const { instance } = await WebAssembly.instantiate(bytecode, {
+    [CORE_NAMESPACE]: { [MEMORY_IMPORT_NAME]: memory },
+    [IMPORT_NAMESPACE]: Object.fromEntries(
+      referencedFunctions.map((name) => [
+        name,
+        (predefinedFuncDefs[name] as ImportedFunction).js,
+      ]),
+    ),
+  });
+
+  const doubleView = new Float64Array(memory.buffer);
+  for (
+    let i = 0;
+    i < compilation.yVars.length + compilation.pVars.length;
+    i++
+  ) {
+    doubleView[i] = 0;
+  }
+
+  type EvaluateExport = (
+    time: number,
+    y: number,
+    p: number,
+    events: number,
+  ) => void;
+  (instance.exports[EVALUATE_NAME] as EvaluateExport)(
+    0,
+    0,
+    SIZEOF_DOUBLE * compilation.yVars.length,
+    SIZEOF_DOUBLE * (compilation.yVars.length + compilation.pVars.length),
+  );
+
+  const values = new Map<string, number>();
+  for (let i = 0; i < compilation.yVars.length; i++) {
+    values.set(compilation.yVars[i], doubleView[i]);
+  }
+  for (let i = 0; i < compilation.pVars.length; i++) {
+    values.set(compilation.pVars[i], doubleView[compilation.yVars.length + i]);
+  }
+
+  return values;
+};
+
+const compileEvaluateFromOrdering = (
+  compilation: Compilation,
+  functionTable: FunctionTable,
+  variables: Map<string, IridiumExpression>,
+  order: string[],
+): Uint8Array => {
+  const localsTable = new LocalsSymbolTable([
+    T_PARAM,
+    Y_PARAM,
+    P_PARAM,
+    EVENTS_PARAM,
+  ]);
+  const scope = new Scope(compilation, localsTable, functionTable);
+
+  const emitter = new Emitter();
+
+  // no locals
+  emitter.emitListHeader(0);
+
+  for (const name of order) {
+    const initial = variables.get(name)!;
+
+    if (compilation.yTable.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(Y_PARAM));
+    } else {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(P_PARAM));
+    }
+
+    emitExpression(initial, emitter, compilation, scope, false);
+
+    if (compilation.yTable.has(name)) {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * compilation.yTable.get(name));
+    } else {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * compilation.pTable.get(name));
     }
   }
 
-  return outputInitialValues;
-};
+  emitter.emitByte(OpCode.end);
 
-const evaluateExpression = (
-  variables: Map<string, number>,
-  expression: IridiumExpression,
-): number => {
-  const evaluteVisitor: IridiumExpressionVisitor<number> = {
-    visitNumber: ({ value }) => value,
-    visitVariable: ({ name, metadata }) => {
-      if (Object.hasOwn(builtinConstants, name)) {
-        return builtinConstants[name].value;
-      }
-
-      if (!variables.has(name)) {
-        throw new EvaluationError(`Unbound name: ${name}`, metadata);
-      }
-      return variables.get(name)!;
-    },
-    visitBinary: ({ op, left, right }) => {
-      switch (op) {
-        case "add":
-          return (
-            visitExpression(left, evaluteVisitor) +
-            visitExpression(right, evaluteVisitor)
-          );
-        case "sub":
-          return (
-            visitExpression(left, evaluteVisitor) -
-            visitExpression(right, evaluteVisitor)
-          );
-        case "mul":
-          return (
-            visitExpression(left, evaluteVisitor) *
-            visitExpression(right, evaluteVisitor)
-          );
-        case "div":
-          return (
-            visitExpression(left, evaluteVisitor) /
-            visitExpression(right, evaluteVisitor)
-          );
-        case "mod":
-          // TODO: is this correct behavior?
-          return (
-            visitExpression(left, evaluteVisitor) %
-            visitExpression(right, evaluteVisitor)
-          );
-        case "pow":
-          return (
-            visitExpression(left, evaluteVisitor) **
-            visitExpression(right, evaluteVisitor)
-          );
-        case "and":
-          return (
-            visitExpression(left, evaluteVisitor) &&
-            visitExpression(right, evaluteVisitor)
-          );
-        case "or":
-          return (
-            visitExpression(left, evaluteVisitor) ||
-            visitExpression(right, evaluteVisitor)
-          );
-        case "eq":
-          return visitExpression(left, evaluteVisitor) ==
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-        case "neq":
-          return visitExpression(left, evaluteVisitor) !=
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-        case "le":
-          return visitExpression(left, evaluteVisitor) <=
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-        case "lt":
-          return visitExpression(left, evaluteVisitor) <
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-        case "ge":
-          return visitExpression(left, evaluteVisitor) >=
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-        case "gt":
-          return visitExpression(left, evaluteVisitor) >
-            visitExpression(right, evaluteVisitor)
-            ? 1
-            : 0;
-      }
-    },
-    visitUnary: ({ op, expr }) => {
-      switch (op) {
-        case "neg":
-          return -visitExpression(expr, evaluteVisitor);
-        case "not":
-          return Number(!visitExpression(expr, evaluteVisitor));
-      }
-    },
-    visitCall: () => {
-      throw new CompileInvariantError(
-        "Calls not yet supported in interpreter.",
-      );
-    },
-  };
-
-  return visitExpression(expression, evaluteVisitor);
+  return emitter.getOutput();
 };
 
 const getReferencedVariables = (expression: IridiumExpression): Set<string> => {

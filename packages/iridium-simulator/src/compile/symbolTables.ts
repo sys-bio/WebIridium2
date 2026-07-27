@@ -1,5 +1,5 @@
 import type { ValType } from "./codes";
-import type { WasmTypeDefinition } from "./wasmTypes";
+import type { WasmTypeDefinition } from "./wasm";
 
 /**
  * Keeps track of indices for names.

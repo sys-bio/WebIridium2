@@ -38,11 +38,23 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   }
 };
 
+/**
+ * Emits bytecode for an expression.
+ *
+ * @param expression - the expression to compile
+ * @param emitter - emitter for the bytecode
+ * @param compilation - compilation unit
+ * @param scope - scope expression is evaluated in
+ * @param handlePiecewiseWithEvents - Whether or not to mark piecewise functions with events.
+ *                                    Want this when doing anything in the RHS where we need to restart
+ *                                    at discontinuities. Default: true.
+ */
 export const emitExpression = (
   expression: IridiumExpression,
   emitter: Emitter,
   compilation: Compilation,
   scope: Scope,
+  handlePiecewiseWithEvents: boolean = true,
 ): void => {
   const visitor: IridiumExpressionVisitor<void> = {
     visitNumber: ({ value }) => {
@@ -126,31 +138,57 @@ export const emitExpression = (
           return;
         }
 
-        let i = 0;
-        for (; i + 2 < expr.args.length; i += 2) {
-          const branch = expr.args[i];
-          const condition = expr.args[i + 1];
-          const eventIndex = compilation.getPiecewisePiece(condition);
+        if (handlePiecewiseWithEvents) {
+          let i = 0;
+          for (; i + 2 < expr.args.length; i += 2) {
+            const branch = expr.args[i];
+            const condition = expr.args[i + 1];
+            const eventIndex = compilation.getPiecewisePiece(condition);
 
-          emitter.emitByte(OpCode.localget);
-          emitter.emitUint(scope.localsTable.getParam(EVENTS_PARAM));
+            emitter.emitByte(OpCode.localget);
+            emitter.emitUint(scope.localsTable.getParam(EVENTS_PARAM));
 
-          emitter.emitByte(OpCode.i32load);
-          emitter.emitUint(MEM_ALIGNMENT);
-          emitter.emitUint(eventIndex * SIZEOF_INT);
+            emitter.emitByte(OpCode.i32load);
+            emitter.emitUint(MEM_ALIGNMENT);
+            emitter.emitUint(eventIndex * SIZEOF_INT);
 
-          emitter.emitByte(OpCode.if);
-          emitter.emitByte(ValType.f64);
+            emitter.emitByte(OpCode.if);
+            emitter.emitByte(ValType.f64);
 
-          visitExpression(branch, visitor);
+            visitExpression(branch, visitor);
 
-          emitter.emitByte(OpCode.else);
-        }
+            emitter.emitByte(OpCode.else);
+          }
 
-        visitExpression(expr.args[expr.args.length - 1], visitor);
+          visitExpression(expr.args[expr.args.length - 1], visitor);
 
-        for (i = 0; i + 2 < expr.args.length; i += 2) {
-          emitter.emitByte(OpCode.end);
+          for (i = 0; i + 2 < expr.args.length; i += 2) {
+            emitter.emitByte(OpCode.end);
+          }
+        } else {
+          let i = 0;
+          for (; i + 2 < expr.args.length; i += 2) {
+            const branch = expr.args[i];
+            const condition = expr.args[i + 1];
+
+            visitExpression(condition, visitor);
+
+            emitter.emitF64ConstOp(0);
+            emitter.emitByte(OpCode.f64ne);
+
+            emitter.emitByte(OpCode.if);
+            emitter.emitByte(ValType.f64);
+
+            visitExpression(branch, visitor);
+
+            emitter.emitByte(OpCode.else);
+          }
+
+          visitExpression(expr.args[expr.args.length - 1], visitor);
+
+          for (i = 0; i + 2 < expr.args.length; i += 2) {
+            emitter.emitByte(OpCode.end);
+          }
         }
       } else if (expr.name === "and") {
         if (expr.args.length === 0) {

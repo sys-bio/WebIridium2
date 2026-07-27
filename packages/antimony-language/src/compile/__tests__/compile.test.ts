@@ -12,7 +12,7 @@ import {
 import { CompileError } from "../../errors";
 import { deriveModels } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "../../__tests__/results/substanceOnly_initial.ant?raw";
 import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.

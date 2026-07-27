@@ -50,7 +50,7 @@ export const compileIntermediate = (
   const compilation = new Compilation(ir);
 
   const referencedFunctions = Array.from(
-    getReferencedFunctionsAndTrackPiecewise(compilation),
+    getReferencedFunctions(compilation, { shouldTrackPiecewise: true }),
   );
 
   const functions: WasmFunction[] = [
@@ -118,7 +118,7 @@ export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
   const { compilation, imports, runtimeEvents, bytecode } =
     compileIntermediate(ir);
 
-  const initialValues = evaluateInitialValues(compilation);
+  const initialValues = await evaluateInitialValues(compilation);
 
   return {
     y: compilation.yVars.map((name) => ({
@@ -136,15 +136,18 @@ export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
   };
 };
 
-const getReferencedFunctionsAndTrackPiecewise = (
+export const getReferencedFunctions = (
   compilation: Compilation,
+  { shouldTrackPiecewise }: { shouldTrackPiecewise: boolean },
 ): Set<string> => {
   const referenced = new Set<string>();
   const listener: IridiumExpressionListener = {
     beforeCall({ name, args }) {
       if (name === PIECEWISE_NAME) {
-        for (let i = 1; i < args.length; i += 2) {
-          compilation.addPiecewisePiece(args[i]);
+        if (shouldTrackPiecewise) {
+          for (let i = 1; i < args.length; i += 2) {
+            compilation.addPiecewisePiece(args[i]);
+          }
         }
       } else if (
         Object.hasOwn(predefinedFuncDefs, name) &&
