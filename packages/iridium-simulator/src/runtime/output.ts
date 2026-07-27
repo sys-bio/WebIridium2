@@ -2,9 +2,9 @@ import type { RuntimeModel } from "./model";
 
 export class TimeCourseOutput {
   model: RuntimeModel;
-  buffer: Uint8Array;
+  buffer: Float64Array;
 
-  constructor(model: RuntimeModel, buffer: Uint8Array) {
+  constructor(model: RuntimeModel, buffer: Float64Array) {
     this.model = model;
     this.buffer = buffer;
   }
@@ -59,5 +59,34 @@ export class TimeCourseOutput {
     }
 
     return -1;
+  }
+
+  /**
+   * @returns - values in the column of given index
+   */
+  sliceColumn(index: number): number[];
+
+  /**
+   * @returns - values in the column of given name
+   */
+  sliceColumn(name: string): number[];
+
+  sliceColumn(nameOrIndex: string | number): number[] {
+    let index: number;
+    if (typeof nameOrIndex === "string") {
+      index = this.getColumnIndex(nameOrIndex);
+      if (index === -1) {
+        throw new Error(`Unknown column name: ${nameOrIndex}.`);
+      }
+    }
+
+    const columnCount = this.columnCount;
+
+    const slice = new Array(this.rowCount);
+    for (let i = 0; i < this.rowCount; i++) {
+      slice[i] = this.buffer[i + columnCount * i];
+    }
+
+    return slice;
   }
 }

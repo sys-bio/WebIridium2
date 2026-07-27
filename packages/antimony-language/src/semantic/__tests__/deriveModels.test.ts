@@ -1,5 +1,5 @@
 import { it, expect, describe } from "vitest";
-import { deriveModels } from "../semantic/semantic";
+import { deriveModels } from "../../semantic/semantic";
 
 import {
   model,
@@ -14,7 +14,7 @@ import {
 
 import defaultModel from "@/assets/default.ant?raw";
 import { ParserRuleContext } from "antlr4ts";
-import { SemanticError } from "../errors.ts";
+import { SemanticError } from "../../errors.ts";
 
 /**
  * Strip parse contexts only to their text value. Otherwise

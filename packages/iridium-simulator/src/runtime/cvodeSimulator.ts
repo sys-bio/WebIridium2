@@ -27,6 +27,7 @@ import {
 import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
 import { IndexSymbolTable } from "../compile/symbolTables.ts";
 import type { RuntimeModel } from "./model.ts";
+import { TimeCourseOutput } from "./output.ts";
 
 const nullptr = 0;
 
@@ -256,7 +257,7 @@ export class CvodeSimulator {
     startTime: number,
     endTime: number,
     numPoints: number,
-  ): Float64Array {
+  ): TimeCourseOutput {
     const model = this.#checkModel();
 
     const array = model.binding.SimulateTimeCourse(
@@ -267,8 +268,11 @@ export class CvodeSimulator {
 
     model.binding.DumpStats();
 
-    // copy
-    return array.slice();
+    return new TimeCourseOutput(
+      model.runtimeModel,
+      // copy
+      array.slice(),
+    );
   }
 
   resetState(): void {

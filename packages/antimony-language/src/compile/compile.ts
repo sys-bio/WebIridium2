@@ -1,12 +1,14 @@
-import type {
-  IridiumModel,
-  IridiumReaction,
-  IridiumSpecies,
-  IridiumParameter,
-  IridiumExpression,
-  IridiumParameterValue,
-  IridiumEvent,
-  IridiumReactionTerm,
+import {
+  type IridiumModel,
+  type IridiumReaction,
+  type IridiumSpecies,
+  type IridiumParameter,
+  type IridiumExpression,
+  type IridiumParameterValue,
+  type IridiumEvent,
+  type IridiumReactionTerm,
+  type RuntimeModel,
+  compile,
 } from "iridium-simulator";
 import type { AntimonyModel } from "../semantic/model";
 import { compileFormula } from "./formula";

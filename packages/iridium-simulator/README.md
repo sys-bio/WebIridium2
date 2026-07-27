@@ -21,7 +21,7 @@ You will probably get some errors in your IDE still, but you can just ignore the
 
 # Testing
 
-You have to use `npm run test-sim`.
+You have to use `npm run test-ant`.
 
 ## Viewing Plots
 

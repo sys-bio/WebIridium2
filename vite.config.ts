@@ -76,6 +76,7 @@ export default defineConfig({
     exclude: [
       ...defaultExclude,
       "packages/iridium-simulator/**/*.test.{ts,js}",
+      "packages/antimony-language/**/*.test.{ts,js}",
     ],
     coverage: {
       include: ["src"],

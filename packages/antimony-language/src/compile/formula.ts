@@ -42,6 +42,10 @@ const getVariableName = (ctx: VariableContext): string => {
   throw new CompileInvariantError("Unknown variable.");
 };
 
+const unreachable = (message: string): never => {
+  throw new Error(message);
+};
+
 class FormulaCompilerListener implements AntimonyListener {
   #stack: IridiumExpression<Metadata>[];
 
@@ -120,7 +124,7 @@ class FormulaCompilerListener implements AntimonyListener {
             ? "div"
             : ctx._op.text === "%"
               ? "mod"
-              : "unknown",
+              : unreachable(`Unknown operator: ${ctx._op}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
@@ -131,7 +135,11 @@ class FormulaCompilerListener implements AntimonyListener {
     this.#stack.push({
       kind: "binary",
       op:
-        ctx._op.text === "+" ? "add" : ctx._op.text === "-" ? "sub" : "unknown",
+        ctx._op.text === "+"
+          ? "add"
+          : ctx._op.text === "-"
+            ? "sub"
+            : unreachable(`Unknown operator: ${ctx._op}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
@@ -154,7 +162,7 @@ class FormulaCompilerListener implements AntimonyListener {
                   ? "eq"
                   : ctx._op.text === "!="
                     ? "neq"
-                    : "unknown",
+                    : unreachable(`Unknown operator: ${ctx._op}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
@@ -178,7 +186,7 @@ class FormulaCompilerListener implements AntimonyListener {
           ? "and"
           : ctx._op.text === "||"
             ? "or"
-            : "unknown",
+            : unreachable(`Unknown operator: ${ctx._op}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
