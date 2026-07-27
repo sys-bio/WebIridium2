@@ -4,10 +4,10 @@ import {
   event,
   expr,
   model,
+  species,
   parameter,
   reaction,
-  species,
-  type DslParameter,
+  type DslVariable,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
 import { deriveModels } from "../../semantic/semantic";
@@ -19,10 +19,10 @@ import { writeFileSync } from "node:fs";
 // useful to use with WABT to analyze the WebAssembly output.
 const WRITE_BASIC_MODEL = true;
 
-const parameters = (parameters: {
-  [name: string]: DslParameter;
+const variables = (variables: {
+  [name: string]: DslVariable;
 }): IridiumModel => {
-  return model({ parameters });
+  return model({ variables });
 };
 
 // We need to delete the metadata since vitest will explode when trying to toMatchObject with it
@@ -49,28 +49,24 @@ const compileToIr = (source: string): IridiumModel => {
 };
 
 const expectCompilesTo = (source: string, expected: IridiumModel): void => {
-  deleteMetadataFromArray(expected.species);
-  deleteMetadataFromArray(expected.parameters);
+  deleteMetadataFromArray(expected.variables);
   deleteMetadataFromArray(expected.reactions);
   deleteMetadataFromArray(expected.events);
 
   const got = compileToIr(source);
 
-  deleteMetadataFromArray(got.species);
-  deleteMetadataFromArray(got.parameters);
+  deleteMetadataFromArray(got.variables);
   deleteMetadataFromArray(got.reactions);
   deleteMetadataFromArray(got.events);
 
   const gotNames = {
-    species: Object.fromEntries(got.species.map((v) => [v.name, v])),
-    parameters: Object.fromEntries(got.parameters.map((v) => [v.name, v])),
+    variables: Object.fromEntries(got.variables.map((v) => [v.name, v])),
     reactions: Object.fromEntries(got.reactions.map((v) => [v.name, v])),
     events: Object.fromEntries(got.events.map((v) => [v.name, v])),
   };
 
   const expectedNames = {
-    species: Object.fromEntries(expected.species.map((v) => [v.name, v])),
-    parameters: Object.fromEntries(expected.parameters.map((v) => [v.name, v])),
+    variables: Object.fromEntries(expected.variables.map((v) => [v.name, v])),
     reactions: Object.fromEntries(expected.reactions.map((v) => [v.name, v])),
     events: Object.fromEntries(expected.events.map((v) => [v.name, v])),
   };
@@ -89,7 +85,7 @@ describe("ir", () => {
     it("should compile addition", () => {
       expectCompilesTo(
         "A = 123 + 246",
-        parameters({
+        variables({
           A: parameter(expr.add(expr.num(123), expr.num(246))),
         }),
       );
@@ -98,7 +94,7 @@ describe("ir", () => {
     it("should compile subtraction", () => {
       expectCompilesTo(
         "A = 123 - 246",
-        parameters({
+        variables({
           A: parameter(expr.sub(expr.num(123), expr.num(246))),
         }),
       );
@@ -107,7 +103,7 @@ describe("ir", () => {
     it("should multiplication, division, mod", () => {
       expectCompilesTo(
         "A = 123 * 123 / 123 % 123",
-        parameters({
+        variables({
           A: parameter(
             expr.mod(
               expr.div(expr.mul(expr.num(123), expr.num(123)), expr.num(123)),
@@ -121,7 +117,7 @@ describe("ir", () => {
     it("should compile power", () => {
       expectCompilesTo(
         "A = 5 ^ 3",
-        parameters({
+        variables({
           A: parameter(expr.pow(expr.num(5), expr.num(3))),
         }),
       );
@@ -130,7 +126,7 @@ describe("ir", () => {
     it("should compile function call", () => {
       expectCompilesTo(
         "A = func(1, 2, 3)",
-        parameters({
+        variables({
           A: parameter(
             expr.call("func", [expr.num(1), expr.num(2), expr.num(3)]),
           ),
@@ -141,7 +137,7 @@ describe("ir", () => {
     it("should compile negation", () => {
       expectCompilesTo(
         "A = -A",
-        parameters({
+        variables({
           A: parameter(expr.neg(expr.var("A"))),
         }),
       );
@@ -150,7 +146,7 @@ describe("ir", () => {
     it("should compile equallity and inequality", () => {
       expectCompilesTo(
         "A = 1 == 3 != 5",
-        parameters({
+        variables({
           A: parameter(
             expr.neq(expr.eq(expr.num(1), expr.num(3)), expr.num(5)),
           ),
@@ -161,7 +157,7 @@ describe("ir", () => {
     it("should compile comparisons and logical", () => {
       expectCompilesTo(
         "A = (1 > 3) && (2 < 5) && ((1 >= 3) || (2 <= 5))",
-        parameters({
+        variables({
           A: parameter(
             expr.and(
               expr.and(
@@ -181,7 +177,7 @@ describe("ir", () => {
     it("should compile complex formula", () => {
       expectCompilesTo(
         "A = f(A^3, B>=3, 5*(10+A), 10+A*3) + 10^5",
-        parameters({
+        variables({
           A: parameter(
             expr.add(
               expr.call("f", [
@@ -204,7 +200,7 @@ describe("ir", () => {
         expectCompilesTo(
           "species A = 1, B = 1; J: A -> B; k1",
           model({
-            species: {
+            variables: {
               A: species(1),
               B: species(1),
             },
@@ -219,7 +215,7 @@ describe("ir", () => {
         expectCompilesTo(
           "species A, B",
           model({
-            parameters: {
+            variables: {
               A: parameter(0),
               B: parameter(0),
             },
@@ -231,7 +227,7 @@ describe("ir", () => {
         expectCompilesTo(
           "A -> B; 3",
           model({
-            species: {
+            variables: {
               A: species(0),
               B: species(0),
             },
@@ -245,7 +241,7 @@ describe("ir", () => {
         expectCompilesTo(
           "A = 10; C in B = 5; B = 30; A in B",
           model({
-            parameters: {
+            variables: {
               A: parameter(10),
               B: parameter(30),
               C: parameter(5),
@@ -263,7 +259,7 @@ describe("ir", () => {
         expectCompilesTo(
           "J: 100 A -> 200 B; k1",
           model({
-            species: {
+            variables: {
               A: species(0),
               B: species(0),
             },
@@ -279,10 +275,8 @@ describe("ir", () => {
         expectCompilesTo(
           "species A = 1, $B = 1; J: A -> B; k1",
           model({
-            species: {
+            variables: {
               A: species(1),
-            },
-            parameters: {
               B: parameter(1),
             },
             reactions: {
@@ -298,7 +292,7 @@ describe("ir", () => {
         expectCompilesTo(
           "E: at A > 5: B = 3",
           model({
-            parameters: {
+            variables: {
               A: parameter(0),
               B: parameter(0),
             },
@@ -315,7 +309,7 @@ describe("ir", () => {
         expectCompilesTo(
           "E: at A > 5, fromTrigger=false, persistent=false, t0=false: B = 3",
           model({
-            parameters: {
+            variables: {
               A: parameter(0),
               B: parameter(0),
             },

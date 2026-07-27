@@ -6,7 +6,7 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";
-import type { IridiumParameter, IridiumParameterValue } from "../ir/model.ts";
+import type { IridiumVariable, IridiumVariableValue } from "../ir/model.ts";
 import { emitExpression } from "./expression.ts";
 
 const YDOT_PTR_PARAM = "ydot[]";
@@ -20,29 +20,36 @@ export const RHS_PARAMS: ValType[] = [
 ];
 export const RHS_RESULTS: ValType[] = [ValType.i32];
 
-type RateDeterminedParameter = Omit<IridiumParameter, "value"> & {
-  value: Extract<IridiumParameterValue, { kind: "rate" }>;
+type RateDeterminedVariable = Omit<IridiumVariable, "value"> & {
+  value: Extract<IridiumVariableValue, { kind: "rate" }>;
 };
-type AssignmentDeterminedParameter = Omit<IridiumParameter, "value"> & {
-  value: Extract<IridiumParameterValue, { kind: "assignment" }>;
+type AssignmentDeterminedVariable = Omit<IridiumVariable, "value"> & {
+  value: Extract<IridiumVariableValue, { kind: "assignment" }>;
+};
+type ReactionDeterminedVariable = Omit<IridiumVariable, "value"> & {
+  value: Extract<IridiumVariableValue, { kind: "reaction" }>;
 };
 
 export const compileRhs = (
   compilation: Compilation,
   functionTable: FunctionTable,
 ): Emitter => {
-  const { species, parameters, reactions, yTable, pTable } = compilation;
+  const { variables, reactions, yTable, pTable } = compilation;
   const emitter = new Emitter();
 
-  const rateDetermined: RateDeterminedParameter[] = Array.from(
-    parameters.values(),
-  ).filter((p): p is RateDeterminedParameter => p.value.kind === "rate");
+  const rateDetermined: RateDeterminedVariable[] = Array.from(
+    variables.values(),
+  ).filter((p): p is RateDeterminedVariable => p.value.kind === "rate");
 
-  const assignmentDetermined: AssignmentDeterminedParameter[] = Array.from(
-    parameters.values(),
+  const assignmentDetermined: AssignmentDeterminedVariable[] = Array.from(
+    variables.values(),
   ).filter(
-    (p): p is AssignmentDeterminedParameter => p.value.kind === "assignment",
+    (p): p is AssignmentDeterminedVariable => p.value.kind === "assignment",
   );
+
+  const reactionDetermined: ReactionDeterminedVariable[] = Array.from(
+    variables.values(),
+  ).filter((p): p is ReactionDeterminedVariable => p.value.kind === "reaction");
 
   const assignmentMap = new Map(
     assignmentDetermined.map((v) => [v.name, v.value.assignment]),
@@ -73,15 +80,15 @@ export const compileRhs = (
 
   // calculate assignment rules
 
-  for (const parameterName of assignmentEvaluationOrder) {
-    const parameter = parameters.get(
-      parameterName,
-    ) as AssignmentDeterminedParameter;
+  for (const variableName of assignmentEvaluationOrder) {
+    const variable = variables.get(
+      variableName,
+    ) as AssignmentDeterminedVariable;
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(P_PARAM));
 
-    emitExpression(parameter.value.assignment, emitter, compilation, scope);
+    emitExpression(variable.value.assignment, emitter, compilation, scope);
 
     // TODO: add back multiplying by compartment size for species
     // if (
@@ -95,7 +102,7 @@ export const compileRhs = (
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * pTable.get(parameterName));
+    emitter.emitUint(SIZEOF_DOUBLE * pTable.get(variableName));
   }
 
   // calculate all the reaction rates
@@ -140,8 +147,8 @@ export const compileRhs = (
     }
   }
 
-  for (const speciesName of species.keys()) {
-    const reactions = involvedReactions.get(speciesName);
+  for (const { name: variableName } of reactionDetermined) {
+    const reactions = involvedReactions.get(variableName);
 
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
@@ -183,7 +190,7 @@ export const compileRhs = (
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(speciesName));
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(variableName));
   }
 
   // do rate rules

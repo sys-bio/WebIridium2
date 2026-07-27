@@ -1,41 +1,33 @@
 import type {
   IridiumEvent,
   IridiumModel,
-  IridiumParameter,
-  IridiumSpecies,
+  IridiumVariable,
   IridiumReaction,
   IridiumReactionTerm,
 } from "./model";
 import type { IridiumExpression } from "./ast";
 
-export type DslSpecies = Omit<IridiumSpecies, "name">;
-export type DslParameter = Omit<IridiumParameter, "name">;
+export type DslVariable = Omit<IridiumVariable, "name">;
 export type DslReaction = Omit<IridiumReaction, "name">;
 export type DslEvent = Omit<IridiumEvent, "name">;
 export type DslExpression = IridiumExpression;
 
 export const model = (parts: {
-  species?: { [name: string]: DslSpecies };
-  parameters?: { [name: string]: DslParameter };
+  variables: { [name: string]: DslVariable };
   compartments?: { [name: string]: string[] };
   reactions?: { [name: string]: DslReaction };
   events?: { [name: string]: DslEvent };
 }): IridiumModel => {
   const model = {
-    species: Object.entries(parts?.species ?? {}).map(([name, data]) => ({
-      name,
-      ...data,
-    })),
-
-    parameters: Object.entries(parts?.parameters ?? {}).map(([name, data]) => ({
+    variables: Object.entries(parts?.variables ?? {}).map(([name, data]) => ({
       name,
       ...data,
     })),
 
     compartments: Object.entries(parts?.compartments ?? {}).map(
       ([name, data]) => ({
-        parameter: name,
-        variables: data,
+        containerVariable: name,
+        containedVariables: data,
       }),
     ),
 
@@ -56,15 +48,23 @@ export const model = (parts: {
 export const species = <T = unknown>(
   initialAssignment: number | IridiumExpression,
   metadata?: T,
-): DslSpecies => {
+): DslVariable => {
   if (typeof initialAssignment === "number") {
     return {
-      initial: { kind: "number", value: initialAssignment },
+      value: {
+        kind: "reaction",
+        initial: { kind: "number", value: initialAssignment },
+      },
+      hasSubstanceOnly: false,
       metadata: metadata,
     };
   } else {
     return {
-      initial: initialAssignment,
+      value: {
+        kind: "reaction",
+        initial: initialAssignment,
+      },
+      hasSubstanceOnly: false,
       metadata: metadata,
     };
   }
@@ -73,13 +73,14 @@ export const species = <T = unknown>(
 export const parameter = <T = unknown>(
   initialAssignment: number | IridiumExpression,
   metadata?: T,
-): DslParameter => {
+): DslVariable => {
   if (typeof initialAssignment === "number") {
     return {
       value: {
         kind: "initial",
         initial: { kind: "number", value: initialAssignment },
       },
+      hasSubstanceOnly: false,
       metadata: metadata,
     };
   } else {
@@ -88,6 +89,7 @@ export const parameter = <T = unknown>(
         kind: "initial",
         initial: initialAssignment,
       },
+      hasSubstanceOnly: false,
       metadata: metadata,
     };
   }

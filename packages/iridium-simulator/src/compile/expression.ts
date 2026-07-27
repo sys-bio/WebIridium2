@@ -61,7 +61,7 @@ export const emitExpression = (
         emitter.emitByte(OpCode.f64eq);
         emitter.emitByte(OpCode.f64convert_u_i32);
       } else {
-        throw new Error(`unknown unary op: ${op}`);
+        throw new Error(`unknown unary op: ${op as string}`);
       }
     },
     visitBinary: ({ op, left, right }) => {

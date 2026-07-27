@@ -2,10 +2,9 @@ import {
   compile as compileIridium,
   type IridiumModel,
   type IridiumReaction,
-  type IridiumSpecies,
-  type IridiumParameter,
+  type IridiumVariable,
   type IridiumExpression,
-  type IridiumParameterValue,
+  type IridiumVariableValue,
   type IridiumEvent,
   type IridiumReactionTerm,
   type RuntimeModel,
@@ -85,8 +84,7 @@ export const compileToIridium = (
     });
   }
 
-  const species: IridiumSpecies<Metadata>[] = [];
-  const parameters: IridiumParameter<Metadata>[] = [];
+  const variables: IridiumVariable<Metadata>[] = [];
   const compartments: Map<string, string[]> = new Map();
 
   for (const [name, variable] of mainModel.variables) {
@@ -96,15 +94,20 @@ export const compileToIridium = (
         variable.assignment?.kind === "set"
       ) {
         if (reactionInvolvedVariables.has(name)) {
-          species.push({
+          variables.push({
             name,
-            initial: variable.assignment
-              ? compileFormula(variable.assignment.initial)
-              : { kind: "number", value: 0 },
+            hasSubstanceOnly: variable.hasSubstanceOnly,
+            value: {
+              kind: "reaction",
+              initial: variable.assignment
+                ? compileFormula(variable.assignment.initial)
+                : { kind: "number", value: 0 },
+            },
           });
         } else {
-          parameters.push({
+          variables.push({
             name,
+            hasSubstanceOnly: variable.hasSubstanceOnly,
             value: {
               kind: "initial",
               initial: variable.assignment
@@ -126,7 +129,7 @@ export const compileToIridium = (
           );
         }
 
-        let value: IridiumParameterValue<Metadata>;
+        let value: IridiumVariableValue<Metadata>;
 
         if (variable.assignment.kind === "rule") {
           value = {
@@ -145,13 +148,17 @@ export const compileToIridium = (
           throw new CompileInvariantError("Unknown variable assignment kind.");
         }
 
-        parameters.push({ name, value });
+        variables.push({
+          name,
+          value,
+          hasSubstanceOnly: variable.hasSubstanceOnly,
+        });
       }
     } else if (
       variable.kind === "parameter" ||
       variable.kind === "compartment"
     ) {
-      let value: IridiumParameterValue<Metadata>;
+      let value: IridiumVariableValue<Metadata>;
 
       if (variable.assignment === undefined) {
         value = { kind: "initial", initial: { kind: "number", value: 0 } };
@@ -177,7 +184,11 @@ export const compileToIridium = (
         throw new CompileInvariantError("Unknown variable assignment kind.");
       }
 
-      parameters.push({ name, value });
+      variables.push({
+        name,
+        value,
+        hasSubstanceOnly: variable.hasSubstanceOnly,
+      });
     }
 
     if (variable.compartment) {
@@ -222,12 +233,14 @@ export const compileToIridium = (
   }
 
   return {
-    species,
-    parameters,
+    variables,
     reactions,
     events,
     compartments: Array.from(compartments.entries()).map(
-      ([parameter, variables]) => ({ parameter, variables }),
+      ([containerVariable, containedVariables]) => ({
+        containerVariable,
+        containedVariables,
+      }),
     ),
   };
 };

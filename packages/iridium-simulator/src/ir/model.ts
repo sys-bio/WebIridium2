@@ -1,15 +1,16 @@
 import type { IridiumExpression } from "./ast";
 
 export type IridiumModel<Metadata = unknown> = {
-  parameters: IridiumParameter<Metadata>[];
-  species: IridiumSpecies<Metadata>[];
-  compartments: IridiumCompartment<Metadata>[];
+  variables: IridiumVariable<Metadata>[];
+  compartments: IridiumCompartment[];
   reactions: IridiumReaction<Metadata>[];
   events: IridiumEvent<Metadata>[];
 };
 
-export type IridiumParameterValue<Metadata = unknown> =
+export type IridiumVariableValue<Metadata = unknown> =
   | { kind: "initial"; initial: IridiumExpression<Metadata> }
+  /** This means the value of the variable is determined by a reaction + initial value. */
+  | { kind: "reaction"; initial: IridiumExpression<Metadata> }
   | {
       kind: "rate";
       initial: IridiumExpression<Metadata>;
@@ -17,21 +18,16 @@ export type IridiumParameterValue<Metadata = unknown> =
     }
   | { kind: "assignment"; assignment: IridiumExpression<Metadata> };
 
-export type IridiumParameter<Metadata = unknown> = {
+export type IridiumVariable<Metadata = unknown> = {
   name: string;
-  value: IridiumParameterValue<Metadata>;
-  metadata?: Metadata;
-};
-
-export type IridiumSpecies<Metadata = unknown> = {
-  name: string;
-  initial: IridiumExpression<Metadata>;
+  value: IridiumVariableValue<Metadata>;
+  hasSubstanceOnly: boolean;
   metadata?: Metadata;
 };
 
 export type IridiumCompartment = {
-  parameter: string;
-  variables: string[];
+  containerVariable: string;
+  containedVariables: string[];
 };
 
 export type IridiumReactionTerm<Metadata = unknown> = {

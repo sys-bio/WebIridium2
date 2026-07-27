@@ -54,15 +54,15 @@ export class Scope {
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
 
       // TODO: add back concentration stuff
-      // const variable = this.#compilation.variables.get(name);
-      // const compartment = variable?.compartment;
-      // if (
-      //   variable?.kind === "species" &&
-      //   !variable?.hasSubstanceOnly &&
-      //   compartment
-      // ) {
-      //   this.emitConvertToConcentration(emitter, compartment);
-      // }
+      const variable = this.#compilation.variables.get(name);
+      const compartment = variable?.compartment;
+      if (
+        variable?.kind === "species" &&
+        !variable?.hasSubstanceOnly &&
+        compartment
+      ) {
+        this.emitConvertToConcentration(emitter, compartment);
+      }
     } else if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(Y_PARAM));
@@ -72,15 +72,15 @@ export class Scope {
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
 
       // TODO: add back concentration stuff
-      // const variable = this.#compilation.variables.get(name);
-      // const compartment = variable?.compartment;
-      // if (
-      //   variable?.kind === "species" &&
-      //   !variable?.hasSubstanceOnly &&
-      //   compartment
-      // ) {
-      //   this.emitConvertToConcentration(emitter, compartment);
-      // }
+      const variable = this.#compilation.variables.get(name);
+      const compartment = variable?.compartment;
+      if (
+        variable?.kind === "species" &&
+        !variable?.hasSubstanceOnly &&
+        compartment
+      ) {
+        this.emitConvertToConcentration(emitter, compartment);
+      }
     } else {
       return false;
     }

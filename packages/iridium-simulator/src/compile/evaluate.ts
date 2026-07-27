@@ -30,14 +30,15 @@ export const evaluateInitialValues = (
   const initialValues: Map<string, number> = new Map();
   const outputInitialValues: Map<string, number> = new Map();
   const assignments = new Map<string, IridiumExpression>();
-  for (const species of compilation.species.values()) {
-    assignments.set(species.name, species.initial);
-  }
-  for (const parameter of compilation.parameters.values()) {
-    if (parameter.value.kind === "initial" || parameter.value.kind === "rate") {
-      assignments.set(parameter.name, parameter.value.initial);
-    } else if (parameter.value.kind === "assignment") {
-      assignments.set(parameter.name, parameter.value.assignment);
+  for (const variable of compilation.variables.values()) {
+    if (
+      variable.value.kind === "initial" ||
+      variable.value.kind === "reaction" ||
+      variable.value.kind === "rate"
+    ) {
+      assignments.set(variable.name, variable.value.initial);
+    } else if (variable.value.kind === "assignment") {
+      assignments.set(variable.name, variable.value.assignment);
     }
   }
   const evalOrder = getAssignmentOrder(assignments);
@@ -48,31 +49,21 @@ export const evaluateInitialValues = (
   initialValues.set(TIME_NAME, 0);
 
   for (const name of evalOrder) {
-    const species = compilation.species.get(name);
-    if (species) {
-      const value = evaluateExpression(initialValues, species.initial);
-      initialValues.set(name, value);
-      outputInitialValues.set(name, value);
-      continue;
-    }
-
-    const parameter = compilation.parameters.get(name);
-    if (parameter) {
+    const variable = compilation.variables.get(name);
+    if (variable) {
       if (
-        parameter.value.kind === "initial" ||
-        parameter.value.kind === "rate"
+        variable.value.kind === "initial" ||
+        variable.value.kind === "reaction" ||
+        variable.value.kind === "rate"
       ) {
-        const value = evaluateExpression(
-          initialValues,
-          parameter.value.initial,
-        );
+        const value = evaluateExpression(initialValues, variable.value.initial);
         initialValues.set(name, value);
         outputInitialValues.set(name, value);
-        assignments.set(parameter.name, parameter.value.initial);
-      } else if (parameter.value.kind === "assignment") {
+        assignments.set(variable.name, variable.value.initial);
+      } else if (variable.value.kind === "assignment") {
         initialValues.set(
           name,
-          evaluateExpression(initialValues, parameter.value.assignment),
+          evaluateExpression(initialValues, variable.value.assignment),
         );
       }
     }
