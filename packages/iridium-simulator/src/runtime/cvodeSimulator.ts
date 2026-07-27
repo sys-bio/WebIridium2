@@ -97,22 +97,22 @@ export class CvodeSimulator {
     const rhsPtr = this.#bindings.addFunction(
       instance.exports[RHS_NAME],
     ) as number;
-    const convertToAmountsPtr = this.#bindings.addFunction(
-      instance.exports[CONVERT_TO_AMOUNTS_NAME],
-    ) as number;
-    const convertToConcentrationsPtr = this.#bindings.addFunction(
-      instance.exports[CONVERT_TO_CONCENTRATIONS_NAME],
-    ) as number;
-    const convertResetPtr = this.#bindings.addFunction(
-      instance.exports[CONVERT_RESET_NAME],
-    ) as number;
+    // const convertToAmountsPtr = this.#bindings.addFunction(
+    //   instance.exports[CONVERT_TO_AMOUNTS_NAME],
+    // ) as number;
+    // const convertToConcentrationsPtr = this.#bindings.addFunction(
+    //   instance.exports[CONVERT_TO_CONCENTRATIONS_NAME],
+    // ) as number;
+    // const convertResetPtr = this.#bindings.addFunction(
+    //   instance.exports[CONVERT_RESET_NAME],
+    // ) as number;
 
     let eventParams: EventParams | undefined;
 
     funcPtrs.push(rhsPtr);
-    funcPtrs.push(convertToAmountsPtr);
-    funcPtrs.push(convertToConcentrationsPtr);
-    funcPtrs.push(convertResetPtr);
+    // funcPtrs.push(convertToAmountsPtr);
+    // funcPtrs.push(convertToConcentrationsPtr);
+    // funcPtrs.push(convertResetPtr);
 
     if (runtimeModel.events.length > 0) {
       const rootsPtr = this.#bindings.addFunction(
@@ -266,7 +266,7 @@ export class CvodeSimulator {
       numPoints,
     );
 
-    model.binding.DumpStats();
+    // model.binding.DumpStats();
 
     return new TimeCourseOutput(
       model.runtimeModel,

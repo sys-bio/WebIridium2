@@ -1,4 +1,5 @@
 import {
+  compile as compileIridium,
   type IridiumModel,
   type IridiumReaction,
   type IridiumSpecies,
@@ -8,13 +9,13 @@ import {
   type IridiumEvent,
   type IridiumReactionTerm,
   type RuntimeModel,
-  compile,
 } from "iridium-simulator";
 import type { AntimonyModel } from "../semantic/model";
 import { compileFormula } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
 import { NameContext, type FormulaContext } from "../grammar";
+import { deriveModels } from "../semantic/semantic";
 
 const INVALID_BOOLEAN_MESSAGE =
   "You can only use the values `true` or `false` here.";
@@ -199,4 +200,10 @@ export const compileToIridium = (
   }
 
   return { species, parameters, reactions, events };
+};
+
+export const compile = async (source: string): Promise<RuntimeModel> => {
+  const models = deriveModels(source);
+  const ir = compileToIridium(models);
+  return await compileIridium(ir);
 };

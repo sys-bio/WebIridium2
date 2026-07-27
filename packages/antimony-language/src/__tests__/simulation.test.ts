@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { promises as fs } from "fs";
 import path from "path";
-import { createCvodeWrapper } from "../wrapper.ts";
+import { createCvodeSimulator, type TimeCourseOutput } from "iridium-simulator";
+import { compile } from "../compile/compile.ts";
 
 // import defaultModel from "@/features/__benches__/smallbone_xlarge.ant?raw";
 import defaultModel from "@/assets/default.ant?raw";
-import { compile } from "../compile/compile";
-import type { ModelSpec } from "../modelSpec.ts";
-import { resultToString } from "./debugUtil.ts";
 
 // Turn this on to write to iridiumResults/.
 // Then you can use plotCompare.py script to compare the results with expected.
@@ -24,21 +22,21 @@ const simulate = async (
   numPoints: number,
   absoluteTolerance?: number,
   relativeTolerance?: number,
-): Promise<[ModelSpec, Float64Array]> => {
-  const wrapper = await createCvodeWrapper();
-  const spec = await compile(model);
+): Promise<TimeCourseOutput> => {
+  const simulator = await createCvodeSimulator();
+  const runtimeModel = await compile(model);
 
-  await wrapper.setModel(spec);
+  await simulator.setModel(runtimeModel);
 
   if (absoluteTolerance) {
-    wrapper.setAbsoluteTolerance(absoluteTolerance);
+    simulator.setAbsoluteTolerance(absoluteTolerance);
   }
 
   if (relativeTolerance) {
-    wrapper.setRelativeTolerance(relativeTolerance);
+    simulator.setRelativeTolerance(relativeTolerance);
   }
 
-  return [spec, wrapper.simulate(startTime, endTime, numPoints)];
+  return simulator.simulate(startTime, endTime, numPoints);
 };
 
 describe("simulating basic model", () => {
@@ -111,41 +109,15 @@ describe("simulation results", () => {
     return columns;
   };
 
-  const getColumnsFromArray = (
-    spec: ModelSpec,
-    numPoints: number,
-    array: Float64Array,
-  ): Columns => {
+  const getColumnsFromTimeCourseOutput = (output: TimeCourseOutput): Columns => {
     const columns: Columns = {};
 
-    let i = 0;
-    const rowLength = spec.y.length + spec.p.length + spec.reactions.length + 1;
-
-    for (const y of spec.y) {
-      const column = [];
-      for (let j = 0; j < numPoints; j++) {
-        column.push(array[j * rowLength + i]);
+    columns["Time"] = output.sliceColumn("time");
+    for (const name of output.columnNames) {
+      if (name !== "time") {
+        columns[name] = output.sliceColumn(name);
       }
-      columns[y.name] = column;
-
-      i += 1;
     }
-
-    for (const p of spec.p) {
-      const column = [];
-      for (let j = 0; j < numPoints; j++) {
-        column.push(array[j * rowLength + i]);
-      }
-      columns[p.name] = column;
-
-      i += 1;
-    }
-
-    const timeColumn = [];
-    for (let j = 0; j < numPoints; j++) {
-      timeColumn.push(array[(j + 1) * rowLength - 1]);
-    }
-    columns["Time"] = timeColumn;
 
     return columns;
   };
@@ -158,7 +130,7 @@ describe("simulation results", () => {
 
       const params = parseTestParams(code as string);
 
-      const [spec, array] = await simulate(
+      const output = await simulate(
         code as string,
         params.startTime,
         params.endTime,
@@ -169,11 +141,7 @@ describe("simulation results", () => {
 
       const expectedColumns = getColumnsFromCsv(csv);
 
-      const gotColumns = getColumnsFromArray(
-        spec,
-        params.numberOfPoints,
-        array,
-      );
+      const gotColumns = getColumnsFromTimeCourseOutput(output);
 
       if (WRITE_TEST_OUTPUT) {
         // write results to file for debugging
@@ -189,7 +157,7 @@ describe("simulation results", () => {
         const outputPath = path.join(resultsDir, `${base}.csv`);
         await fs.writeFile(
           outputPath,
-          resultToString(spec, params.numberOfPoints, array),
+          output.toCsv(),
         );
       }
 

@@ -1,4 +1,13 @@
+import { TIME_NAME } from "../names";
 import type { RuntimeModel } from "./model";
+
+const escapeCsv = (text: string): string => {
+  if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
+    return "\"" + text.replaceAll("\"", "\"\"") + "\"";
+  } else {
+    return text;
+  }
+};
 
 export class TimeCourseOutput {
   model: RuntimeModel;
@@ -24,6 +33,8 @@ export class TimeCourseOutput {
         names.push(v);
       }
 
+      names.push(TIME_NAME);
+
       this.#columnNames = names;
     }
 
@@ -32,7 +43,7 @@ export class TimeCourseOutput {
 
   get columnCount() {
     return (
-      this.model.y.length + this.model.p.length + this.model.reactions.length
+      1 + this.model.y.length + this.model.p.length + this.model.reactions.length
     );
   }
 
@@ -58,6 +69,10 @@ export class TimeCourseOutput {
       i++;
     }
 
+    if (name === TIME_NAME) {
+      return i;
+    }
+
     return -1;
   }
 
@@ -78,15 +93,38 @@ export class TimeCourseOutput {
       if (index === -1) {
         throw new Error(`Unknown column name: ${nameOrIndex}.`);
       }
+    } else {
+      index = nameOrIndex;
     }
 
     const columnCount = this.columnCount;
 
-    const slice = new Array(this.rowCount);
+    const slice = new Array(this.rowCount) as number[];
     for (let i = 0; i < this.rowCount; i++) {
-      slice[i] = this.buffer[i + columnCount * i];
+      slice[i] = this.buffer[index + columnCount * i];
     }
 
     return slice;
+  }
+
+  /**
+   * @returns - the output as as a csv string
+   */
+  toCsv(): string {
+    const lines = [];
+    const colCount = this.columnCount;
+    const rowCount = this.rowCount;
+
+    lines.push(this.columnNames.map(escapeCsv).join(","))
+
+    for (let y = 0; y < rowCount; y++) {
+      const line = [];
+      for (let x = 0; x < colCount; x++) {
+        line.push(this.buffer[x + y * colCount]);
+      }
+      lines.push(line.join(","))
+    }
+
+    return lines.join("\n");
   }
 }

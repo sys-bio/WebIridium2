@@ -21,17 +21,17 @@ import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
 
 export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
-  if (op === ">=") {
+  if (op === "ge") {
     emitter.emitByte(OpCode.f64ge);
-  } else if (op === "<=") {
+  } else if (op === "le") {
     emitter.emitByte(OpCode.f64le);
-  } else if (op === "<") {
+  } else if (op === "lt") {
     emitter.emitByte(OpCode.f64lt);
-  } else if (op === ">") {
+  } else if (op === "gt") {
     emitter.emitByte(OpCode.f64gt);
-  } else if (op === "==") {
+  } else if (op === "eq") {
     emitter.emitByte(OpCode.f64eq);
-  } else if (op === "!=") {
+  } else if (op === "neq") {
     emitter.emitByte(OpCode.f64ne);
   } else {
     throw new Error(`unknown comparison op: ${op}`);
@@ -95,27 +95,12 @@ export const emitExpression = (
           emitter.emitCallOp(scope.functionTable.get(OR_RESERVED_NAME));
           break;
         case "eq":
-          emitComparisonOperator(emitter, "==");
-          emitter.emitByte(OpCode.f64convert_u_i32);
-          break;
         case "neq":
-          emitComparisonOperator(emitter, "!=");
-          emitter.emitByte(OpCode.f64convert_u_i32);
-          break;
         case "le":
-          emitComparisonOperator(emitter, "<=");
-          emitter.emitByte(OpCode.f64convert_u_i32);
-          break;
         case "lt":
-          emitComparisonOperator(emitter, "<");
-          emitter.emitByte(OpCode.f64convert_u_i32);
-          break;
         case "ge":
-          emitComparisonOperator(emitter, ">=");
-          emitter.emitByte(OpCode.f64convert_u_i32);
-          break;
         case "gt":
-          emitComparisonOperator(emitter, ">");
+          emitComparisonOperator(emitter, op);
           emitter.emitByte(OpCode.f64convert_u_i32);
           break;
       }
