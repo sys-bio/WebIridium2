@@ -34,7 +34,7 @@ export const compileRhs = (
   compilation: Compilation,
   functionTable: FunctionTable,
 ): Emitter => {
-  const { variables, reactions, yTable, pTable } = compilation;
+  const { variables, compartments, reactions, yTable, pTable } = compilation;
   const emitter = new Emitter();
 
   const rateDetermined: RateDeterminedVariable[] = Array.from(
@@ -90,15 +90,11 @@ export const compileRhs = (
 
     emitExpression(variable.value.assignment, emitter, compilation, scope);
 
-    // TODO: add back multiplying by compartment size for species
-    // if (
-    //   variable.kind === "species" &&
-    //   !variable.hasSubstanceOnly &&
-    //   variable.compartment
-    // ) {
-    //   scope.emitLoadVariableFromName(emitter, variable.compartment);
-    //   emitter.emitUint(OpCode.f64mul);
-    // }
+    const compartment = compartments.get(variable.name);
+    if (!variable.hasSubstanceOnly && compartment) {
+      scope.emitLoadVariableFromName(emitter, compartment.name);
+      emitter.emitUint(OpCode.f64mul);
+    }
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
@@ -195,39 +191,32 @@ export const compileRhs = (
 
   // do rate rules
 
-  for (const parameter of rateDetermined) {
+  for (const variable of rateDetermined) {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
-    emitExpression(parameter.value.rate, emitter, compilation, scope);
+    emitExpression(variable.value.rate, emitter, compilation, scope);
 
-    // TODO: add back compartment product rule
+    const compartment = compartments.get(variable.name);
+    if (!variable.hasSubstanceOnly && compartment) {
+      scope.emitLoadVariableFromName(emitter, compartment.name);
+      emitter.emitByte(OpCode.f64mul);
 
-    // if (ode.kind === "species" && !ode.hasSubstanceOnly && ode.compartment) {
-    //   scope.emitLoadVariableFromName(emitter, ode.compartment);
-    //   emitter.emitByte(OpCode.f64mul);
-    //
-    //   // TODO: cache compartment rate (sort compartments first, evaluate it first, instead of re-evaluating each time)
-    //   // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
-    //   //       require differentiating the volume which is too complex of a task.
-    //   const compartmentVariable = variables.get(ode.compartment)!;
-    //   if (compartmentVariable.assignment?.kind === "rate") {
-    //     // product rule second term
-    //     scope.emitLoadVariableFromName(emitter, ode.name);
-    //     emitFormula(
-    //       compartmentVariable.assignment?.rate,
-    //       emitter,
-    //       compilation,
-    //       scope,
-    //     );
-    //     emitter.emitByte(OpCode.f64mul);
-    //     emitter.emitByte(OpCode.f64add);
-    //   }
-    // }
+      // TODO: cache compartment rate (sort compartments first, evaluate it first, instead of re-evaluating each time)
+      // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
+      //       require differentiating the volume which is too complex of a task.
+      if (compartment.value.kind === "rate") {
+        // product rule second term
+        scope.emitLoadVariableFromName(emitter, variable.name);
+        emitExpression(compartment.value.rate, emitter, compilation, scope);
+        emitter.emitByte(OpCode.f64mul);
+        emitter.emitByte(OpCode.f64add);
+      }
+    }
 
     emitter.emitByte(OpCode.f64store);
     emitter.emitUint(MEM_ALIGNMENT);
-    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(parameter.name));
+    emitter.emitUint(SIZEOF_DOUBLE * yTable.get(variable.name));
   }
 
   // add to reactions to p (for output)

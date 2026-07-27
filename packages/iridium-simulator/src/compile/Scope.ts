@@ -53,15 +53,10 @@ export class Scope {
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
 
-      // TODO: add back concentration stuff
       const variable = this.#compilation.variables.get(name);
-      const compartment = variable?.compartment;
-      if (
-        variable?.kind === "species" &&
-        !variable?.hasSubstanceOnly &&
-        compartment
-      ) {
-        this.emitConvertToConcentration(emitter, compartment);
+      const compartment = this.#compilation.compartments.get(name);
+      if (!variable?.hasSubstanceOnly && compartment) {
+        this.emitConvertToConcentration(emitter, compartment.name);
       }
     } else if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
@@ -71,15 +66,10 @@ export class Scope {
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
 
-      // TODO: add back concentration stuff
       const variable = this.#compilation.variables.get(name);
-      const compartment = variable?.compartment;
-      if (
-        variable?.kind === "species" &&
-        !variable?.hasSubstanceOnly &&
-        compartment
-      ) {
-        this.emitConvertToConcentration(emitter, compartment);
+      const compartment = this.#compilation.compartments.get(name);
+      if (!variable?.hasSubstanceOnly && compartment) {
+        this.emitConvertToConcentration(emitter, compartment.name);
       }
     } else {
       return false;
@@ -92,5 +82,15 @@ export class Scope {
     if (!this.emitLoadVariableFromName(emitter, expr.name)) {
       throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
     }
+  }
+
+  emitConvertToConcentration(emitter: Emitter, compartment: string): void {
+    this.emitLoadVariableFromName(emitter, compartment);
+    emitter.emitUint(OpCode.f64div);
+  }
+
+  emitConvertToAmount(emitter: Emitter, compartment: string): void {
+    this.emitLoadVariableFromName(emitter, compartment);
+    emitter.emitUint(OpCode.f64mul);
   }
 }

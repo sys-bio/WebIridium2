@@ -45,9 +45,10 @@ export const compileConvert = (
     }
   };
 
-  for (const yVar of compilation.yVars) {
-    const compartment = yVar.compartment;
-    if (yVar.kind !== "species" || !compartment) continue;
+  for (const yVarName of compilation.yVars) {
+    const yVar = compilation.variables.get(yVarName)!;
+    const compartment = compilation.compartments.get(yVarName);
+    if (!compartment) continue;
     if (mode === "toAmount" && yVar.hasSubstanceOnly) continue;
 
     emitter.emitByte(OpCode.localget);
@@ -60,7 +61,7 @@ export const compileConvert = (
     emitter.emitUint(MEM_ALIGNMENT);
     emitter.emitUint(yTable.get(yVar.name) * SIZEOF_DOUBLE);
 
-    emitCompartment(compartment);
+    emitCompartment(compartment.name);
 
     if (mode == "toAmount") {
       emitter.emitByte(OpCode.f64mul);
@@ -73,9 +74,10 @@ export const compileConvert = (
     emitter.emitUint(yTable.get(yVar.name) * SIZEOF_DOUBLE);
   }
 
-  for (const pVar of compilation.pVars) {
-    const compartment = pVar.compartment;
-    if (pVar.kind !== "species" || !compartment) continue;
+  for (const pVarName of compilation.pVars) {
+    const pVar = compilation.variables.get(pVarName)!;
+    const compartment = compilation.compartments.get(pVarName);
+    if (!compartment) continue;
     if (mode === "toAmount" && pVar.hasSubstanceOnly) continue;
 
     emitter.emitByte(OpCode.localget);
@@ -88,7 +90,7 @@ export const compileConvert = (
     emitter.emitUint(MEM_ALIGNMENT);
     emitter.emitUint(pTable.get(pVar.name) * SIZEOF_DOUBLE);
 
-    emitCompartment(compartment);
+    emitCompartment(compartment.name);
 
     if (mode === "toAmount") {
       emitter.emitByte(OpCode.f64mul);
