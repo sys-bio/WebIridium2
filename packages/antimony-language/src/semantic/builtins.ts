@@ -103,6 +103,20 @@ export const builtinFunctions = {
     arity: 2,
   },
 
+  // Math
+  ceil: {
+    description: "Round up to the next integer.",
+    arity: 1,
+  },
+  floor: {
+    description: "Round down to the next integer.",
+    arity: 1,
+  },
+  factorial: {
+    description: "The factorial function.",
+    arity: 1,
+  },
+
   // Trig
   sin: {
     description: "The sine function",

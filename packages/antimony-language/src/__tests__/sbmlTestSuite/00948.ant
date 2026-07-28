@@ -1,5 +1,5 @@
 ## start=0.0 end=3.0 points=300 atol=0.0001 rtol=0.0001 selections=S1,C amounts=
-## tags=Concentration,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,InitialValueReassigned
+## tags=AssignmentRule,Compartment,EventNoDelay,Parameter,Reaction,Species,Concentration,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,InitialValueReassigned
 
 // Created by libAntimony v3.0.0
 model *case00948()

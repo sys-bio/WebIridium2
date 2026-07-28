@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,S1,C amounts=S1
-## tags=Amount,AssignedVariableStoichiometry,EventIsNotPersistent,NonConstantParameter,NonUnityStoichiometry,SpeciesReferenceInMath
+## tags=Compartment,EventWithDelay,Parameter,RateRule,Reaction,Species,Amount,AssignedVariableStoichiometry,EventIsNotPersistent,NonConstantParameter,NonUnityStoichiometry,SpeciesReferenceInMath
 
 // Created by libAntimony v3.0.0
 model *case01718()

@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,S3,S4,C,k1,k2 amounts=S1,S2,S3,S4
-## tags=Amount,FastReaction,InitialValueReassigned,MultipleFastReactions
+## tags=CSymbolTime,Compartment,InitialAssignment,Parameter,Reaction,Species,Amount,FastReaction,InitialValueReassigned,MultipleFastReactions
 
 // Created by libAntimony v3.0.0
 model *case01569()

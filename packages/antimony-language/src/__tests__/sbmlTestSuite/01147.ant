@@ -1,5 +1,5 @@
 ## start=0.0 end=1.0 points=10 atol=1e-05 rtol=0.0001 selections=sub1__sub1__t1 amounts=
-## tags=InitialValueReassigned,NonConstantParameter,comp:SubmodelOutput,comp:TimeConversionFactor
+## tags=AssignmentRule,CSymbolTime,InitialAssignment,Parameter,comp:ModelDefinition,comp:Submodel,InitialValueReassigned,NonConstantParameter,comp:SubmodelOutput,comp:TimeConversionFactor
 
 // Created by libAntimony v3.0.0
 model moddef1()

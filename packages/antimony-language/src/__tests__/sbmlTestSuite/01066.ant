@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2,S3 amounts=S1,S2,S3
-## tags=InitialValueReassigned,Amount,AssignedConstantStoichiometry,NonUnityStoichiometry
+## tags=InitialAssignment,Compartment,Species,Reaction,Parameter,InitialValueReassigned,Amount,AssignedConstantStoichiometry,NonUnityStoichiometry
 
 // Created by libAntimony v3.0.0
 model *case01066()

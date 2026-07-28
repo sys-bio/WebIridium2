@@ -1,5 +1,5 @@
 ## start=0.0 end=1.0 points=50 atol=0.0001 rtol=0.0001 selections=x,y amounts=x
-## tags=Amount,NonConstantParameter,InitialValueReassigned,UncommonMathML
+## tags=AssignmentRule,CSymbolDelay,CSymbolTime,Compartment,InitialAssignment,Parameter,Species,Amount,NonConstantParameter,InitialValueReassigned,UncommonMathML
 
 // Created by libAntimony v3.0.0
 model *case00940()

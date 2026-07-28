@@ -1,4 +1,4 @@
-import { expect, it, beforeAll } from "vitest";
+import { expect, it } from "vitest";
 import {
   getColumnsFromCsv,
   getColumnsFromTimeCourseOutput,
@@ -9,6 +9,9 @@ import {
 import { promises as fs } from "fs";
 import path from "path";
 
+const CUTOFF = Infinity;
+const UNSUPPORTED_TAGS = ["AlgebraicRule"];
+
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
 const WRITE_TEST_OUTPUT = true;
 const resultsDir = path.resolve(__dirname, "..", "..", "simResults");
@@ -18,13 +21,10 @@ if (WRITE_TEST_OUTPUT) {
   console.log(`Writing to ${resultsDir}`);
 }
 
-// Ensure results file is cleared at the start of the test run
-beforeAll(async () => {
-  if (WRITE_TEST_OUTPUT) {
-    await fs.mkdir(resultsDir, { recursive: true });
-    await fs.writeFile(RESULTS_FILE, "");
-  }
-});
+if (WRITE_TEST_OUTPUT) {
+  await fs.mkdir(resultsDir, { recursive: true });
+  await fs.writeFile(RESULTS_FILE, "");
+}
 
 const appendResult = async (obj: unknown) => {
   if (!WRITE_TEST_OUTPUT) return;
@@ -50,26 +50,39 @@ const simulationResults = import.meta.glob("./sbmlTestSuite/*.csv", {
 
 for (const [fileName, code] of Object.entries(simulationFiles)) {
   const modelName = fileName.replace(".ant", "");
+  const modelNumber = parseInt(modelName.match(/\d+/)?.[0]!)!;
   const tags = parseTags(code as string);
+  if (modelNumber > CUTOFF) {
+    continue;
+  }
+  if (UNSUPPORTED_TAGS.some((t) => tags.includes(t))) {
+    await appendResult({
+      number: modelNumber,
+      pass: "skip",
+      timestamp: new Date().toISOString(),
+    });
+    continue;
+  }
 
   it(`${modelName} (${tags.join(", ")})`, async () => {
-    const csv = simulationResults[modelName + ".csv"] as string;
-    expect(csv).toBeDefined();
-
-    const params = parseTestParams(code as string);
-
     // Run simulation and checks inside try/catch so we can log pass/fail
     let passed = true;
     let error: unknown;
 
     try {
+      const csv = simulationResults[modelName + ".csv"] as string;
+      expect(csv).toBeDefined();
+
+      const params = parseTestParams(code as string);
+
       const output = await simulateOnce(
         code as string,
         params.startTime,
         params.endTime,
         params.numberOfPoints + 1,
+        1e-10,
         1e-12,
-        1e-16,
+        params.amounts,
       );
 
       const expectedColumns = getColumnsFromCsv(csv);
@@ -106,12 +119,15 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
     }
 
     // append result (do this after checks so results file is updated even on failure)
-    const base = path.basename(fileName, ".ant");
     await appendResult({
-      name: base,
-      tags,
-      pass: passed,
-      error: error,
+      number: modelNumber,
+      pass: passed ? "pass" : "fail",
+      error:
+        error instanceof Error
+          ? error.message
+          : error
+            ? String(error)
+            : "unknown",
       timestamp: new Date().toISOString(),
     });
 

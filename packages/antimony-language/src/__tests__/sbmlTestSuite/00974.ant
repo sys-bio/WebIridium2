@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=100 atol=0.0001 rtol=0.0001 selections=X,Y,Z,Q amounts=X
-## tags=Amount,InitialValueReassigned,NonConstantParameter,SpeciesReferenceInMath
+## tags=AssignmentRule,Compartment,InitialAssignment,Parameter,RateRule,Reaction,Species,Amount,InitialValueReassigned,NonConstantParameter,SpeciesReferenceInMath
 
 // Created by libAntimony v3.0.0
 model *case00974()

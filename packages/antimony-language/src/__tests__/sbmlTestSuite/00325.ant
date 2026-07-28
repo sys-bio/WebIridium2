@@ -1,5 +1,5 @@
 ## start=0.0 end=8.0 points=50 atol=0.01 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
-## tags=Amount
+## tags=Compartment,Species,Reaction,Parameter,RateRule,Amount
 
 // Created by libAntimony v3.0.0
 model *case00325()

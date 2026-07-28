@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=a,b,c,d,e,f,g amounts=
-## tags=InitialValueReassigned,NonConstantParameter
+## tags=AssignmentRule,CSymbolTime,Parameter,comp:ModelDefinition,comp:Port,comp:ReplacedElement,comp:Submodel,InitialValueReassigned,NonConstantParameter
 
 // Created by libAntimony v3.0.0
 model sub1(a, b, c, d, e, f, g)

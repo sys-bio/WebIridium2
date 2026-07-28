@@ -1,5 +1,7 @@
 import { createCvodeSimulator, type TimeCourseOutput } from "iridium-simulator";
-import { compile } from "../compile/compile";
+import { compileToIridium } from "../compile/compile";
+import { compile } from "iridium-simulator";
+import { deriveModels } from "../semantic/semantic";
 
 export type TestParams = {
   startTime: number;
@@ -7,11 +9,12 @@ export type TestParams = {
   numberOfPoints: number;
   absoluteTolerance: number;
   relativeTolerance: number;
+  amounts: string[];
 };
 
 export type Columns = Record<string, number[]>;
 
-const paramRegex = /([A-Za-z]+)=([0-9.e+-]+)/g;
+const paramRegex = /([A-Za-z]+)=([^\s]+)/g;
 export const parseTestParams = (code: string): TestParams => {
   const params: Record<string, string> = {};
 
@@ -25,6 +28,7 @@ export const parseTestParams = (code: string): TestParams => {
     numberOfPoints: Number(params["points"]),
     absoluteTolerance: Number(params["atol"]),
     relativeTolerance: Number(params["rtol"]),
+    amounts: (params["amounts"] ?? "").split(","),
   };
 };
 
@@ -79,9 +83,11 @@ export const simulateOnce = async (
   numPoints: number,
   absoluteTolerance?: number,
   relativeTolerance?: number,
+  amounts?: string[],
 ): Promise<TimeCourseOutput> => {
   const simulator = await createCvodeSimulator();
-  const runtimeModel = await compile(model);
+  const ir = compileToIridium(deriveModels(model));
+  const runtimeModel = await compile(ir);
 
   await simulator.setModel(runtimeModel);
 
@@ -93,5 +99,32 @@ export const simulateOnce = async (
     simulator.setRelativeTolerance(relativeTolerance);
   }
 
-  return simulator.simulate(startTime, endTime, numPoints);
+  const output = simulator.simulate(startTime, endTime, numPoints);
+
+  // TODO: for now, we just manually update amounts, but probably want some kind of
+  //       selection list in the future.
+  if (amounts) {
+    for (const name of amounts) {
+      const variable = ir.variables.find((v) => v.name === name);
+      if (!variable) throw new Error(`Can't find variable: ${name}.`);
+      if (variable.hasSubstanceOnly) continue;
+
+      const compartment = ir.compartments.find((c) =>
+        c.containedVariables.includes(name),
+      );
+      if (!compartment) continue;
+
+      const variableIndex = output.getColumnIndex(variable.name);
+      const compartmentIndex = output.getColumnIndex(
+        compartment.containerVariable,
+      );
+
+      for (let i = 0; i < output.rowCount; i++) {
+        output.buffer[variableIndex + i * output.columnCount] *=
+          output.buffer[compartmentIndex + i * output.columnCount];
+      }
+    }
+  }
+
+  return output;
 };

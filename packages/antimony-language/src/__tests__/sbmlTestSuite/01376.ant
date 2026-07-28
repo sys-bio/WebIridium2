@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=J1,A__x,A_C amounts=J1
-## tags=Amount,BoundaryCondition,NonConstantParameter,comp:SubmodelOutput
+## tags=CSymbolTime,Compartment,EventWithDelay,Parameter,Species,comp:ModelDefinition,comp:ReplacedBy,comp:ReplacedElement,comp:Submodel,Amount,BoundaryCondition,NonConstantParameter,comp:SubmodelOutput
 
 // Created by libAntimony v3.0.0
 model sub1()

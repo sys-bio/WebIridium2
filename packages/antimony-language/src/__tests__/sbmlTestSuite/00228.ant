@@ -1,5 +1,5 @@
 ## start=0.0 end=0.5 points=50 atol=1e-09 rtol=0.0001 selections=S1,S2 amounts=S1,S2
-## tags=Amount,BoundaryCondition
+## tags=Compartment,Species,Reaction,Parameter,Amount,BoundaryCondition
 
 // Created by libAntimony v3.0.0
 model *case00228()

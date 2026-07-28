@@ -1,5 +1,5 @@
 ## start=0.0 end=1.0 points=2 atol=0.0001 rtol=0.0001 selections=a,b,c,d,e amounts=
-## tags=InitialValueReassigned,UncommonMathML
+## tags=InitialAssignment,Parameter,InitialValueReassigned,UncommonMathML
 
 // Created by libAntimony v3.0.0
 model *case_01114()

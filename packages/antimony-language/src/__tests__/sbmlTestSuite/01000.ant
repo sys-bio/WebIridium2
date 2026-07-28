@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=1005 atol=0.08 rtol=0.0001 selections=S1,S2,S3,S4,k1,k2,k3,k4,k5,kavo,comp,comp2 amounts=S1,S2,S3,S4
-## tags=Amount,AssignedConstantStoichiometry,AssignedVariableStoichiometry,BoundaryCondition,ConstantSpecies,ConversionFactors,EventIsNotPersistent,EventIsPersistent,EventT0Firing,EventUsesAssignmentTimeValues,EventUsesTriggerTimeValues,HasOnlySubstanceUnits,InitialValueReassigned,LocalParameters,MultiCompartment,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,NonUnityStoichiometry,ReversibleReaction,SpeciesReferenceInMath
+## tags=AssignmentRule,CSymbolAvogadro,CSymbolTime,Compartment,EventNoDelay,EventPriority,EventWithDelay,FunctionDefinition,InitialAssignment,Parameter,RateRule,Reaction,Species,Amount,AssignedConstantStoichiometry,AssignedVariableStoichiometry,BoundaryCondition,ConstantSpecies,ConversionFactors,EventIsNotPersistent,EventIsPersistent,EventT0Firing,EventUsesAssignmentTimeValues,EventUsesTriggerTimeValues,HasOnlySubstanceUnits,InitialValueReassigned,LocalParameters,MultiCompartment,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,NonUnityStoichiometry,ReversibleReaction,SpeciesReferenceInMath
 
 // Created by libAntimony v3.0.0
 model *case01000()

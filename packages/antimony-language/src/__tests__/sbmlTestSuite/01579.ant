@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=k1,k2,P1 amounts=
-## tags=EventUsesAssignmentTimeValues,InitialValueReassigned,NonConstantParameter
+## tags=AlgebraicRule,EventWithDelay,Parameter,RateRule,EventUsesAssignmentTimeValues,InitialValueReassigned,NonConstantParameter
 
 // Created by libAntimony v3.0.0
 model *case01579()

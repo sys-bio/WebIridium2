@@ -1,5 +1,5 @@
 ## start=0.0 end=100.0 points=1001 atol=0.03 rtol=0.0001 selections=S,errorLow,errorHigh amounts=
-## tags=EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,RandomEventExecution
+## tags=AlgebraicRule,CSymbolTime,EventNoDelay,EventPriority,Parameter,EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,RandomEventExecution
 
 // Created by libAntimony v3.0.0
 model *case01589()

@@ -1,5 +1,5 @@
 ## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=s8 amounts=s8
-## tags=Amount,HasOnlySubstanceUnits,MultiCompartment,comp:ConversionFactor
+## tags=Compartment,Parameter,RateRule,Species,comp:ModelDefinition,comp:ReplacedElement,comp:Submodel,Amount,HasOnlySubstanceUnits,MultiCompartment,comp:ConversionFactor
 
 // Created by libAntimony v3.0.0
 model moddef1()

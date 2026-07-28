@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=C1,S2 amounts=S2
-## tags=Amount,DefaultValue,HasOnlySubstanceUnits,InitialValueReassigned
+## tags=AlgebraicRule,Compartment,Species,Amount,DefaultValue,HasOnlySubstanceUnits,InitialValueReassigned
 
 // Created by libAntimony v3.0.0
 model *case01793()

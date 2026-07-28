@@ -1,5 +1,5 @@
 ## start=0.0 end=1000.0 points=1000 atol=0.01 rtol=0.01 selections=S,error amounts=
-## tags=EventIsNotPersistent,EventIsPersistent,EventUsesTriggerTimeValues,NonConstantParameter,RandomEventExecution
+## tags=AssignmentRule,CSymbolTime,EventNoDelay,EventPriority,FunctionDefinition,Parameter,EventIsNotPersistent,EventIsPersistent,EventUsesTriggerTimeValues,NonConstantParameter,RandomEventExecution
 
 // Created by libAntimony v3.0.0
 model *case00966()

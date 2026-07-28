@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=true,True,TRUE,a,b,c amounts=
-## tags=InitialValueReassigned
+## tags=InitialAssignment,Parameter,InitialValueReassigned
 
 // Created by libAntimony v3.0.0
 model *case01815()

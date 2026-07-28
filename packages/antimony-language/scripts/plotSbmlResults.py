@@ -33,41 +33,39 @@ def read_results(path):
 
 
 def build_matrices(results):
-    """Return pass_arr (list of 0/1) and names (list).
-    Keeps the same ordering as the file (append order).
-    """
-    n = len(results)
-    pass_arr = [0] * n
-    names = []
+    max_number = -1
     for i, r in enumerate(results):
-        names.append(r.get("name", f"r{i}"))
-        pass_arr[i] = 1 if r.get("pass") else 0
-    return pass_arr, names
+        number = r.get("number")
+        max_number = max(max_number, number)
+
+    pass_arr = [0] * max_number
+    for r in results:
+        pass_status = r.get("pass")
+        number = r.get("number")
+        pass_arr[number - 1] = (1 if pass_status == "pass" else
+                      -1 if pass_status == "fail" else
+                      0)
+    return pass_arr, max_number
 
 
-def plot_heatmap(pass_arr, names, figsize=(10, 10)):
+def plot_heatmap(pass_arr, max_number, figsize=(10, 10)):
     """Display an interactive grid: green=pass, red=fail, gray=padding."""
-    n = len(pass_arr)
-    if n == 0:
-        print("No tests to display.")
-        return
-
     # grid size (square-ish)
-    cols = int(math.ceil(math.sqrt(n)))
-    rows = int(math.ceil(n / cols))
+    cols = int(math.ceil(math.sqrt(max_number)))
+    rows = int(math.ceil(max_number / cols))
 
     # Build grid values: 0=empty, 1=fail, 2=pass
     pass_grid = [[0 for _ in range(cols)] for _ in range(rows)]
     for i, val in enumerate(pass_arr):
         r = i // cols
         c = i % cols
-        pass_grid[r][c] = 2 if val else 1
+        pass_grid[r][c] = val
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(1, 1, 1)
 
-    cmap = ListedColormap(["#CCCCCC", "#d73027", "#1a9850"])  # gray, red, green
-    im = ax.imshow(pass_grid, interpolation='nearest', cmap=cmap, vmin=0, vmax=2, aspect='equal')
+    cmap = ListedColormap(["#d73027", "#CCCCCC", "#1a9850"])  # red, grey, green
+    im = ax.imshow(pass_grid, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1, aspect='equal')
 
     ax.set_xticks([])
     ax.set_yticks([])
@@ -80,15 +78,15 @@ def plot_heatmap(pass_arr, names, figsize=(10, 10)):
         ax.axhline(y - 0.5, color='white', linewidth=0.5)
 
     # annotate failures with an 'x' when grid is reasonably small
-    if rows <= 40 and cols <= 40:
-        for r in range(rows):
-            for c in range(cols):
-                if pass_grid[r][c] == 1:
-                    ax.text(c, r, 'x', ha='center', va='center', color='white', fontsize=6, weight='bold')
+    for r in range(rows):
+        for c in range(cols):
+            ax.text(c, r, str(c + r * cols + 1), ha='center', va='center', color='white', fontsize=6, weight='bold')
 
     # simple legend
     from matplotlib.patches import Patch
-    legend_elems = [Patch(facecolor="#1a9850", edgecolor='k', label='Pass'), Patch(facecolor="#d73027", edgecolor='k', label='Fail')]
+
+    legend_elems = [Patch(facecolor="#1a9850", edgecolor='k', label='Pass'), Patch(facecolor="#d73027", edgecolor='k', label='Fail'),
+                    Patch(facecolor="#CCCCCC", edgecolor="k", label="Skip")]
     ax.legend(handles=legend_elems, loc='upper right', fontsize=8)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -111,7 +109,7 @@ if __name__ == "__main__":
         print("No results found in file.")
         sys.exit(1)
 
-    pass_arr, names = build_matrices(results)
+    pass_arr, max_number = build_matrices(results)
     # dynamic figsize based on grid size
     size = max(6, int(math.sqrt(len(results))) * 0.16 + 6)
-    plot_heatmap(pass_arr, names, figsize=(size, size))
+    plot_heatmap(pass_arr, max_number, figsize=(size, size))

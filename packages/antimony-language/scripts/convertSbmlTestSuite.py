@@ -13,7 +13,8 @@ from generateData import TestParams
 
 VER_REGEX = re.compile(r"l(\d+)v(\d+)")
 SETTINGS_REGEX = re.compile(r"^(\w+)\s*:\s*(.*)$")
-TAGS_REGEX = re.compile(r"^\s*testTags:\s*(.*)$", flags=re.MULTILINE)
+COMPONENT_TAGS_REGEX = re.compile(r"^\s*componentTags:\s*(.*)$", flags=re.MULTILINE)
+TEST_TAGS_REGEX = re.compile(r"^\s*testTags:\s*(.*)$", flags=re.MULTILINE)
 
 
 def parse_settings(settings_file: Path) -> TestParams:
@@ -67,11 +68,19 @@ def choose_model_file(case_dir: Path) -> Path | None:
 
 
 def parse_tags(content: str) -> list[str]:
-    tags = TAGS_REGEX.search(content)
-    if not tags:
-        return []
+    component_match = COMPONENT_TAGS_REGEX.search(content)
+    if component_match is None:
+        component_tags = []
+    else:
+        component_tags = list([s.strip() for s in component_match.group(1).split(",")])
 
-    return list(map(lambda s: s.strip(), tags.group(1).split(",")))
+    test_match = TEST_TAGS_REGEX.search(content)
+    if test_match is None:
+        test_tags = []
+    else:
+        test_tags = list([s.strip() for s in test_match.group(1).split(",")])
+
+    return component_tags + test_tags
 
 
 def convert(case_dir: Path, out_dir: Path) -> None:

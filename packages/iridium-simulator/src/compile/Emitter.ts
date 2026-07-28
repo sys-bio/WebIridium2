@@ -159,6 +159,10 @@ class Emitter {
     }
   }
 
+  emitLabelIndex(n: number): void {
+    this.emitUint(n);
+  }
+
   /* Other */
 
   emitI32ConstOp(i32: number): void {
@@ -188,6 +192,29 @@ class Emitter {
       elseBody();
     }
 
+    this.emitByte(OpCode.end);
+  }
+
+  emitWhile(condition: () => void, body: () => void): void {
+    this.emitByte(OpCode.block);
+    this.emitByte(OpCode.blockNoType);
+
+    this.emitByte(OpCode.loop);
+    this.emitByte(OpCode.blockNoType);
+
+    // exit if the condition is false
+    condition();
+    this.emitByte(OpCode.i32eqz);
+    this.emitByte(OpCode.br_if);
+    this.emitLabelIndex(1);
+
+    body();
+
+    // loop back
+    this.emitByte(OpCode.br);
+    this.emitLabelIndex(0);
+
+    this.emitByte(OpCode.end);
     this.emitByte(OpCode.end);
   }
 }

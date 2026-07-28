@@ -1,5 +1,5 @@
 ## start=0.0 end=2.0 points=10 atol=0.001 rtol=0.0001 selections=A,B,C amounts=A,B,C
-## tags=Amount,FastReaction,NonConstantParameter,HasOnlySubstanceUnits
+## tags=CSymbolTime,Compartment,EventNoDelay,Parameter,Reaction,Species,Amount,FastReaction,NonConstantParameter,HasOnlySubstanceUnits
 
 // Created by libAntimony v3.0.0
 model *case00987()

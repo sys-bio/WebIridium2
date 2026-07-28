@@ -1,5 +1,5 @@
 ## start=0.0 end=3.5 points=50 atol=1e-06 rtol=0.0001 selections=S1,S2 amounts=S1,S2
-## tags=Amount,HasOnlySubstanceUnits,NonUnityCompartment
+## tags=Compartment,Species,Reaction,Parameter,Amount,HasOnlySubstanceUnits,NonUnityCompartment
 
 // Created by libAntimony v3.0.0
 model *case01001()

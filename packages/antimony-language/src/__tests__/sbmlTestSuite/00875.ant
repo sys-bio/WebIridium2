@@ -1,5 +1,5 @@
 ## start=0.0 end=3.0 points=50 atol=0.01 rtol=0.0001 selections=A1,A2,A3,A4 amounts=A1,A2,A3,A4
-## tags=Amount,FastReaction,BoundaryCondition
+## tags=Compartment,Species,Reaction,Parameter,Amount,FastReaction,BoundaryCondition
 
 // Created by libAntimony v3.0.0
 model *case00875()

@@ -174,6 +174,80 @@ const builtinFunctionDefinitions: {
       emitter.emitByte(OpCode.i32or);
     }, false),
   },
+  ceil: {
+    kind: "inline",
+    name: "ceil",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64ceil);
+    },
+  },
+  floor: {
+    kind: "inline",
+    name: "floor",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64floor);
+    },
+  },
+  factorial: {
+    kind: "compile",
+    isExported: false,
+    name: "factorial",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    // TODO: add unit test for this?
+    compileBody: (_functionTable) => {
+      const emitter = new Emitter();
+
+      const n = "N";
+      const a = "A";
+
+      const localsTable = new LocalsSymbolTable([n]);
+      localsTable.addLocal(a);
+
+      emitter.emitListHeader(1);
+      emitter.emitUint(2);
+      emitter.emitByte(ValType.f64);
+
+      emitter.emitF64ConstOp(1);
+      emitter.emitByte(OpCode.localset);
+      emitter.emitUint(localsTable.getLocal(a));
+
+      emitter.emitWhile(
+        () => {
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getParam(n));
+
+          emitter.emitF64ConstOp(1);
+          emitter.emitByte(OpCode.f64gt);
+        },
+        () => {
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getLocal(a));
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getParam(n));
+          emitter.emitByte(OpCode.f64mul);
+
+          emitter.emitByte(OpCode.localset);
+          emitter.emitUint(localsTable.getLocal(a));
+
+          emitter.emitByte(OpCode.localget);
+          emitter.emitUint(localsTable.getParam(n));
+          emitter.emitF64ConstOp(1);
+          emitter.emitByte(OpCode.f64sub);
+
+          emitter.emitByte(OpCode.localset);
+          emitter.emitUint(localsTable.getParam(n));
+        },
+      );
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getLocal(a));
+
+      emitter.emitByte(OpCode.end);
+
+      return emitter.getOutput();
+    },
+  },
   sin: {
     kind: "import",
     name: "sin",

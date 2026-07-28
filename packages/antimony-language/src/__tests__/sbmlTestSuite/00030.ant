@@ -1,5 +1,5 @@
 ## start=0.0 end=2.0 points=50 atol=0.0001 rtol=0.0001 selections=S1 amounts=S1
-## tags=Amount,InitialValueReassigned
+## tags=Compartment,Species,AssignmentRule,Amount,InitialValueReassigned
 
 // Created by libAntimony v3.0.0
 model *case00030()

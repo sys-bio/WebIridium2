@@ -1,5 +1,5 @@
 ## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=c amounts=
-## tags=NonConstantCompartment,NonUnityCompartment,InitialValueReassigned
+## tags=Compartment,RateRule,InitialAssignment,NonConstantCompartment,NonUnityCompartment,InitialValueReassigned
 
 // Created by libAntimony v3.0.0
 model *case00912()

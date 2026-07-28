@@ -1,5 +1,5 @@
 ## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=s1,sub1__p80 amounts=s1
-## tags=Amount,HasOnlySubstanceUnits,InitialValueReassigned,MultiCompartment,comp:ConversionFactor,comp:ExtentConversionFactor,comp:SubmodelOutput,comp:TimeConversionFactor
+## tags=AssignmentRule,Compartment,Parameter,Reaction,Species,comp:ModelDefinition,comp:ReplacedElement,comp:Submodel,Amount,HasOnlySubstanceUnits,InitialValueReassigned,MultiCompartment,comp:ConversionFactor,comp:ExtentConversionFactor,comp:SubmodelOutput,comp:TimeConversionFactor
 
 // Created by libAntimony v3.0.0
 model moddef1()

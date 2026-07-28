@@ -46,10 +46,14 @@ export type SectionCode = (typeof SectionCode)[keyof typeof SectionCode];
 
 export const OpCode = {
   blockNoType: 0x40,
+  block: 0x02,
+  loop: 0x03,
   if: 0x04,
   else: 0x05,
   call: 0x10,
   end: 0x0b,
+  br: 0x0c,
+  br_if: 0x0d,
 
   localget: 0x20,
   localset: 0x21,

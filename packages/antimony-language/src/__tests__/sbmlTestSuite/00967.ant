@@ -1,5 +1,5 @@
 ## start=0.0 end=10.0 points=101 atol=0.01 rtol=0.01 selections=Q,R amounts=
-## tags=NonConstantParameter,EventIsNotPersistent
+## tags=CSymbolTime,EventNoDelay,EventPriority,Parameter,NonConstantParameter,EventIsNotPersistent
 
 // Created by libAntimony v3.0.0
 model *case00967()
