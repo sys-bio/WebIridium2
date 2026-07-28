@@ -130,6 +130,7 @@ const evaluateFromOrdering = async (
     p: number,
     events: number,
   ) => void;
+
   (instance.exports[EVALUATE_NAME] as EvaluateExport)(
     0,
     0,
