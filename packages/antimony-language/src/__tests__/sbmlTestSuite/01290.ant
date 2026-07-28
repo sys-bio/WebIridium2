@@ -1,0 +1,19 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2 amounts=
+## tags=BoolNumericSwap,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01290()
+
+  // Rate Rules:
+  p1' = true;
+  p2' = false;
+
+  // Variable initializations:
+  p1 = 1;
+  p2 = 2;
+
+  // Other declarations:
+  var p1, p2;
+end
+
+case01290 is "case01290"

@@ -1,0 +1,32 @@
+## start=0.0 end=3.0 points=300 atol=0.001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00946()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Assignment Rules:
+  C := fakeC;
+
+  // Reactions:
+  reaction1:  => S1; C*k1/S1;
+
+  // Events:
+  event1: at S1 > 2.1: fakeC = 10;
+
+  // Species initializations:
+  S1 = 1/C;
+
+  // Variable initializations:
+  fakeC = 1;
+  k1 = 1;
+
+  // Other declarations:
+  var C, fakeC;
+  const k1;
+end
+
+case00946 is "case00946"

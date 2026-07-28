@@ -1,0 +1,35 @@
+## start=0.0 end=2.0 points=20 atol=0.001 rtol=0.001 selections=A,B amounts=A,B
+## tags=Amount,EventIsPersistent,FastReaction,NonConstantParameter,HasOnlySubstanceUnits
+
+// Created by libAntimony v3.0.0
+model *case00988()
+
+  // Compartments and Species:
+  compartment comp;
+  substanceOnly species A in comp, B in comp;
+
+  // Reactions:
+  slow: B -> A; k1;
+  fast: A -> B; k2*A;
+
+  // Events:
+  E0: at A >= 0.99: k2 = 1;
+  E1: at 0.1 after A >= 0.99: k2 = 0;
+
+  // Species initializations:
+  A = 0;
+  B = 2/comp;
+
+  // Compartment initializations:
+  comp = 1;
+
+  // Variable initializations:
+  k2 = 0;
+  k1 = 1;
+
+  // Other declarations:
+  var k2, k1;
+  const comp;
+end
+
+case00988 is "case00988"

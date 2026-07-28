@@ -1,0 +1,31 @@
+## start=0.0 end=2.0 points=40 atol=0.0001 rtol=0.0001 selections=x,y amounts=x
+## tags=Amount,NonConstantParameter,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00939()
+
+  // Compartments and Species:
+  species x;
+
+  // Assignment Rules:
+  y := 2 + delay(x, 0.2);
+
+  // Reactions:
+  _J0:  -> x; 1;
+
+  // Species initializations:
+  x = 3;
+  x has substance_per_volume;
+
+  // Other declarations:
+  var y;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+
+  // Notes:
+  model notes "Originally created by libAntimony 1.4 (using libSBML 5.0.0-a1)"
+end

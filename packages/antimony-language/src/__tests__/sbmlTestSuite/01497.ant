@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,p3,p4 amounts=
+## tags=InitialValueReassigned,L3v2MathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01497()
+
+  // Assignment Rules:
+  p1 := implies((time > 5.5), (time > 2.5));
+  p2 := implies((time > 5.5), (time < 2.5));
+  p3 := implies((time < 5.5), (time > 2.5));
+  p4 := implies((time < 5.5), (time < 2.5));
+
+  // Other declarations:
+  var p1, p2, p3, p4;
+end
+
+case01497 is "case01497"

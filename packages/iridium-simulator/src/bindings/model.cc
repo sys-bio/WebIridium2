@@ -20,6 +20,8 @@
 #include "sunnonlinsol/sunnonlinsol_newton.h"
 #include "sunmatrix/sunmatrix_dense.h"
 
+// #define DEBUG_LOG
+
 int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
     return model->rhs_fn_(
         t,
@@ -91,7 +93,6 @@ Model::Model(
     dummy_y_dot_ = new double[original_y_.size()];
     abs_tol_v_ = N_VNew_Serial(original_y_.size(), ctx_);
 
-    std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
     non_lin_solver_ = SUNNonlinSol_Newton(y_, ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
@@ -206,7 +207,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
             NV_Ith_S(abs_tol_v_, i) =
                 (y_i == 0)
                     ? abs_tol_factor_
-                    : std::abs(y_i) * abs_tol_factor_;
+                    : y_i * abs_tol_factor_;
         }
 
         CVodeSVtolerances(cvode_mem_, rel_tol_, abs_tol_v_);
@@ -309,7 +310,9 @@ void Model::Integrate(double target_time) {
                 }
             }
         } else if (result == CV_ROOT_RETURN) {
+#ifdef DEBUG_LOG
             std::cout << "hit root at " << time_ << std::endl;
+#endif
             CVodeGetRootInfo(cvode_mem_, roots_found_.data());
 
             // TODO: replace this with better
@@ -338,6 +341,7 @@ void Model::Integrate(double target_time) {
 }
 
 void Model::EnqueueEventsFromSwap() {
+#ifdef DEBUG_LOG
     std::cout << "time: " << time_ << std::endl;
 
     for (int i = 0; i < num_roots_; i++) {
@@ -347,6 +351,7 @@ void Model::EnqueueEventsFromSwap() {
     for (int i = 0 ; i < events_swap_.size(); i++) {
         std::cout << "e[" << i << "] = " << events_swap_[i] << std::endl;
     }
+#endif
 
     // NOTE: we don't actually swap the events_swap_ since both need to have
     //       the exact same state or some things won't work in some edge-cases.
@@ -467,7 +472,9 @@ void Model::RunPendingEventInvocations() {
     }
 
     if (updated) {
+#ifdef DEBUG_LOG
         std::cout << "Re-init at " << time_ << std::endl;
+#endif
         CVodeReInit(cvode_mem_, time_, y_);
     }
 }
@@ -477,12 +484,16 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
 
     for (int iy = 0; iy < info->y_indices.size(); iy++) {
         NV_Ith_S(y_, info->y_indices[iy]) = invocation.y_values[iy];
+#ifdef DEBUG_LOG
         std::cout << "y[" << info->y_indices[iy] << "] = " << invocation.y_values[iy] << std::endl;
+#endif
     }
 
     for (int ip = 0; ip < info->p_indices.size(); ip++) {
         p_[info->p_indices[ip]] = invocation.p_values[ip];
+#ifdef DEBUG_LOG
         std::cout << "p[" << info->p_indices[ip] << "] = " << invocation.p_values[ip] << std::endl;
+#endif
     }
 
     rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());

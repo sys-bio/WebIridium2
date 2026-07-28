@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=EventIsPersistent,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01660()
+
+  // Events:
+  _E0: at 1 after (time >= 0.5) && (time <= (avogadro/6.022e23)): p1 = 3;
+
+  // Variable initializations:
+  p1 = 1;
+
+  // Other declarations:
+  var p1;
+end
+
+case01660 is "case01660"

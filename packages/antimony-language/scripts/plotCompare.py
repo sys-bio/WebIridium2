@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 base_dir = Path(__file__).parent
 expected_dir = (base_dir / "../src/__tests__/results").resolve()
-our_dir = (base_dir / "../iridiumResults").resolve()
+expected_dir2 = (base_dir / "../src/__tests__/sbmlTestSuite").resolve()
+our_dir = (base_dir / "../simResults").resolve()
 
 
 def read_csv(path: Path):
@@ -28,9 +29,12 @@ def main(filter_str: str):
     for p in expected_dir.glob("*.csv"):
         if filter_str.lower() in p.stem.lower():
             candidates.append(p)
+    for p in expected_dir2.glob("*.csv"):
+        if filter_str.lower() in p.stem.lower():
+            candidates.append(p)
 
     if len(candidates) == 0:
-        print(f"No matches for filter '{filter_str}' in {expected_dir}")
+        print(f"No matches for filter '{filter_str}'")
         sys.exit(1)
     if len(candidates) > 1:
         print(f"Multiple matches for filter '{filter_str}':")

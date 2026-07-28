@@ -1,0 +1,27 @@
+## start=0.0 end=10.0 points=100 atol=0.0001 rtol=0.0001 selections=X amounts=X
+## tags=Amount,AssignedVariableStoichiometry,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case01103()
+
+  // Compartments and Species:
+  species X;
+
+  // Rate Rules:
+  Xref' = 0.01;
+
+  // Reactions:
+  J0:  -> Xref X; k1;
+
+  // Species initializations:
+  X = 0;
+
+  // Variable initializations:
+  k1 = 1;
+  Xref = 1;
+
+  // Other declarations:
+  var k1, Xref;
+end
+
+case01103 is "case01103"

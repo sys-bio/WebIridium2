@@ -1,0 +1,40 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P13,P14,P15,P16,P18,P19,P20,P22,P29,P31,P32,P34,P35,P36,P37 amounts=
+## tags=InitialValueReassigned,NonConstantParameter,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01487()
+
+  // Assignment Rules:
+  P1 := time;
+  P2 := abs(time);
+  P3 := abs(-time);
+  P4 := acos(time);
+  P5 := acos(-time);
+  P6 := asin(time);
+  P7 := asin(-time);
+  P8 := atan(time);
+  P9 := atan(-time);
+  P10 := ceil(time - 0.001);
+  P11 := ceil(-time - 0.001);
+  P13 := cos(time);
+  P14 := cos(-time);
+  P15 := exp(time);
+  P16 := exp(-time);
+  P18 := floor(time + 0.001);
+  P19 := floor(-time + 0.001);
+  P20 := ln(time + 1);
+  P22 := log10(time + 1);
+  P29 := sqrt(time);
+  P31 := sin(time);
+  P32 := sin(-time);
+  P34 := tan(time);
+  P35 := tan(-time);
+  P36 := tanh(time);
+  P37 := tanh(-time);
+
+  // Other declarations:
+  var P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P13, P14, P15, P16, P18;
+  var P19, P20, P22, P29, P31, P32, P34, P35, P36, P37;
+end
+
+case01487 is "case01487"

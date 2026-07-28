@@ -1,0 +1,35 @@
+## start=0.0 end=5.0 points=50 atol=0.0001 rtol=0.0001 selections=S1 amounts=S1
+## tags=Amount
+
+// Created by libAntimony v3.0.0
+model *case00031()
+
+  // Compartments and Species:
+  compartment compartment_;
+  species $S1 in compartment_;
+
+  // Rate Rules:
+  S1' = 7;
+
+  // Species initializations:
+  S1 = 0;
+  S1 has substance_per_volume;
+
+  // Compartment initializations:
+  compartment_ = 1;
+  compartment_ has volume;
+
+  // Other declarations:
+  const compartment_;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case00031 is "case00031"

@@ -1,0 +1,69 @@
+## start=0.0 end=1000.0 points=1000 atol=0.01 rtol=0.01 selections=S,error amounts=
+## tags=EventIsNotPersistent,EventIsPersistent,EventUsesTriggerTimeValues,NonConstantParameter,RandomEventExecution
+
+// Created by libAntimony v3.0.0
+model *case00966()
+
+  // Assignment Rules:
+  S := Q + R;
+
+  // Events:
+  Rinc: at (time - reset) >= 0.01, priority = 10, persistent=false: R = R + 0.01, chicount = chicount + 1, reset = time;
+  Qinc: at (time - reset) >= 0.01, priority = 10, persistent=false: Q = Q + 0.01, chicount = chicount + 1, chitest = chitest + 1, reset = time;
+  repeat: at floor(chicount/16) >= 1, priority = 5: chicount = 0, assemble = 1.5;
+  _E0: at (assemble >= 1) && (chitest == 0), priority = 3: chi0 = chi0 + 1;
+  _E1: at (assemble >= 1) && (chitest == 1), priority = 3: chi1 = chi1 + 1;
+  _E2: at (assemble >= 1) && (chitest == 2), priority = 3: chi2 = chi2 + 1;
+  _E3: at (assemble >= 1) && (chitest == 3), priority = 3: chi3 = chi3 + 1;
+  _E4: at (assemble >= 1) && (chitest == 4), priority = 3: chi4 = chi4 + 1;
+  _E5: at (assemble >= 1) && (chitest == 5), priority = 3: chi5 = chi5 + 1;
+  _E6: at (assemble >= 1) && (chitest == 6), priority = 3: chi6 = chi6 + 1;
+  _E7: at (assemble >= 1) && (chitest == 7), priority = 3: chi7 = chi7 + 1;
+  _E8: at (assemble >= 1) && (chitest == 8), priority = 3: chi8 = chi8 + 1;
+  _E9: at (assemble >= 1) && (chitest == 9), priority = 3: chi9 = chi9 + 1;
+  _E10: at (assemble >= 1) && (chitest == 10), priority = 3: chi10 = chi10 + 1;
+  _E11: at (assemble >= 1) && (chitest == 11), priority = 3: chi11 = chi11 + 1;
+  _E12: at (assemble >= 1) && (chitest == 12), priority = 3: chi12 = chi12 + 1;
+  _E13: at (assemble >= 1) && (chitest == 13), priority = 3: chi13 = chi13 + 1;
+  _E14: at (assemble >= 1) && (chitest == 14), priority = 3: chi14 = chi14 + 1;
+  _E15: at (assemble >= 1) && (chitest == 15), priority = 3: chi15 = chi15 + 1;
+  _E16: at (assemble >= 1) && (chitest == 16), priority = 3: chi16 = chi16 + 1;
+  _E17: at assemble >= 1, priority = 1: assemble = 0, chitest = 0, tests = tests + 1;
+  _E18: at (tests >= 6240) && (finalchi == 0), priority = 0: finalchi = (chi0 - 0.0952)^2/0.0952 + (chi1 - 1.523)^2/1.523 + (chi2 - 11.428)^2/11.428 + (chi3 - 53.32)^2/53.32 + (chi4 - 173.29)^2/173.29 + (chi5 - 415.898)^2/415.898 + (chi6 - 762.48)^2/762.48 + (chi7 - 1089.26)^2/1089.26 + (chi8 - 1225.415)^2/1225.415 + (chi9 - 1089.26)^2/1089.26 + (chi10 - 762.48)^2/762.48 + (chi11 - 415.898)^2/415.898 + (chi12 - 173.29)^2/173.29 + (chi13 - 53.32)^2/53.32 + (chi14 - 11.428)^2/11.428 + (chi15 - 1.523)^2/1.523 + (chi16 - 0.0952)^2/0.0952;
+  error_check: at finalchi > 50, priority = -1: error = 1;
+
+  // Variable initializations:
+  reset = 0;
+  chicount = 0;
+  R = 0;
+  chitest = 0;
+  Q = 0;
+  assemble = 0;
+  chi0 = 0;
+  chi1 = 0;
+  chi2 = 0;
+  chi3 = 0;
+  chi4 = 0;
+  chi5 = 0;
+  chi6 = 0;
+  chi7 = 0;
+  chi8 = 0;
+  chi9 = 0;
+  chi10 = 0;
+  chi11 = 0;
+  chi12 = 0;
+  chi13 = 0;
+  chi14 = 0;
+  chi15 = 0;
+  chi16 = 0;
+  tests = 0;
+  finalchi = 0;
+  error = 0;
+
+  // Other declarations:
+  var reset, chicount, R, chitest, Q, assemble, chi0, chi1, chi2, chi3, chi4;
+  var chi5, chi6, chi7, chi8, chi9, chi10, chi11, chi12, chi13, chi14, chi15;
+  var chi16, tests, finalchi, error, S;
+end
+
+case00966 is "case00966"

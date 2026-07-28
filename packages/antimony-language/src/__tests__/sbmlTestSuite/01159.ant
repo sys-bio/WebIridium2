@@ -1,0 +1,39 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=sub1__s1,sub1__p1 amounts=sub1__s1
+## tags=Amount,HasOnlySubstanceUnits,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species s1 in C;
+
+  // Reactions:
+  J0:  -> s1; J0_p1*s1;
+
+  // Species initializations:
+  s1 = 0.001/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  p1 = 10;
+  J0_p1 = 100;
+
+  // Other declarations:
+  const C, p1;
+end
+
+model *case01159()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+  sub1.p1 is p1;
+  sub1.J0_p1 is p1;
+
+  // Variable initializations:
+  p1 = 10;
+end
+
+case01159 is "case01159"

@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01306()
+
+  // Assignment Rules:
+  p1 := J0 + 1;
+
+  // Reactions:
+  J0:  -> ; time;
+
+  // Other declarations:
+  var p1;
+end
+
+case01306 is "case01306"

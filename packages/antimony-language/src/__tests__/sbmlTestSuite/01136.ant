@@ -1,0 +1,46 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=p2 amounts=
+## tags=testType:        TimeCourse
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Variable initializations:
+  p8 = 8;
+  p16 = 16;
+
+  // Other declarations:
+  var p8;
+  const p16;
+end
+
+model moddef2()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+  sub1.p16 is p4;
+  sub1.p8 is p4;
+
+  // Variable initializations:
+  p4 = 8;
+  p16 = 16;
+
+  // Other declarations:
+  var p4;
+  const p16;
+end
+
+model *case01136()
+
+  // Sub-modules, and any changes to those submodules:
+  sub2: moddef2();
+  sub2.p16 is p2;
+  sub2.p4 is p2;
+
+  // Variable initializations:
+  p2 = 8;
+
+  // Other declarations:
+  var p2;
+end
+
+case01136 is "case01136"

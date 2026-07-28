@@ -1,0 +1,24 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=
+## tags=Concentration,BoundaryCondition,HasOnlySubstanceUnits,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01309()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species $S1 in C;
+
+  // Rate Rules:
+  C' = 1;
+
+  // Species initializations:
+  S1 = 2/C;
+
+  // Compartment initializations:
+  C = 3;
+
+  // Other declarations:
+  var C;
+end
+
+case01309 is "case01309"

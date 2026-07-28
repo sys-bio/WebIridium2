@@ -1,0 +1,33 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,AssignedConstantStoichiometry,AssignedVariableStoichiometry,InitialValueReassigned,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case01631()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Rate Rules:
+  S1_create' = 1;
+
+  // Reactions:
+  J0: S1_degrade S1 -> ; 1;
+  J1:  -> S1_create S1; 1;
+
+  // Species initializations:
+  S1 = 2/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  S1_degrade = 3;
+  S1_create = 1;
+
+  // Other declarations:
+  var S1_create;
+  const C;
+end
+
+case01631 is "case01631"

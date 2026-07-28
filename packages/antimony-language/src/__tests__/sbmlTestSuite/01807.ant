@@ -1,0 +1,26 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=spec,Spec,sPeC,C,c amounts=spec,Spec,sPeC
+## tags=Amount,MultiCompartment,NonUnityCompartment,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case01807()
+
+  // Compartments and Species:
+  compartment C, c;
+  species spec in C, Spec in c, sPeC in C;
+
+  // Reactions:
+  J:  -> spec; 1;
+  j:  -> Spec + 2 sPeC; 2;
+
+  // Species initializations:
+  spec = 3;
+  Spec = 4;
+  sPeC = 5;
+
+  // Compartment initializations:
+  C = 1;
+  c = 2;
+
+  // Other declarations:
+  const C, c;
+end

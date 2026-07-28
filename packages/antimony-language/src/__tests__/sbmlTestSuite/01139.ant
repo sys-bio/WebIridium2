@@ -1,0 +1,31 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=p8 amounts=
+## tags=NonConstantParameter,comp:ConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Rate Rules:
+  p80' = 4*p80 + 3;
+
+  // Variable initializations:
+  p80 = 80;
+
+  // Other declarations:
+  var p80;
+end
+
+model *case01139()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+  sub1.p80 * conv is p8;
+
+  // Variable initializations:
+  p8 = 8;
+  conv = 0.1;
+
+  // Other declarations:
+  const conv;
+end
+
+case01139 is "case01139"

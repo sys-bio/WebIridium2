@@ -1,0 +1,15 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2 amounts=
+## tags=BoolNumericSwap,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01291()
+
+  // Assignment Rules:
+  p1 := true;
+  p2 := false;
+
+  // Other declarations:
+  var p1, p2;
+end
+
+case01291 is "case01291"

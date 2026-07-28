@@ -1,0 +1,41 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=J1,A__x,A_C amounts=J1
+## tags=Amount,BoundaryCondition,NonConstantParameter,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model sub1()
+
+  // Compartments and Species:
+  compartment C;
+  species $J0 in C;
+
+  // Events:
+  E0: at time > (J0 + 0.5): x = 4;
+
+  // Species initializations:
+  J0 = 2/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  x = 1;
+
+  // Other declarations:
+  var x;
+  const C;
+end
+
+sub1 is "sub1"
+
+model *case01373()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.C is A_C;
+  A.J0 is J1;
+
+  // Species initializations:
+  J1 = 5;
+end
+
+case01373 is "case01373"

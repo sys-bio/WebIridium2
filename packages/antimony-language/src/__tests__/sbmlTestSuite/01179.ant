@@ -1,0 +1,31 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=t1 amounts=
+## tags=NonConstantParameter,comp:ConversionFactor,comp:TimeConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Rate Rules:
+  t1' = time/t1 + 3;
+
+  // Variable initializations:
+  t1 = 1;
+
+  // Other declarations:
+  var t1;
+end
+
+model *case01179()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.t1 * paramconv is t1;
+
+  // Variable initializations:
+  timeconv = 60;
+  paramconv = 0.01;
+
+  // Other declarations:
+  const timeconv, paramconv;
+end
+
+case01179 is "case01179"

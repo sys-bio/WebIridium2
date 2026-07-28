@@ -1,0 +1,23 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C amounts=S1,S2
+## tags=Amount,ConstantSpecies,DefaultValue,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01788()
+
+  // Compartments and Species:
+  compartment C;
+  species $S1 in C, S2 in C;
+
+  // Algebraic Rules:
+  _alg0: 0 = S2 - S1;
+
+  // Species initializations:
+  S1 = 2;
+  S2 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  const C;
+end

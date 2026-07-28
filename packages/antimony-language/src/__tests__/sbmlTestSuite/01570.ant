@@ -1,0 +1,32 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C,k amounts=S1,S2
+## tags=Amount,FastReaction,NonConstantParameter,ReversibleReaction
+
+// Created by libAntimony v3.0.0
+model *case01570()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Rate Rules:
+  k' = -1;
+
+  // Reactions:
+  J0: S1 -> S2; piecewise(S1*k, k > 0, S2*k);
+
+  // Species initializations:
+  S1 = 3;
+  S2 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k = 4.5;
+
+  // Other declarations:
+  var k;
+  const C;
+end
+
+case01570 is "case01570"

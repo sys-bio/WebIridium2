@@ -1,0 +1,43 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=t3,s1 amounts=s1
+## tags=Amount,HasOnlySubstanceUnits,comp:TimeConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species s1 in C;
+
+  // Reactions:
+  J0:  -> s1; t3*time;
+
+  // Species initializations:
+  s1 = 0.001/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  t3 = 10;
+
+  // Other declarations:
+  const C, t3;
+end
+
+model *case01170()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.C is C;
+  sub1.s1 is s1;
+  sub1.t3 is t3;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  var t3;
+  const timeconv;
+end
+
+case01170 is "case01170"

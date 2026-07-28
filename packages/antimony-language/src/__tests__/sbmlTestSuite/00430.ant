@@ -1,0 +1,47 @@
+## start=0.0 end=4.0 points=50 atol=1e-06 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
+## tags=Amount,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case00430()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C, S4 in C;
+
+  // Reactions:
+  reaction1: S1 + S2 => S3 + S4; C*k1*S1*S2;
+  reaction2: S3 + S4 => S1 + S2; C*k2*S3*S4;
+
+  // Events:
+  event1: at 0.5 after S4 > S2: S1 = (1/500);
+  event2: at 1 after S3 < (1/50): S4 = (1/1000);
+
+  // Species initializations:
+  S1 = 0.001/C;
+  S1 has substance_per_volume;
+  S2 = 0.0012/C;
+  S2 has substance_per_volume;
+  S3 = 0.002/C;
+  S3 has substance_per_volume;
+  S4 = 0.001/C;
+  S4 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 0.1;
+  C has volume;
+
+  // Variable initializations:
+  k1 = 750;
+  k2 = 250;
+
+  // Other declarations:
+  const C, k1, k2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00430 is "case00430"

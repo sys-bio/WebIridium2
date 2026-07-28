@@ -1,0 +1,39 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=a,b,c,d,e,f,g amounts=
+## tags=InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model sub1(a, b, c, d, e, f, g)
+
+  // Assignment Rules:
+  b := a;
+  d := c;
+  f := e;
+
+  // Variable initializations:
+  a = 1;
+  c = 3;
+  e = 4;
+  g = 5;
+
+  // Other declarations:
+  var b, d, f;
+  const a, c, e, g;
+end
+
+sub1 is "sub1"
+
+model *case01391()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1(a, b, c, d, e, f, g);
+
+  // Assignment Rules:
+  c := b;
+  e := d;
+  g := f;
+
+  // Other declarations:
+  var c, e, g;
+end
+
+case01391 is "case01391"

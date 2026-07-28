@@ -1,0 +1,25 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=param1,submod1__subparam2 amounts=
+## tags=InitialValueReassigned,NonConstantParameter,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model Mod1(subparam1)
+
+  // Rate Rules:
+  subparam1' = 8*subparam2 + subparam1;
+
+  // Variable initializations:
+  subparam1 = subparam2 + 6;
+  subparam2 = 6;
+
+  // Other declarations:
+  var subparam1;
+  const subparam2;
+end
+
+model *case01127()
+
+  // Sub-modules, and any changes to those submodules:
+  submod1: Mod1(param1);
+end
+
+case01127 is "case01127"

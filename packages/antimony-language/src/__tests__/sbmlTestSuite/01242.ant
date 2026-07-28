@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p amounts=
+## tags=NoMathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01242()
+
+  // Events:
+  _E0: at time > 5.5: p = 5;
+
+  // Variable initializations:
+  p = 3;
+
+  // Other declarations:
+  var p;
+end
+
+case01242 is "case01242"

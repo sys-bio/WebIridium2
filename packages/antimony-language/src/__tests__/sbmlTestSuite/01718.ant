@@ -1,0 +1,35 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,S1,C amounts=S1
+## tags=Amount,AssignedVariableStoichiometry,EventIsNotPersistent,NonConstantParameter,NonUnityStoichiometry,SpeciesReferenceInMath
+
+// Created by libAntimony v3.0.0
+model *case01718()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Rate Rules:
+  S1_stoich' = 1;
+
+  // Reactions:
+  J0:  -> S1_stoich S1; 0.1;
+
+  // Events:
+  E1: at 2 after (S1_stoich >= 2.3) && (S1_stoich <= 3.3), persistent=false: P1 = 3;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  S1_stoich = 1;
+  P1 = 0;
+
+  // Other declarations:
+  var S1_stoich, P1;
+  const C;
+end
+
+case01718 is "case01718"

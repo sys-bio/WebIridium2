@@ -1,0 +1,46 @@
+## start=0.0 end=0.25 points=50 atol=1e-06 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
+## tags=Amount,BoundaryCondition
+
+// Created by libAntimony v3.0.0
+model *case00234()
+
+  // Compartments and Species:
+  compartment compartment_;
+  species S1 in compartment_, S2 in compartment_, $S3 in compartment_, S4 in compartment_;
+
+  // Reactions:
+  reaction1: S1 + S2 => $S3 + S4; compartment_*k1*S1*S2;
+  reaction2: $S3 + S4 => S1 + S2; compartment_*k2*S3*S4;
+
+  // Species initializations:
+  S1 = 0.001/compartment_;
+  S1 has substance_per_length;
+  S2 = 0.0015/compartment_;
+  S2 has substance_per_length;
+  S3 = 0.002/compartment_;
+  S3 has substance_per_length;
+  S4 = 0.0001/compartment_;
+  S4 has substance_per_length;
+
+  // Compartment initializations:
+  compartment_ = 1;
+  compartment_ has length;
+
+  // Variable initializations:
+  k1 = 6200;
+  k2 = 5000;
+
+  // Other declarations:
+  const compartment_, k1, k2;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit length = metre;
+  unit time_unit = time_unit;
+  unit substance_per_length = mole / metre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case00234 is "case00234"

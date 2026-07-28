@@ -1,0 +1,40 @@
+## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3 amounts=S1,S2,S3
+## tags=Amount,ReversibleReaction
+
+// Created by libAntimony v3.0.0
+model *case01034()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C;
+
+  // Reactions:
+  reaction1: S2 + S3 -> S1; -(C*(kf*S1 + -1*(kr*S2*S3)));
+
+  // Species initializations:
+  S1 = 1/C;
+  S1 has substance_per_volume;
+  S2 = 0.5/C;
+  S2 has substance_per_volume;
+  S3 = 0;
+  S3 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  kf = 1.5;
+  kr = 0.2;
+
+  // Other declarations:
+  const C, kf, kr;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case01034 is "case01034"

@@ -1,0 +1,27 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,EventIsPersistent,HasOnlySubstanceUnits,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01703()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species $S1 in C;
+
+  // Rate Rules:
+  S1' = -1;
+
+  // Events:
+  E0: at 2 after (S1 <= 4.3) && (S1 >= 3): S1 = 10;
+
+  // Species initializations:
+  S1 = 10/C;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Other declarations:
+  const C;
+end
+
+case01703 is "case01703"

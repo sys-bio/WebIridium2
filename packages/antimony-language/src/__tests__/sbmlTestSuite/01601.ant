@@ -1,0 +1,18 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=EventUsesTriggerTimeValues,NoMathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01601()
+
+  // Events:
+  E0: at 1 after time >= 4.5: P1 = , P2 = 3;
+
+  // Variable initializations:
+  P2 = 1;
+  P1 = 1;
+
+  // Other declarations:
+  var P2, P1;
+end
+
+case01601 is "case01601"

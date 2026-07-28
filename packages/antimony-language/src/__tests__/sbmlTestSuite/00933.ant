@@ -1,0 +1,31 @@
+## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,EventIsPersistent
+
+// Created by libAntimony v3.0.0
+model *case00933()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  reaction1: S1 => S2; C*k1*S1;
+
+  // Events:
+  event1: at 1 after (S1 < 0.1) && (S2 < 0.95): S1 = 1;
+
+  // Species initializations:
+  S1 = 1/C;
+  S2 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  const C, k1;
+end
+
+case00933 is "case00933"

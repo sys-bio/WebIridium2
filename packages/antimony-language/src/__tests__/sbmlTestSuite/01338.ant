@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C,k1 amounts=S1
+## tags=Amount,NonConstantParameter,ReversibleReaction
+
+// Created by libAntimony v3.0.0
+model *case01338()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Rate Rules:
+  k1' = -1;
+
+  // Reactions:
+  J0:  -> S1; k1;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = 5;
+
+  // Other declarations:
+  var k1;
+  const C;
+end
+
+case01338 is "case01338"

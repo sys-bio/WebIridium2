@@ -1,0 +1,18 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=pi,Pi,PI,a,b,c,d amounts=
+## tags=InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01819()
+
+  // Variable initializations:
+  pi_ = 7;
+  Pi = 8;
+  PI = 9;
+  a = pi_;
+  b = Pi;
+  c = PI;
+  d = pi;
+
+  // Other declarations:
+  const pi_, Pi, PI, a, b, c, d;
+end

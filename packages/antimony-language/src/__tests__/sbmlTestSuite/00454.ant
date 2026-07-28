@@ -1,0 +1,31 @@
+## start=0.0 end=4.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3 amounts=
+## tags=NonConstantParameter,EventIsPersistent
+
+// Created by libAntimony v3.0.0
+model *case00454()
+
+  // Rate Rules:
+  S1' = k2*S3 + -1*k1*S1*S2;
+  S2' = k2*S3 + -1*k1*S1*S2;
+  S3' = k1*S1*S2 + -1*k2*S3;
+
+  // Events:
+  event1: at 1 after S1 < 0.75: S2 = 1;
+  event2: at 1.5 after S3 > 1.4: S1 = 1;
+
+  // Variable initializations:
+  S1 = 1;
+  S2 = 2;
+  S3 = 1;
+  k2 = 0.25;
+  k1 = 0.75;
+
+  // Other declarations:
+  var S1, S2, S3;
+  const k2, k1;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00454 is "case00454"

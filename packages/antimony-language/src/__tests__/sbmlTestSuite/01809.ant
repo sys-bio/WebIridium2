@@ -1,0 +1,22 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=0D-Compartment,Amount,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01809()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  J:  -> S1; 1.5;
+
+  // Species initializations:
+  S1 = 1;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Other declarations:
+  const C;
+end

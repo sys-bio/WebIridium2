@@ -1,0 +1,24 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2,P3 amounts=
+## tags=DefaultValue,EventUsesAssignmentTimeValues,EventUsesTriggerTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01798()
+
+  // Rate Rules:
+  P1' = 1;
+  P2' = 1;
+  P3' = 1;
+
+  // Events:
+  E1: at 2 after P1 >= 1.5: P1 = P1;
+  E2: at 2 after P2 >= 1.5, fromTrigger=false: P2 = P2;
+  E3: at 2 after P3 >= 1.5: P3 = P3;
+
+  // Variable initializations:
+  P1 = 0;
+  P2 = 0;
+  P3 = 0;
+
+  // Other declarations:
+  var P1, P2, P3;
+end

@@ -1,0 +1,31 @@
+## start=0.0 end=2.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y,z amounts=
+## tags=EventIsNotPersistent,EventIsPersistent,EventUsesAssignmentTimeValues,EventUsesTriggerTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00978()
+
+  // Events:
+  _E0: at time >= 0.99, priority = 10: multitrig = 2;
+  _E1: at time >= 0.99, priority = 9: multitrig = 0;
+  _E2: at time >= 0.99, priority = 8: multitrig = 2;
+  _E3: at time >= 0.99, priority = 7: multitrig = 0;
+  _E4: at time >= 0.99, priority = 6: multitrig = 2;
+  _E5: at time >= 0.99, priority = 5: multitrig = 0;
+  _E6: at time >= 0.99, priority = 4: multitrig = 2;
+  _E7: at time >= 0.99, priority = 3: multitrig = 0;
+  _E8: at time >= 0.99, priority = 2: multitrig = 2;
+  _E9: at multitrig > 1, priority = 1, fromTrigger=false: x = x + 1;
+  _E10: at multitrig > 1, priority = 1: y = y + 1;
+  _E11: at multitrig > 1, priority = 1, persistent=false, fromTrigger=false: z = z + 3;
+
+  // Variable initializations:
+  multitrig = 0;
+  x = 0;
+  y = 0;
+  z = 0;
+
+  // Other declarations:
+  var multitrig, x, y, z;
+end
+
+case00978 is "case00978"

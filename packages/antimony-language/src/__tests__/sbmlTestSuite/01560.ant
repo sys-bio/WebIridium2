@@ -1,0 +1,33 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C,P1 amounts=S1,S2
+## tags=Amount,FastReaction,NonConstantParameter,NonUnityStoichiometry,SpeciesReferenceInMath
+
+// Created by libAntimony v3.0.0
+model *case01560()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Rate Rules:
+  P1' = S2_stoich;
+
+  // Reactions:
+  J0: S1 -> S2_stoich S2; S1*0.1;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 3/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  P1 = 1;
+  S2_stoich = 2;
+
+  // Other declarations:
+  var P1;
+  const C;
+end
+
+case01560 is "case01560"

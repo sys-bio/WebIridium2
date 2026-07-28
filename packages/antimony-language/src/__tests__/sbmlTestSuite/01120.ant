@@ -1,0 +1,27 @@
+## start=0.0 end=2.0 points=20 atol=0.0001 rtol=0.0001 selections=comp,S3 amounts=S3
+## tags=Amount,EventT0Firing,HasOnlySubstanceUnits,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case_01120()
+
+  // Compartments and Species:
+  compartment comp;
+  substanceOnly species S3 in comp;
+
+  // Rate Rules:
+  comp' = 1;
+
+  // Events:
+  E1: at 1.05 after comp <= 5.1, t0=false: S3 = 4;
+
+  // Species initializations:
+  S3 = 2/comp;
+
+  // Compartment initializations:
+  comp = 5;
+
+  // Other declarations:
+  var comp;
+end
+
+case_01120 is "case_01120"

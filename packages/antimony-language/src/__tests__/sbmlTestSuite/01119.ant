@@ -1,0 +1,21 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=e1,e2 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case_01119()
+
+  // Events:
+  E1: at 1.5 after time >= 3, priority = 10: e1 = 3;
+  E2: at 1.5 after time >= 3, priority = 5: e1 = 2;
+  E3: at 1.5 after time >= 3, priority = 4: e2 = 3;
+  E4: at 1.5 after time >= 3, priority = 9: e2 = 2;
+
+  // Variable initializations:
+  e1 = 0;
+  e2 = 0;
+
+  // Other declarations:
+  var e1, e2;
+end
+
+case_01119 is "case_01119"

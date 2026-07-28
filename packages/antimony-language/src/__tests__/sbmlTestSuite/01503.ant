@@ -1,0 +1,35 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2,P3,P4,P5,P6,P7,P8,P9,P10 amounts=
+## tags=InitialValueReassigned,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01503()
+
+  // Algebraic Rules:
+  _alg0: 0 = P1 - plus();
+  _alg1: 0 = P2 - times();
+  _alg2: 0 = P3 - piecewise(1, and(), 0);
+  _alg3: 0 = P4 - piecewise(1, or(), 0);
+  _alg4: 0 = P5 - piecewise(1, xor(), 0);
+  _alg5: 0 = P6 - plus(3);
+  _alg6: 0 = P7 - times(4);
+  _alg7: 0 = P8 - piecewise(1, and(true), 0);
+  _alg8: 0 = P9 - piecewise(1, or(false), 0);
+  _alg9: 0 = P10 - piecewise(1, xor(true), 0);
+
+  // Variable initializations:
+  P1 = ;
+  P2 = ;
+  P3 = ;
+  P4 = ;
+  P5 = ;
+  P6 = ;
+  P7 = ;
+  P8 = ;
+  P9 = ;
+  P10 = ;
+
+  // Other declarations:
+  var P1, P2, P3, P4, P5, P6, P7, P8, P9, P10;
+end
+
+case01503 is "case01503"

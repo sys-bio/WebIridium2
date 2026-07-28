@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=DefaultValue,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01789()
+
+  // Algebraic Rules:
+  _alg0: 0 = P2 - P1;
+
+  // Variable initializations:
+  P1 = 2;
+  P2 = 3;
+
+  // Other declarations:
+  var P1;
+  const P2;
+end

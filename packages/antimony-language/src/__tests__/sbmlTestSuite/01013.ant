@@ -1,0 +1,47 @@
+## start=0.0 end=0.5 points=50 atol=1e-05 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
+## tags=Amount,HasOnlySubstanceUnits,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01013()
+
+  // Compartments and Species:
+  compartment compartment_;
+  substanceOnly species S1 in compartment_, S2 in compartment_, S3 in compartment_;
+  substanceOnly species S4 in compartment_;
+
+  // Reactions:
+  reaction1: S1 + S2 => S3 + S4; k1*S1*S2;
+  reaction2: S3 + S4 => S1 + S2; k2*S3*S4;
+
+  // Species initializations:
+  S1 = 0.01/compartment_;
+  S1 has substance_per_length;
+  S2 = 0.015/compartment_;
+  S2 has substance_per_length;
+  S3 = 0.02/compartment_;
+  S3 has substance_per_length;
+  S4 = 0.001/compartment_;
+  S4 has substance_per_length;
+
+  // Compartment initializations:
+  compartment_ = 10;
+  compartment_ has length;
+
+  // Variable initializations:
+  k1 = 620;
+  k2 = 500;
+
+  // Other declarations:
+  const compartment_, k1, k2;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit length = metre;
+  unit time_unit = time_unit;
+  unit substance_per_length = mole / metre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case01013 is "case01013"

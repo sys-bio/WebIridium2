@@ -1,0 +1,29 @@
+## start=0.0 end=100.0 points=1001 atol=0.03 rtol=0.0001 selections=S,error amounts=
+## tags=EventIsNotPersistent,NonConstantParameter,RandomEventExecution
+
+// Created by libAntimony v3.0.0
+model *case00964()
+
+  // Assignment Rules:
+  S := Q + R + T;
+
+  // Events:
+  Qinc: at (time - reset) >= 0.01, priority = 1, persistent=false: Q = Q + 0.01, reset = time;
+  Rinc: at (time - reset) >= 0.01, priority = 1, persistent=false: R = R + 0.01, reset = time;
+  Tinc: at (time - reset) >= 0.01, priority = 1, persistent=false: T = T + 0.01, reset = time;
+  error_check: at (abs(Q - R) >= tolerance) || (abs(Q - T) >= tolerance) || (abs(T - R) >= tolerance): error = 1;
+
+  // Variable initializations:
+  reset = 0;
+  Q = 0;
+  R = 0;
+  T = 0;
+  tolerance = 5;
+  error = 0;
+
+  // Other declarations:
+  var reset, Q, R, T, error, S;
+  const tolerance;
+end
+
+case00964 is "case00964"

@@ -1,0 +1,37 @@
+## start=0.0 end=5.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2 amounts=
+## tags=Concentration
+
+// Created by libAntimony v3.0.0
+model *case00592()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  reaction1: S1 => S2; C*k1*S1;
+
+  // Species initializations:
+  S1 = 0.15;
+  S1 has substance_per_length;
+  S2 = 0;
+  S2 has substance_per_length;
+
+  // Compartment initializations:
+  C = 1;
+  C has length;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  const C, k1;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit length = metre;
+  unit time_unit = time_unit;
+  unit substance_per_length = mole / metre;
+end
+
+case00592 is "case00592"

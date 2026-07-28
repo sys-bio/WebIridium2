@@ -1,0 +1,44 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,S3,S4,S5,S6,S7,S8,p1,p2,p3,p4,p5,p6,p7,p8,comp1,comp2 amounts=S1,S2,S3,S4,S5,S6,S7,S8
+## tags=Amount,HasOnlySubstanceUnits,MultiCompartment,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00999()
+
+  // Compartments and Species:
+  compartment comp1, comp2;
+  species S1 in comp1, S3 in comp1, S5 in comp2, S7 in comp2;
+  substanceOnly species S2 in comp1, S4 in comp1, S6 in comp2, S8 in comp2;
+
+  // Assignment Rules:
+  p1 := S1;
+  p2 := S2;
+  p3 := S3;
+  p4 := S4;
+  p5 := S5;
+  p6 := S6;
+  p7 := S7;
+  p8 := S8;
+
+  // Rate Rules:
+  comp2' = 1;
+
+  // Species initializations:
+  S1 = 1;
+  S2 = 2;
+  S3 = 3/comp1;
+  S4 = 4/comp1;
+  S5 = 5;
+  S6 = 6;
+  S7 = 7/comp2;
+  S8 = 8/comp2;
+
+  // Compartment initializations:
+  comp1 = 10;
+  comp2 = 10;
+
+  // Other declarations:
+  var comp2, p1, p2, p3, p4, p5, p6, p7, p8;
+  const comp1;
+end
+
+case00999 is "case00999"

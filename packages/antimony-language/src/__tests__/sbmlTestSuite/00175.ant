@@ -1,0 +1,20 @@
+## start=0.0 end=2.0 points=50 atol=0.0001 rtol=0.0001 selections=S1 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00175()
+
+  // Rate Rules:
+  S1' = 7;
+
+  // Variable initializations:
+  S1 = 0;
+
+  // Other declarations:
+  var S1;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00175 is "case00175"

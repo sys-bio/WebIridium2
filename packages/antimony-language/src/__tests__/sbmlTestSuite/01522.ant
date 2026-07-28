@@ -1,0 +1,20 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=DelayInTrigger,EventT0Firing,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01522()
+
+  // Assignment Rules:
+  P1 := time;
+
+  // Events:
+  E0: at delay(P1, 1) < -0.5, t0=false: P2 = 3;
+
+  // Variable initializations:
+  P2 = 0;
+
+  // Other declarations:
+  var P1, P2;
+end
+
+case01522 is "case01522"

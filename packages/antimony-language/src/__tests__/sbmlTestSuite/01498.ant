@@ -1,0 +1,35 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=C1,S1,S2,x amounts=S1,S2
+## tags=Amount,AssignedConstantStoichiometry,BoundaryCondition,InitialValueReassigned,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,NonUnityStoichiometry,SpeciesReferenceInMath,VolumeConcentrationRates
+
+// Created by libAntimony v3.0.0
+model *case01498()
+
+  // Compartments and Species:
+  compartment C1;
+  species $S1 in C1, S2 in C1;
+
+  // Assignment Rules:
+  x := S1;
+
+  // Rate Rules:
+  C1' = 0.2;
+  S1' = S2_sr;
+
+  // Reactions:
+  J0:  -> S2_sr S2; 1;
+
+  // Species initializations:
+  S1 = 0;
+  S2 = 1;
+
+  // Compartment initializations:
+  C1 = 0.5;
+
+  // Variable initializations:
+  S2_sr = 0.4;
+
+  // Other declarations:
+  var C1, x;
+end
+
+case01498 is "case01498"

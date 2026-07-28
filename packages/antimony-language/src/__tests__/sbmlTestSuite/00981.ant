@@ -1,0 +1,20 @@
+## start=0.0 end=2.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y amounts=
+## tags=NonConstantParameter,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00981()
+
+  // Assignment Rules:
+  y := delay(x, time/2);
+
+  // Rate Rules:
+  x' = 1;
+
+  // Variable initializations:
+  x = 0;
+
+  // Other declarations:
+  var x, y;
+end
+
+case00981 is "case00981"

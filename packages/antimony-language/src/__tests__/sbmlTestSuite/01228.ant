@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,c,k1 amounts=S1
+## tags=Amount,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01228()
+
+  // Compartments and Species:
+  compartment c;
+  species S1 in c;
+
+  // Reactions:
+  J0:  => S1; k1;
+
+  // Events:
+  _E0: at time > 5.5: k1 = 1 + J0;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  c = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  var k1;
+  const c;
+end
+
+case01228 is "case01228"

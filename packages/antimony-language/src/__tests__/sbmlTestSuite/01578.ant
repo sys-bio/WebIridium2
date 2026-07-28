@@ -1,0 +1,21 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=k1,P1 amounts=
+## tags=EventT0Firing,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01578()
+
+  // Algebraic Rules:
+  _alg0: 0 = 10 - k1;
+
+  // Events:
+  E0: at k1 > 4.5, t0=false: P1 = 3;
+
+  // Variable initializations:
+  k1 = 0;
+  P1 = 1;
+
+  // Other declarations:
+  var k1, P1;
+end
+
+case01578 is "case01578"

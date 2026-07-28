@@ -1,0 +1,20 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=x,p amounts=
+## tags=InitialValueReassigned,NoMathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01461()
+
+  // Assignment Rules:
+  x := rateOf(p);
+
+  // Rate Rules:
+  p' = ;
+
+  // Variable initializations:
+  p = 2;
+
+  // Other declarations:
+  var x, p;
+end
+
+case01461 is "case01461"

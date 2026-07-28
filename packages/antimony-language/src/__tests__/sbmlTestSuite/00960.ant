@@ -1,0 +1,25 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2,P3,P4,P5 amounts=
+## tags=InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00960()
+
+  // Variable initializations:
+  P1 = avogadro;
+  P2 = avogadro;
+  P3 = avogadro;
+  P4 = avogadro;
+  P5 = avogadro - 6.0221e23;
+
+  // Other declarations:
+  const P1, P2, P3, P4, P5;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit time_unit = time_unit;
+
+  // Notes:
+  model notes "Originally created by libAntimony v1.4 (using libSBML 5.0.0-a1)"
+end
+
+case00960 is "case00960"

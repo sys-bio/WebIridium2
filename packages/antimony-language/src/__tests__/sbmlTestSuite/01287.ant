@@ -1,0 +1,18 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=BoolNumericSwap,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01287()
+
+  // Events:
+  E0: at true after time > 5.5: p1 = 10;
+  E1: at false after time > 5.5: p1 = 20;
+
+  // Variable initializations:
+  p1 = 5;
+
+  // Other declarations:
+  var p1;
+end
+
+case01287 is "case01287"

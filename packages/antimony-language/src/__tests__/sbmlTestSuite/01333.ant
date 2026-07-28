@@ -1,0 +1,19 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y amounts=
+## tags=EventT0Firing,EventUsesTriggerTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01333()
+
+  // Events:
+  E1: at x > 2, priority = 10, t0=false: x = 7;
+  E2: at x > 2, priority = 5, t0=false: y = x;
+
+  // Variable initializations:
+  x = 3;
+  y = 0;
+
+  // Other declarations:
+  var x, y;
+end
+
+case01333 is "case01333"

@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=EventT0Firing,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01663()
+
+  // Events:
+  E0: at avogadro > 6.022e23, t0=false: p1 = 5;
+
+  // Variable initializations:
+  p1 = 1;
+
+  // Other declarations:
+  var p1;
+end
+
+case01663 is "case01663"

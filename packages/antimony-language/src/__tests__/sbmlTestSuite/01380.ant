@@ -1,0 +1,50 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,J1,C,A__x amounts=S1
+## tags=Amount,InitialValueReassigned,NonUnityStoichiometry,SpeciesReferenceInMath,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+
+// Warnings from automatic translation:
+//    Cannot replace stoichiometries in Antimony:  all replacedElements and replacedBy children of S1 in reaction J1 will be ignored.
+
+model sub1()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Assignment Rules:
+  x := J0_sr;
+
+  // Reactions:
+  J0:  -> J0_sr S1; 1;
+
+  // Species initializations:
+  S1 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  J0_sr = 2;
+
+  // Other declarations:
+  var x;
+  const C;
+end
+
+sub1 is "sub1"
+
+model *case01380()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.C is C;
+  A.S1 is S1;
+  A.J0_sr is J1_sr;
+  A.J0 is J1;
+
+  // Variable initializations:
+  J1_sr = 5;
+end
+
+case01380 is "case01380"

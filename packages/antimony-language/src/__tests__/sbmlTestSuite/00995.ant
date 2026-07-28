@@ -1,0 +1,21 @@
+## start=0.0 end=1.0 points=5 atol=0.0001 rtol=0.0001 selections=p1,p2,p3 amounts=
+## tags=EventT0Firing,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00995()
+
+  // Events:
+  E0: at p1 > 0, t0=false: p2 = 1;
+  E1: at p1 > 0: p3 = 1;
+
+  // Variable initializations:
+  p1 = 1;
+  p2 = 0;
+  p3 = 0;
+
+  // Other declarations:
+  var p2, p3;
+  const p1;
+end
+
+case00995 is "case00995"

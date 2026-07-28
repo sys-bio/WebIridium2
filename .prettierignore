@@ -9,4 +9,6 @@ manual/theme/**/*
 manual/book/**/*
 packages/antimony-language/src/generated/
 packages/antimony-language/scripts/
+packages/antimony-language/src/__tests__/sbmlTestSuiteOriginal
+packages/antimony-language/src/__tests__/sbmlTestSuite
 packages/iridium-simulator/build/

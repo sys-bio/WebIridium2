@@ -1,0 +1,189 @@
+## start=0.0 end=1.0 points=100 atol=0.0001 rtol=0.0001 selections=pp9_mrna,p9,pp8_mrna,p8,pp7_mrna,p7,pp6_mrna,p6,pp5_mrna,p5,pp4_mrna,p4,pp3_mrna,p3,pp2_mrna,p2,pp1_mrna,p1,DefaultCompartment,pp8_mrna_degradation_rate,pp9_mrna_degradation_rate,p1_degradation_rate,p2_degradation_rate,p3_degradation_rate,p4_degradation_rate,p5_degradation_rate,p6_degradation_rate,p7_degradation_rate,p8_degradation_rate,p9_degradation_rate,v1_Kd,v1_h,v2_Kd,v2_h,v3_Kd,v3_h,v4_Kd,v4_h,v5_Kd,v5_h,v6_Kd,v6_h,v7_Kd,v7_h,v8_Kd,v8_h,v9_Kd,v9_h,pp1_mrna_degradation_rate,pp2_mrna_degradation_rate,pro1_strength,pro2_strength,pro3_strength,pro4_strength,pro5_strength,pro6_strength,pro7_strength,pro8_strength,pro9_strength,pp3_mrna_degradation_rate,v10_Kd,v10_h,v11_Kd,v11_h,v12_Kd,v12_h,v13_Kd,v13_h,pp4_mrna_degradation_rate,v14_Kd,v14_h,v15_Kd,v15_h,pp5_mrna_degradation_rate,rbs1_strength,rbs2_strength,rbs3_strength,rbs4_strength,rbs5_strength,rbs6_strength,rbs7_strength,rbs8_strength,rbs9_strength,pp6_mrna_degradation_rate,pp7_mrna_degradation_rate,as8,cod1,cod2,cod3,cod4,cod5,cod6,cod7,cod8,cod9,rs1,rs2,rs3,rs4,rs5,rs6,rs7,as1,as2,as3,as4,as5,as6,as7 amounts=pp9_mrna,p9,pp8_mrna,p8,pp7_mrna,p7,pp6_mrna,p6,pp5_mrna,p5,pp4_mrna,p4,pp3_mrna,p3,pp2_mrna,p2,pp1_mrna,p1
+## tags=Amount,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01395()
+
+  // Compartments and Species:
+  compartment DefaultCompartment;
+  species pp9_mrna in DefaultCompartment, p9 in DefaultCompartment, pp8_mrna in DefaultCompartment;
+  species p8 in DefaultCompartment, pp7_mrna in DefaultCompartment, p7 in DefaultCompartment;
+  species pp6_mrna in DefaultCompartment, p6 in DefaultCompartment, pp5_mrna in DefaultCompartment;
+  species p5 in DefaultCompartment, pp4_mrna in DefaultCompartment, p4 in DefaultCompartment;
+  species pp3_mrna in DefaultCompartment, p3 in DefaultCompartment, pp2_mrna in DefaultCompartment;
+  species p2 in DefaultCompartment, pp1_mrna in DefaultCompartment, p1 in DefaultCompartment;
+
+  // Assignment Rules:
+  as8 := (1 + (p5/v9_Kd)^v9_h - 1)/(1 + (p5/v9_Kd)^v9_h);
+  cod1 := pro1_strength;
+  cod2 := pro2_strength*as1*rs1;
+  as1 := (1 + (p1/v1_Kd)^v1_h - 1)/(1 + (p1/v1_Kd)^v1_h);
+  rs1 := 1/(1 + (p9/v13_Kd)^v13_h);
+  cod3 := pro3_strength*rs2*rs3;
+  rs2 := 1/(1 + (p2/v2_Kd)^v2_h);
+  rs3 := 1/(1 + (p3/v3_Kd)^v3_h);
+  cod4 := pro4_strength*rs7*rs6;
+  rs7 := 1/(1 + (p3/v15_Kd)^v15_h);
+  rs6 := 1/(1 + (p2/v14_Kd)^v14_h);
+  cod5 := pro5_strength*as2;
+  as2 := (1 + (p4/v4_Kd)^v4_h - 1)/(1 + (p4/v4_Kd)^v4_h);
+  cod6 := pro6_strength*(as3 + as4);
+  as3 := (1 + (p5/v5_Kd)^v5_h - 1)/(1 + (p5/v5_Kd)^v5_h);
+  as4 := (1 + (p6/v6_Kd)^v6_h - 1)/(1 + (p6/v6_Kd)^v6_h);
+  cod7 := pro7_strength*(as7 + as8);
+  as7 := (1 + (p6/v8_Kd)^v8_h - 1)/(1 + (p6/v8_Kd)^v8_h);
+  cod8 := pro8_strength*as5*rs4;
+  as5 := (1 + (p7/v7_Kd)^v7_h - 1)/(1 + (p7/v7_Kd)^v7_h);
+  rs4 := 1/(1 + (p8/v11_Kd)^v11_h);
+  cod9 := pro9_strength*as6*rs5;
+  as6 := (1 + (p7/v10_Kd)^v10_h - 1)/(1 + (p7/v10_Kd)^v10_h);
+  rs5 := 1/(1 + (p8/v12_Kd)^v12_h);
+
+  // Reactions:
+  pp9_v1:  => pp9_mrna; cod9;
+  pp9_v2: pp9_mrna => ; pp9_mrna_degradation_rate*pp9_mrna;
+  pp9_v3:  => p9; rbs9_strength*pp9_mrna;
+  pp9_v4: p9 => ; p9_degradation_rate*p9;
+  pp8_v1:  => pp8_mrna; cod8;
+  pp8_v2: pp8_mrna => ; pp8_mrna_degradation_rate*pp8_mrna;
+  pp8_v3:  => p8; rbs8_strength*pp8_mrna;
+  pp8_v4: p8 => ; p8_degradation_rate*p8;
+  pp7_v1:  => pp7_mrna; cod7;
+  pp7_v2: pp7_mrna => ; pp7_mrna_degradation_rate*pp7_mrna;
+  pp7_v3:  => p7; rbs7_strength*pp7_mrna;
+  pp7_v4: p7 => ; p7_degradation_rate*p7;
+  pp6_v1:  => pp6_mrna; cod6;
+  pp6_v2: pp6_mrna => ; pp6_mrna_degradation_rate*pp6_mrna;
+  pp6_v3:  => p6; rbs6_strength*pp6_mrna;
+  pp6_v4: p6 => ; p6_degradation_rate*p6;
+  pp5_v1:  => pp5_mrna; cod5;
+  pp5_v2: pp5_mrna => ; pp5_mrna_degradation_rate*pp5_mrna;
+  pp5_v3:  => p5; rbs5_strength*pp5_mrna;
+  pp5_v4: p5 => ; p5_degradation_rate*p5;
+  pp4_v1:  => pp4_mrna; cod4;
+  pp4_v2: pp4_mrna => ; pp4_mrna_degradation_rate*pp4_mrna;
+  pp4_v3:  => p4; rbs4_strength*pp4_mrna;
+  pp4_v4: p4 => ; p4_degradation_rate*p4;
+  pp3_v1:  => pp3_mrna; cod3;
+  pp3_v2: pp3_mrna => ; pp3_mrna_degradation_rate*pp3_mrna;
+  pp3_v3:  => p3; rbs3_strength*pp3_mrna;
+  pp3_v4: p3 => ; p3_degradation_rate*p3;
+  pp2_v1:  => pp2_mrna; cod2;
+  pp2_v2: pp2_mrna => ; pp2_mrna_degradation_rate*pp2_mrna;
+  pp2_v3:  => p2; rbs2_strength*pp2_mrna;
+  pp2_v4: p2 => ; p2_degradation_rate*p2;
+  pp1_v1:  => pp1_mrna; cod1;
+  pp1_v2: pp1_mrna => ; pp1_mrna_degradation_rate*pp1_mrna;
+  pp1_v3:  => p1; rbs1_strength*pp1_mrna;
+  pp1_v4: p1 => ; p1_degradation_rate*p1;
+
+  // Species initializations:
+  pp9_mrna = 0;
+  p9 = 0;
+  pp8_mrna = 0;
+  p8 = 0;
+  pp7_mrna = 0;
+  p7 = 0;
+  pp6_mrna = 0;
+  p6 = 0;
+  pp5_mrna = 0;
+  p5 = 0;
+  pp4_mrna = 0;
+  p4 = 0;
+  pp3_mrna = 0;
+  p3 = 0;
+  pp2_mrna = 0;
+  p2 = 0;
+  pp1_mrna = 0;
+  p1 = 5/DefaultCompartment;
+
+  // Compartment initializations:
+  DefaultCompartment = 1;
+
+  // Variable initializations:
+  pp8_mrna_degradation_rate = 1;
+  pp9_mrna_degradation_rate = 1;
+  p1_degradation_rate = 0.5;
+  p2_degradation_rate = 0.5;
+  p3_degradation_rate = 0.5;
+  p4_degradation_rate = 0.5;
+  p5_degradation_rate = 0.5;
+  p6_degradation_rate = 0.5;
+  p7_degradation_rate = 0.5;
+  p8_degradation_rate = 0.5;
+  p9_degradation_rate = 0.5;
+  v1_Kd = 11.147;
+  v1_h = 1;
+  v2_Kd = 1;
+  v2_h = 4;
+  v3_Kd = 20;
+  v3_h = 1;
+  v4_Kd = 0.2;
+  v4_h = 4;
+  v5_Kd = 0.2;
+  v5_h = 4;
+  v6_Kd = 0.04;
+  v6_h = 4;
+  v7_Kd = 0.02;
+  v7_h = 4;
+  v8_Kd = 0.04;
+  v8_h = 4;
+  v9_Kd = 0.2;
+  v9_h = 4;
+  pp1_mrna_degradation_rate = 1;
+  pp2_mrna_degradation_rate = 1;
+  pro1_strength = 2;
+  pro2_strength = 4.5077;
+  pro3_strength = 5;
+  pro4_strength = 5;
+  pro5_strength = 5;
+  pro6_strength = 1.31;
+  pro7_strength = 1.31;
+  pro8_strength = 5;
+  pro9_strength = 5;
+  pp3_mrna_degradation_rate = 1;
+  v10_Kd = 0.02;
+  v10_h = 4;
+  v11_Kd = 0.1;
+  v11_h = 2;
+  v12_Kd = 0.1;
+  v12_h = 2;
+  v13_Kd = 0.01;
+  v13_h = 2;
+  pp4_mrna_degradation_rate = 1;
+  v14_Kd = 1;
+  v14_h = 4;
+  v15_Kd = 20;
+  v15_h = 1;
+  pp5_mrna_degradation_rate = 1;
+  rbs1_strength = 0.3668;
+  rbs2_strength = 1.4102;
+  rbs3_strength = 0.8;
+  rbs4_strength = 2.21;
+  rbs5_strength = 0.5;
+  rbs6_strength = 2;
+  rbs7_strength = 5;
+  rbs8_strength = 3.6377;
+  rbs9_strength = 8;
+  pp6_mrna_degradation_rate = 1;
+  pp7_mrna_degradation_rate = 1;
+
+  // Other declarations:
+  var as8, cod1, cod2, as1, rs1, cod3, rs2, rs3, cod4, rs7, rs6, cod5, as2;
+  var cod6, as3, as4, cod7, as7, cod8, as5, rs4, cod9, as6, rs5;
+  const DefaultCompartment, pp8_mrna_degradation_rate, pp9_mrna_degradation_rate;
+  const p1_degradation_rate, p2_degradation_rate, p3_degradation_rate, p4_degradation_rate;
+  const p5_degradation_rate, p6_degradation_rate, p7_degradation_rate, p8_degradation_rate;
+  const p9_degradation_rate, v1_Kd, v1_h, v2_Kd, v2_h, v3_Kd, v3_h, v4_Kd;
+  const v4_h, v5_Kd, v5_h, v6_Kd, v6_h, v7_Kd, v7_h, v8_Kd, v8_h, v9_Kd, v9_h;
+  const pp1_mrna_degradation_rate, pp2_mrna_degradation_rate, pro1_strength;
+  const pro2_strength, pro3_strength, pro4_strength, pro5_strength, pro6_strength;
+  const pro7_strength, pro8_strength, pro9_strength, pp3_mrna_degradation_rate;
+  const v10_Kd, v10_h, v11_Kd, v11_h, v12_Kd, v12_h, v13_Kd, v13_h, pp4_mrna_degradation_rate;
+  const v14_Kd, v14_h, v15_Kd, v15_h, pp5_mrna_degradation_rate, rbs1_strength;
+  const rbs2_strength, rbs3_strength, rbs4_strength, rbs5_strength, rbs6_strength;
+  const rbs7_strength, rbs8_strength, rbs9_strength, pp6_mrna_degradation_rate;
+  const pp7_mrna_degradation_rate;
+end
+
+case01395 is "case01395"

@@ -1,0 +1,19 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,p3 amounts=
+## tags=InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01319()
+
+  // Assignment Rules:
+  p2 := 1 + time;
+  p3 := delay(p2, 1);
+
+  // Variable initializations:
+  p1 = 5;
+
+  // Other declarations:
+  var p2, p3;
+  const p1;
+end
+
+case01319 is "case01319"

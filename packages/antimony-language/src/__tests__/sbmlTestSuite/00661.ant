@@ -1,0 +1,49 @@
+## start=0.0 end=10.0 points=50 atol=0.01 rtol=0.0001 selections=X0,X1,T,S1 amounts=X0,X1,T,S1
+## tags=Amount
+
+// Created by libAntimony v3.0.0
+model *case00661()
+
+  // Compartments and Species:
+  compartment C;
+  species X0 in C, X1 in C, T in C, S1 in C;
+
+  // Algebraic Rules:
+  _alg0: 0 = -1*S1 + T + X0 + X1;
+
+  // Reactions:
+  reaction1: X0 => T; C*k1*X0;
+  reaction2: T => X1; C*k2*T;
+
+  // Events:
+  event1: at X1 > 2: X1 = 1;
+
+  // Species initializations:
+  X0 = 1.25/C;
+  X0 has substance_per_volume;
+  X1 = 1.5/C;
+  X1 has substance_per_volume;
+  T = 1/C;
+  T has substance_per_volume;
+  S1 = 3.75/C;
+  S1 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  k1 = 0.1;
+  k2 = 0.2;
+
+  // Other declarations:
+  const C, k1, k2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00661 is "case00661"

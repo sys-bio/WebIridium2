@@ -1,0 +1,25 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=A,B,C amounts=A,B
+## tags=Amount
+
+// Created by libAntimony v3.0.0
+model *case01431()
+
+  // Compartments and Species:
+  compartment C;
+  species A in C, B in C;
+
+  // Reactions:
+  J0: A + B -> A + B; 1;
+
+  // Species initializations:
+  A = 1;
+  B = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  const C;
+end
+
+case01431 is "case01431"

@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=param,Param,pArAm amounts=
+## tags=testType:        TimeCourse
+
+// Created by libAntimony v3.0.0
+model *case01803()
+
+  // Variable initializations:
+  param = 3;
+  Param = 4;
+  pArAm = 5;
+
+  // Other declarations:
+  const param, Param, pArAm;
+end

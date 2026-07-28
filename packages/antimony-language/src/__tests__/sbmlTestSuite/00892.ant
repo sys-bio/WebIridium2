@@ -1,0 +1,25 @@
+## start=0.0 end=8.0 points=50 atol=0.001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00892()
+
+  // Rate Rules:
+  P1' = exponentiale^(-1*time)*k2*P2;
+  P2' = exponentiale^(-1*time)*k1*P1;
+
+  // Variable initializations:
+  P1 = 1.5;
+  k2 = 0.75;
+  P2 = 0;
+  k1 = 1;
+
+  // Other declarations:
+  var P1, P2;
+  const k2, k1;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00892 is "case00892"

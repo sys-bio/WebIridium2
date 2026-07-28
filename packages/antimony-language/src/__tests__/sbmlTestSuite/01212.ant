@@ -1,0 +1,18 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=x amounts=
+## tags=NonConstantParameter,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01212()
+
+  // Events:
+  E0: at time > 0.01, priority = piecewise(1, 1 <= 2 <= 1, 10): x = 5;
+  E1: at time > 0.01, priority = piecewise(10, 1 <= 2 <= 1, 1): x = 7;
+
+  // Variable initializations:
+  x = 3;
+
+  // Other declarations:
+  var x;
+end
+
+case01212 is "case01212"

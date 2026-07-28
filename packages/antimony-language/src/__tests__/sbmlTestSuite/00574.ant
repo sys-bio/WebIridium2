@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=50 atol=0.01 rtol=0.0001 selections=p1,p2,p3,p4 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00574()
+
+  // Rate Rules:
+  p1' = -1*k1*p1;
+  p2' = k2*p3;
+  p3' = k1*p1 + -1*k2*p3;
+
+  // Algebraic Rules:
+  _alg0: 0 = p1 + p2 + p3 + -1*p4;
+
+  // Variable initializations:
+  p1 = 1.25;
+  k1 = 0.1;
+  p2 = 1.5;
+  k2 = 0.2;
+  p3 = 1;
+  p4 = 3.75;
+
+  // Other declarations:
+  var p1, p2, p3, p4;
+  const k1, k2;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00574 is "case00574"

@@ -1,0 +1,45 @@
+## start=0.0 end=8.0 points=50 atol=1e-07 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
+## tags=Amount,LocalParameters
+
+// Created by libAntimony v3.0.0
+model *case00897()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C, S4 in C;
+
+  // Reactions:
+  reaction1: S1 => S2; C*reaction1_k2*S1*time;
+  reaction2: S2 => S3; C*k2*S2*time;
+  reaction3: S3 => S4; C*reaction3_k2*S3*time;
+
+  // Species initializations:
+  S1 = 0.0001/C;
+  S1 has substance_per_volume;
+  S2 = 0;
+  S2 has substance_per_volume;
+  S3 = 0;
+  S3 has substance_per_volume;
+  S4 = 0;
+  S4 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  k2 = 0.5;
+  reaction1_k2 = 0.7;
+  reaction3_k2 = 1;
+
+  // Other declarations:
+  const C, k2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00897 is "case00897"

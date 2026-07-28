@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=InitialValueReassigned,L3v2MathML
+
+// Created by libAntimony v3.0.0
+model *case01273()
+
+  // Variable initializations:
+  p1 = rem(9, 2);
+
+  // Other declarations:
+  const p1;
+end
+
+case01273 is "case01273"

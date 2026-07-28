@@ -1,0 +1,41 @@
+## start=0.0 end=2.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,AssignedConstantStoichiometry,DefaultValue,NonUnityStoichiometry,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00517()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Assignment Rules:
+  S1_S2_stoichiometry := 4*p1;
+
+  // Reactions:
+  reaction1: S1 => S1_S2_stoichiometry S2; C*k2*S1;
+
+  // Species initializations:
+  S1 = k1*S2;
+  S1 has substance_per_volume;
+  S2 = 1.5/C;
+  S2 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  k1 = 0.75;
+  k2 = 5;
+  p1 = 0.5;
+
+  // Other declarations:
+  const C, k1, k2, p1;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit substance_per_volume = mole / litre;
+end
+
+case00517 is "case00517"

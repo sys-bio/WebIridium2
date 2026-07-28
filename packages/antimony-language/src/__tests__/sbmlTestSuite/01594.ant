@@ -1,0 +1,20 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=EventIsPersistent,InitialValueReassigned,NonConstantParameter,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01594()
+
+  // Assignment Rules:
+  P1 := cosh(time);
+
+  // Events:
+  E0: at 1 after (cosh(time) > 9) && (cosh(time) < 11): P2 = 3;
+
+  // Variable initializations:
+  P2 = 1;
+
+  // Other declarations:
+  var P2, P1;
+end
+
+case01594 is "case01594"

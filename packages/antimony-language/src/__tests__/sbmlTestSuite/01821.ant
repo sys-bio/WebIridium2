@@ -1,0 +1,18 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=time,Time,TIME,a,b,c,d amounts=
+## tags=InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01821()
+
+  // Variable initializations:
+  time_ = 10;
+  Time = 11;
+  TIME = 12;
+  a = time_;
+  b = Time;
+  c = TIME;
+  d = time;
+
+  // Other declarations:
+  const time_, Time, TIME, a, b, c, d;
+end

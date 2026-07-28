@@ -1,0 +1,31 @@
+## start=0.0 end=3.0 points=300 atol=0.001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case00945()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  reaction1:  => S1; C*k1/S1;
+
+  // Events:
+  event1: at S1 > 2.1: C = 10;
+
+  // Species initializations:
+  S1 = 1/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  var C;
+  const k1;
+end
+
+case00945 is "case00945"

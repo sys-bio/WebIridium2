@@ -1,0 +1,29 @@
+## start=0.0 end=3.0 points=305 atol=0.0001 rtol=0.0001 selections=S1,S3,comp amounts=S1,S3
+## tags=Amount,BoundaryCondition,HasOnlySubstanceUnits,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01123()
+
+  // Compartments and Species:
+  compartment comp;
+  species S1 in comp;
+  substanceOnly species $S3 in comp;
+
+  // Rate Rules:
+  comp' = 1;
+
+  // Reactions:
+  _J0: S1 -> ; S3/10;
+
+  // Species initializations:
+  S1 = 1/comp;
+  S3 = 4/comp;
+
+  // Compartment initializations:
+  comp = 5;
+
+  // Other declarations:
+  var comp;
+end
+
+case01123 is "case01123"

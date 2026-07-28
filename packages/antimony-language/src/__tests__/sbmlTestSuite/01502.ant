@@ -1,0 +1,89 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21,P22,P23,P24,P25,P26,P27,P28,P29,P30,P31,P32,P33,P34,P35,P36,P37 amounts=
+## tags=InitialValueReassigned,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01502()
+
+  // Algebraic Rules:
+  _alg0: 0 = P2 - abs(-1);
+  _alg1: 0 = P3 - abs(1);
+  _alg2: 0 = P4 - acos(-1);
+  _alg3: 0 = P5 - acos(0.5);
+  _alg4: 0 = P6 - asin(1);
+  _alg5: 0 = P7 - asin(-0.5);
+  _alg6: 0 = P8 - atan(2.8);
+  _alg7: 0 = P9 - atan(-7.09);
+  _alg8: 0 = P10 - ceil(0.5);
+  _alg9: 0 = P11 - ceil(3.55);
+  _alg10: 0 = P12 - ceil(-4.6);
+  _alg11: 0 = P13 - cos(9.1);
+  _alg12: 0 = P14 - cos(-0.22);
+  _alg13: 0 = P15 - exp(0);
+  _alg14: 0 = P16 - exp(1);
+  _alg15: 0 = P17 - exp(0.77);
+  _alg16: 0 = P18 - floor(-4.6);
+  _alg17: 0 = P19 - floor(9.1);
+  _alg18: 0 = P20 - ln(0.2);
+  _alg19: 0 = P21 - ln(1);
+  _alg20: 0 = P22 - log10(0.2);
+  _alg21: 0 = P23 - log10(1);
+  _alg22: 0 = P24 - 1^2;
+  _alg23: 0 = P25 - 2^2;
+  _alg24: 0 = P26 - 1.4^5.1;
+  _alg25: 0 = P27 - 4^2;
+  _alg26: 0 = P28 - 3.1^2;
+  _alg27: 0 = P29 - sqrt(4);
+  _alg28: 0 = P30 - sqrt(7.4);
+  _alg29: 0 = P31 - sin(2.1);
+  _alg30: 0 = P32 - sin(0);
+  _alg31: 0 = P33 - sin(-5.9);
+  _alg32: 0 = P34 - tan(0);
+  _alg33: 0 = P35 - tan(1.11);
+  _alg34: 0 = P36 - tan(-6);
+  _alg35: 0 = P37 - tanh(-0.4);
+
+  // Variable initializations:
+  P2 = ;
+  P3 = ;
+  P4 = ;
+  P5 = ;
+  P6 = ;
+  P7 = ;
+  P8 = ;
+  P9 = ;
+  P10 = ;
+  P11 = ;
+  P12 = ;
+  P13 = ;
+  P14 = ;
+  P15 = ;
+  P16 = ;
+  P17 = ;
+  P18 = ;
+  P19 = ;
+  P20 = ;
+  P21 = ;
+  P22 = ;
+  P23 = ;
+  P24 = ;
+  P25 = ;
+  P26 = ;
+  P27 = ;
+  P28 = ;
+  P29 = ;
+  P30 = ;
+  P31 = ;
+  P32 = ;
+  P33 = ;
+  P34 = ;
+  P35 = ;
+  P36 = ;
+  P37 = ;
+
+  // Other declarations:
+  var P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17;
+  var P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30, P31;
+  var P32, P33, P34, P35, P36, P37;
+end
+
+case01502 is "case01502"

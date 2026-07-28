@@ -1,0 +1,32 @@
+## start=0.0 end=2.0 points=50 atol=0.001 rtol=0.0001 selections=s,c amounts=s
+## tags=Amount,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case00927()
+
+  // Compartments and Species:
+  compartment c;
+  species s in c;
+
+  // Rate Rules:
+  c' = 0.5*c;
+
+  // Species initializations:
+  s = 2/c;
+  s has substance_per_volume;
+
+  // Compartment initializations:
+  c = 1;
+  c has volume;
+
+  // Other declarations:
+  var c;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00927 is "case00927"

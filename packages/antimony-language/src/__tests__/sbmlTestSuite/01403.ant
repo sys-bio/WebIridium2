@@ -1,0 +1,33 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C,P0,P1,conversion amounts=S1,S2
+## tags=Amount,ConversionFactors,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01403()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Assignment Rules:
+  P0 := rateOf(S1);
+  P1 := delay(rateOf(S1), 1);
+
+  // Reactions:
+  J0: S1 -> S2; 0.1*S1;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  conversion = 2;
+
+  // Other declarations:
+  var P0, P1;
+  const C, conversion;
+end
+
+case01403 is "case01403"

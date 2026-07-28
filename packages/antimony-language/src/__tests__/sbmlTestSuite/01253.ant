@@ -1,0 +1,29 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,c,p2 amounts=S1
+## tags=Amount,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01253()
+
+  // Compartments and Species:
+  compartment c;
+  species S1 in c;
+
+  // Reactions:
+  J0:  => S1; 1;
+  J1: S1 => ; 1;
+
+  // Species initializations:
+  S1 = 100/c;
+
+  // Compartment initializations:
+  c = 1;
+
+  // Variable initializations:
+  p2 = rateOf(S1);
+
+  // Other declarations:
+  var p2;
+  const c;
+end
+
+case01253 is "case01253"

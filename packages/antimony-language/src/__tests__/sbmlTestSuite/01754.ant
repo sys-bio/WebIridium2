@@ -1,0 +1,18 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1 amounts=
+## tags=EventIsPersistent,EventT0Firing,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01754()
+
+  // Events:
+  E0: at 2.3 after P1 > 1, t0=false: P1 = 3;
+  E1: at 1.5 after P1 > 1, t0=false: P1 = 0;
+
+  // Variable initializations:
+  P1 = 3/2;
+
+  // Other declarations:
+  var P1;
+end
+
+case01754 is "case01754"

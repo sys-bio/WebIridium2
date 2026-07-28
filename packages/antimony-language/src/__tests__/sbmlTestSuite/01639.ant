@@ -1,0 +1,29 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C amounts=S1,S2
+## tags=Amount,BoundaryCondition,LocalParameters
+
+// Created by libAntimony v3.0.0
+model *case01639()
+
+  // Compartments and Species:
+  compartment C;
+  species $S1 in C, S2 in C;
+
+  // Reactions:
+  J0: k0 $S1 -> S2; 1/J0_k0;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k0 = 1;
+  J0_k0 = 3;
+
+  // Other declarations:
+  const C;
+end
+
+case01639 is "case01639"

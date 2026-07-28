@@ -1,0 +1,27 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,default_compartment amounts=S1,S2
+## tags=Amount,AssignedVariableStoichiometry,FastReaction,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case01398()
+
+  // Compartments and Species:
+  species S1, S2;
+
+  // Reactions:
+  J0: S1_stoichiometry S1 -> S2; 1*S1;
+
+  // Events:
+  _E0: at time > 4.5: S1_stoichiometry = 5, S1 = 5;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 0;
+
+  // Variable initializations:
+  S1_stoichiometry = 1;
+
+  // Other declarations:
+  var S1_stoichiometry;
+end
+
+case01398 is "case01398"

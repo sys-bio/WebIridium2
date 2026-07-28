@@ -1,0 +1,32 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=k1,S1,C amounts=S1
+## tags=Amount,EventT0Firing,LocalParameters,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01713()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  J0:  -> S1; J0_k1;
+
+  // Events:
+  E1: at 2.3 after k1 <= 2.25, t0=false: k1 = 3;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = 0;
+  J0_k1 = 3;
+
+  // Other declarations:
+  var k1;
+  const C;
+end
+
+case01713 is "case01713"

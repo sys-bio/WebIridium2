@@ -1,0 +1,39 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,J1,C,A__J2 amounts=S1
+## tags=Amount,MultiCompartment,NonUnityCompartment,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model sub1()
+
+  // Compartments and Species:
+  compartment C, J0;
+  species S1 in C;
+
+  // Reactions:
+  J2:  -> S1; J0;
+
+  // Species initializations:
+  S1 = 3;
+
+  // Compartment initializations:
+  C = 1;
+  J0 = 2;
+
+  // Other declarations:
+  const C, J0;
+end
+
+sub1 is "sub1"
+
+model *case01369()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.C is C;
+  A.J0 is J1;
+  A.S1 is S1;
+
+  // Compartment initializations:
+  J1 = 5;
+end
+
+case01369 is "case01369"

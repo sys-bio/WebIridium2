@@ -1,0 +1,27 @@
+## start=0.0 end=2.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2,S3 amounts=S1,S2,S3
+## tags=Amount
+
+// Created by libAntimony v3.0.0
+model *case00930()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C;
+
+  // Events:
+  _E0: at time >= 0.99, priority = 1: S3 = 6, S2 = 5, S1 = 4;
+  _E1: at time >= 0.99, priority = 0: S3 = 3, S2 = 2, S1 = 1;
+
+  // Species initializations:
+  S1 = 0;
+  S2 = 0;
+  S3 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  const C;
+end
+
+case00930 is "case00930"

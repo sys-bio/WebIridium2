@@ -1,0 +1,39 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=J1,A__x amounts=
+## tags=InitialValueReassigned,NonUnityCompartment,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model sub1()
+
+  // Compartments and Species:
+  compartment J0;
+
+  // Algebraic Rules:
+  _alg0: 0 = x - J0;
+
+  // Compartment initializations:
+  J0 = 2;
+
+  // Variable initializations:
+  x = ;
+
+  // Other declarations:
+  var x;
+  const J0;
+end
+
+sub1 is "sub1"
+
+model *case01368()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.J0 is J1;
+
+  // Algebraic Rules:
+  A._alg0: 0 = A.x - J1;
+
+  // Compartment initializations:
+  J1 = 5;
+end
+
+case01368 is "case01368"

@@ -1,0 +1,20 @@
+## start=0.0 end=2.0 points=10 atol=0.0001 rtol=0.0001 selections=A,B,C amounts=A,B,C
+## tags=Amount,FastReaction,HasOnlySubstanceUnits
+
+// Created by libAntimony v3.0.0
+model *case00986()
+
+  // Compartments and Species:
+  substanceOnly species A, B, C;
+
+  // Reactions:
+  fast: A -> B; 1*A;
+  slow: B -> C; 1*B;
+
+  // Species initializations:
+  A = 1;
+  B = 0;
+  C = 0;
+end
+
+case00986 is "case00986"

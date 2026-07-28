@@ -1,0 +1,32 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,m_cf,s1_cf,C amounts=S1,S2
+## tags=Amount,ConversionFactors,EventUsesAssignmentTimeValues
+
+// Created by libAntimony v3.0.0
+model *case01690()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  J0: S1 -> S2; 0.01;
+
+  // Events:
+  E0: at 2 after S1 <= 1.83, fromTrigger=false: S2 = S1;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 3/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  m_cf = 3;
+  s1_cf = 5;
+
+  // Other declarations:
+  const C, m_cf, s1_cf;
+end
+
+case01690 is "case01687"

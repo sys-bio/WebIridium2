@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,p3,p4 amounts=
+## tags=InitialValueReassigned,L3v2MathML
+
+// Created by libAntimony v3.0.0
+model *case01274()
+
+  // Variable initializations:
+  p1 = implies(true, true);
+  p2 = implies(true, false);
+  p3 = implies(false, true);
+  p4 = implies(false, false);
+
+  // Other declarations:
+  const p1, p2, p3, p4;
+end
+
+case01274 is "case01274"

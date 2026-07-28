@@ -1,0 +1,42 @@
+## start=0.0 end=15.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00633()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Assignment Rules:
+  k1 := p1*p2;
+
+  // Reactions:
+  reaction1: S1 => S2; C*k1*S1;
+
+  // Species initializations:
+  S1 = 0.133333333333333*k1;
+  S1 has substance_per_volume;
+  S2 = 0.15/C;
+  S2 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  p1 = 75;
+  p2 = 0.01;
+
+  // Other declarations:
+  var k1;
+  const C, p1, p2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00633 is "case00633"

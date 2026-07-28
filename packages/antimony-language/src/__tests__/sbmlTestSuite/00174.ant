@@ -1,0 +1,17 @@
+## start=0.0 end=2.0 points=50 atol=0.0001 rtol=0.0001 selections=S1 amounts=
+## tags=InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case00174()
+
+  // Assignment Rules:
+  S1 := 7;
+
+  // Other declarations:
+  var S1;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00174 is "case00174"

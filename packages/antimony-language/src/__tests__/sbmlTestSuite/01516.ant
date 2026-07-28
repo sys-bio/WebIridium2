@@ -1,0 +1,106 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21,P22,P23,P24,P25,P26,P27,P28,P29,P30,P31,P32,P33,P34,P35,P36,P37,P38,P39,C amounts=P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19,P20,P21,P22,P23,P24,P25,P26,P27,P28,P29,P30,P31,P32,P33,P34,P35,P36,P37,P38,P39
+## tags=Amount,AssignedConstantStoichiometry,InitialValueReassigned,NonUnityStoichiometry,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01516()
+
+  // Compartments and Species:
+  compartment C;
+  species P2 in C, P3 in C, P4 in C, P5 in C, P6 in C, P7 in C, P8 in C, P9 in C;
+  species P10 in C, P11 in C, P12 in C, P13 in C, P14 in C, P15 in C, P16 in C;
+  species P17 in C, P18 in C, P19 in C, P20 in C, P21 in C, P22 in C, P23 in C;
+  species P24 in C, P25 in C, P26 in C, P27 in C, P28 in C, P29 in C, P30 in C;
+  species P31 in C, P32 in C, P33 in C, P34 in C, P35 in C, P36 in C, P37 in C;
+  species P38 in C, P39 in C;
+
+  // Reactions:
+  J0:  -> P2_sr P2 + P3_sr P3 + P4_sr P4 + P5_sr P5 + P6_sr P6 + P7_sr P7 + P8_sr P8 + P9_sr P9 + P10_sr P10 + P11_sr P11 + P12_sr P12 + P13_sr P13 + P14_sr P14 + P15_sr P15 + P16_sr P16 + P17_sr P17 + P18_sr P18 + P19_sr P19 + P20_sr P20 + P21_sr P21 + P22_sr P22 + P23_sr P23 + P24_sr P24 + P25_sr P25 + P26_sr P26 + P27_sr P27 + P28_sr P28 + P29_sr P29 + P30_sr P30 + P31_sr P31 + P32_sr P32 + P33_sr P33 + P34_sr P34 + P35_sr P35 + P36_sr P36 + P37_sr P37 + P38_sr P38 + P39_sr P39; 1;
+
+  // Species initializations:
+  P2 = 0;
+  P3 = 0;
+  P4 = 0;
+  P5 = 0;
+  P6 = 0;
+  P7 = 0;
+  P8 = 0;
+  P9 = 0;
+  P10 = 0;
+  P11 = 0;
+  P12 = 0;
+  P13 = 0;
+  P14 = 0;
+  P15 = 0;
+  P16 = 0;
+  P17 = 0;
+  P18 = 0;
+  P19 = 0;
+  P20 = 0;
+  P21 = 0;
+  P22 = 0;
+  P23 = 0;
+  P24 = 0;
+  P25 = 0;
+  P26 = 0;
+  P27 = 0;
+  P28 = 0;
+  P29 = 0;
+  P30 = 0;
+  P31 = 0;
+  P32 = 0;
+  P33 = 0;
+  P34 = 0;
+  P35 = 0;
+  P36 = 0;
+  P37 = 0;
+  P38 = 0;
+  P39 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  P2_sr = abs(-1);
+  P3_sr = abs(1);
+  P4_sr = acos(-1);
+  P5_sr = acos(0.5);
+  P6_sr = asin(1);
+  P7_sr = asin(-0.5);
+  P8_sr = atan(2.8);
+  P9_sr = atan(-7.09);
+  P10_sr = ceil(0.5);
+  P11_sr = ceil(3.55);
+  P12_sr = ceil(-4.6);
+  P13_sr = cos(9.1);
+  P14_sr = cos(-0.22);
+  P15_sr = exp(0);
+  P16_sr = exp(1);
+  P17_sr = exp(0.77);
+  P18_sr = floor(-4.6);
+  P19_sr = floor(9.1);
+  P20_sr = ln(0.2);
+  P21_sr = ln(1);
+  P22_sr = log10(0.2);
+  P23_sr = log10(1);
+  P24_sr = 1^2;
+  P25_sr = 2^2;
+  P26_sr = 1.4^5.1;
+  P27_sr = 4^2;
+  P28_sr = 3.1^2;
+  P29_sr = sqrt(4);
+  P30_sr = sqrt(7.4);
+  P31_sr = sin(2.1);
+  P32_sr = sin(0);
+  P33_sr = sin(-5.9);
+  P34_sr = tan(0);
+  P35_sr = tan(1.11);
+  P36_sr = tan(-6);
+  P37_sr = tanh(0);
+  P38_sr = tanh(1.11);
+  P39_sr = tanh(-6);
+
+  // Other declarations:
+  const C;
+end
+
+case01516 is "case01516"

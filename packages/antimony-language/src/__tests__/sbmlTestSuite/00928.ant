@@ -1,0 +1,38 @@
+## start=0.0 end=5.0 points=50 atol=1e-07 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,EventT0Firing
+
+// Created by libAntimony v3.0.0
+model *case00928()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  reaction1: S1 => S2; C*k1*S1;
+
+  // Events:
+  _E0: at time >= 0, t0=false: S1 = 0.00015 mole/C;
+
+  // Species initializations:
+  S1 = 0;
+  S1 has mole_per_litre;
+  S2 = 0;
+  S2 has mole_per_litre;
+
+  // Compartment initializations:
+  C = 1;
+  C has litre;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  const C, k1;
+
+  // Unit definitions:
+  unit time_unit = second;
+  unit mole_per_litre = mole / litre;
+end
+
+case00928 is "case00928"

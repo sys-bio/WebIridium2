@@ -1,0 +1,19 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2 amounts=
+## tags=BoolNumericSwap,InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01292()
+
+  // Algebraic Rules:
+  _alg0: 0 = p1 - true;
+  _alg1: 0 = p2 - false;
+
+  // Variable initializations:
+  p1 = ;
+  p2 = ;
+
+  // Other declarations:
+  var p1, p2;
+end
+
+case01292 is "case01292"

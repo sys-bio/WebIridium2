@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=time,Time,TIME amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01820()
+
+  // Variable initializations:
+  time_ = 10;
+  Time = 11;
+  TIME = 12;
+
+  // Other declarations:
+  const time_, Time, TIME;
+end

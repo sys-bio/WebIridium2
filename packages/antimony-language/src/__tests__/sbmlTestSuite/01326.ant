@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y,C amounts=x
+## tags=Amount,EventUsesTriggerTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01326()
+
+  // Compartments and Species:
+  compartment C;
+  species x in C;
+
+  // Reactions:
+  J0:  -> x; 1;
+
+  // Events:
+  E0: at 2 after x >= 3.5: y = x;
+
+  // Species initializations:
+  x = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  y = 0;
+
+  // Other declarations:
+  var y;
+  const C;
+end
+
+case01326 is "case01326"

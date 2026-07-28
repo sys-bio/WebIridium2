@@ -1,0 +1,24 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=k1,k2 amounts=
+## tags=EventIsPersistent,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01575()
+
+  // Rate Rules:
+  k1' = 1;
+
+  // Algebraic Rules:
+  _alg0: 0 = k1 - k2;
+
+  // Events:
+  E0: at 1.1 after (k2 > 3.5) && (k2 < 4): k1 = 1;
+
+  // Variable initializations:
+  k2 = ;
+  k1 = 1;
+
+  // Other declarations:
+  var k2, k1;
+end
+
+case01575 is "case01575"

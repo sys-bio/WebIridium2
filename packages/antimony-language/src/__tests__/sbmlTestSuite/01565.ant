@@ -1,0 +1,193 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S0,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14,S15,S16,S17,S18,S19,S20,S21,S22,S23,S24,S25,S26,S27,S28,S29,S30,S31,S32,S33,S34,S35,S36,S37,S38,S39,S40,S41,S42,S43,S44,S45,S46,S47,S48,S49,S50,S51,S0b,S1b,S2b,S3b,S4b,S5b,S6b,S7b,S8b,S9b,S10b,S11b,S12b,S13b,S14b,S15b,S16b,S17b,S18b,S19b,S20b,S21b,S22b,S23b,S24b,S25b,S26b,S27b,S28b,S29b,S30b,S31b,S32b,S33b,S34b,S35b,S36b,S37b,S38b,S39b,S40b,S41b,S42b,S43b,S44b,S45b,S46b,S47b,S48b,S49b,S50b,S51b,C amounts=S0,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14,S15,S16,S17,S18,S19,S20,S21,S22,S23,S24,S25,S26,S27,S28,S29,S30,S31,S32,S33,S34,S35,S36,S37,S38,S39,S40,S41,S42,S43,S44,S45,S46,S47,S48,S49,S50,S51,S0b,S1b,S2b,S3b,S4b,S5b,S6b,S7b,S8b,S9b,S10b,S11b,S12b,S13b,S14b,S15b,S16b,S17b,S18b,S19b,S20b,S21b,S22b,S23b,S24b,S25b,S26b,S27b,S28b,S29b,S30b,S31b,S32b,S33b,S34b,S35b,S36b,S37b,S38b,S39b,S40b,S41b,S42b,S43b,S44b,S45b,S46b,S47b,S48b,S49b,S50b,S51b
+## tags=Amount,FastReaction,MultipleFastReactions,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01565()
+
+  // Compartments and Species:
+  compartment C;
+  species S0 in C, S1 in C, S2 in C, S3 in C, S4 in C, S5 in C, S6 in C, S7 in C;
+  species S8 in C, S9 in C, S10 in C, S11 in C, S12 in C, S13 in C, S14 in C;
+  species S15 in C, S16 in C, S17 in C, S18 in C, S19 in C, S20 in C, S21 in C;
+  species S22 in C, S23 in C, S24 in C, S25 in C, S26 in C, S27 in C, S28 in C;
+  species S29 in C, S30 in C, S31 in C, S32 in C, S33 in C, S34 in C, S35 in C;
+  species S36 in C, S37 in C, S38 in C, S39 in C, S40 in C, S41 in C, S42 in C;
+  species S43 in C, S44 in C, S45 in C, S46 in C, S47 in C, S48 in C, S49 in C;
+  species S50 in C, S51 in C, S0b in C, S1b in C, S2b in C, S3b in C, S4b in C;
+  species S5b in C, S6b in C, S7b in C, S8b in C, S9b in C, S10b in C, S11b in C;
+  species S12b in C, S13b in C, S14b in C, S15b in C, S16b in C, S17b in C;
+  species S18b in C, S19b in C, S20b in C, S21b in C, S22b in C, S23b in C;
+  species S24b in C, S25b in C, S26b in C, S27b in C, S28b in C, S29b in C;
+  species S30b in C, S31b in C, S32b in C, S33b in C, S34b in C, S35b in C;
+  species S36b in C, S37b in C, S38b in C, S39b in C, S40b in C, S41b in C;
+  species S42b in C, S43b in C, S44b in C, S45b in C, S46b in C, S47b in C;
+  species S48b in C, S49b in C, S50b in C, S51b in C;
+
+  // Reactions:
+  J0: S0b -> S0; 1*S0*S0b*exponentiale;
+  J1: S1b -> S1; 1*S1*S1b*exp(exponentiale);
+  J2: S2b -> S2; 1*S2*S2b*abs(-1);
+  J3: S3b -> S3; 1*S3*S3b*abs(1);
+  J4: S4b -> S4; 1*S4*S4b*acos(-1);
+  J5: S5b -> S5; 1*S5*S5b*acos(0.5);
+  J6: S6b -> S6; 1*S6*S6b*asin(1);
+  J7: S7b -> S7; 1*S7*S7b*asin(-0.5);
+  J8: S8b -> S8; 1*S8*S8b*atan(2.8);
+  J9: S9b -> S9; 1*S9*S9b*atan(-7.09);
+  J10: S10b -> S10; 1*S10*S10b*ceil(0.5);
+  J11: S11b -> S11; 1*S11*S11b*ceil(3.55);
+  J12: S12b -> S12; 1*S12*S12b*ceil(-4.6);
+  J13: S13b -> S13; 1*S13*S13b*cos(9.1);
+  J14: S14b -> S14; 1*S14*S14b*cos(-0.22);
+  J15: S15b -> S15; 1*S15*S15b*exp(0);
+  J16: S16b -> S16; 1*S16*S16b*exp(1);
+  J17: S17b -> S17; 1*S17*S17b*exp(0.77);
+  J18: S18b -> S18; 1*S18*S18b*floor(-4.6);
+  J19: S19b -> S19; 1*S19*S19b*floor(9.1);
+  J20: S20b -> S20; 1*S20*S20b*ln(0.2);
+  J21: S21b -> S21; 1*S21*S21b*ln(1);
+  J22: S22b -> S22; 1*S22*S22b*log10(0.2);
+  J23: S23b -> S23; 1*S23*S23b*log10(1);
+  J24: S24b -> S24; 1*S24*S24b*1^2;
+  J25: S25b -> S25; 1*S25*S25b*2^2;
+  J26: S26b -> S26; 1*S26*S26b*1.4^5.1;
+  J27: S27b -> S27; 1*S27*S27b*4^2;
+  J28: S28b -> S28; 1*S28*S28b*3.1^2;
+  J29: S29b -> S29; 1*S29*S29b*sqrt(4);
+  J30: S30b -> S30; 1*S30*S30b*sqrt(7.4);
+  J31: S31b -> S31; 1*S31*S31b*sin(2.1);
+  J32: S32b -> S32; 1*S32*S32b*sin(0);
+  J33: S33b -> S33; 1*S33*S33b*sin(-5.9);
+  J34: S34b -> S34; 1*S34*S34b*tan(0);
+  J35: S35b -> S35; 1*S35*S35b*tan(1.11);
+  J36: S36b -> S36; 1*S36*S36b*tan(-6);
+  J37: S37b -> S37; 1*S37*S37b*sec(0.5);
+  J38: S38b -> S38; 1*S38*S38b*csc(4.5);
+  J39: S39b -> S39; 1*S39*S39b*cot(0.2);
+  J40: S40b -> S40; 1*S40*S40b*sinh(0.3);
+  J41: S41b -> S41; 1*S41*S41b*cosh(1.7);
+  J42: S42b -> S42; 1*S42*S42b*arcsec(2.3);
+  J43: S43b -> S43; 1*S43*S43b*arccsc(1.1);
+  J44: S44b -> S44; 1*S44*S44b*arccot(-0.1);
+  J45: S45b -> S45; 1*S45*S45b*arcsinh(99);
+  J46: S46b -> S46; 1*S46*S46b*arccosh(1.34);
+  J47: S47b -> S47; 1*S47*S47b*arctanh(-0.7);
+  J48: S48b -> S48; 1*S48*S48b*arcsech(0.42);
+  J49: S49b -> S49; 1*S49*S49b*arccsch(0.01);
+  J50: S50b -> S50; 1*S50*S50b;
+  J51: S51b -> S51; 1*S51*S51b*plus();
+
+  // Species initializations:
+  S0 = 2;
+  S1 = 2;
+  S2 = 2;
+  S3 = 2;
+  S4 = 2;
+  S5 = 2;
+  S6 = 2;
+  S7 = 2;
+  S8 = 2;
+  S9 = 2;
+  S10 = 2;
+  S11 = 2;
+  S12 = 2;
+  S13 = 2;
+  S14 = 2;
+  S15 = 2;
+  S16 = 2;
+  S17 = 2;
+  S18 = 2;
+  S19 = 2;
+  S20 = 2;
+  S21 = 2;
+  S22 = 2;
+  S23 = 2;
+  S24 = 2;
+  S25 = 2;
+  S26 = 2;
+  S27 = 2;
+  S28 = 2;
+  S29 = 2;
+  S30 = 2;
+  S31 = 2;
+  S32 = 2;
+  S33 = 2;
+  S34 = 2;
+  S35 = 2;
+  S36 = 2;
+  S37 = 2;
+  S38 = 2;
+  S39 = 2;
+  S40 = 2;
+  S41 = 2;
+  S42 = 2;
+  S43 = 2;
+  S44 = 2;
+  S45 = 2;
+  S46 = 2;
+  S47 = 2;
+  S48 = 2;
+  S49 = 2;
+  S50 = 2;
+  S51 = 2;
+  S0b = 3;
+  S1b = 3;
+  S2b = 3;
+  S3b = 3;
+  S4b = 3;
+  S5b = 3;
+  S6b = 3;
+  S7b = 3;
+  S8b = 3;
+  S9b = 3;
+  S10b = 3;
+  S11b = 3;
+  S12b = 3;
+  S13b = 3;
+  S14b = 3;
+  S15b = 3;
+  S16b = 3;
+  S17b = 3;
+  S18b = 3;
+  S19b = 3;
+  S20b = 3;
+  S21b = 3;
+  S22b = 3;
+  S23b = 3;
+  S24b = 3;
+  S25b = 3;
+  S26b = 3;
+  S27b = 3;
+  S28b = 3;
+  S29b = 3;
+  S30b = 3;
+  S31b = 3;
+  S32b = 3;
+  S33b = 3;
+  S34b = 3;
+  S35b = 3;
+  S36b = 3;
+  S37b = 3;
+  S38b = 3;
+  S39b = 3;
+  S40b = 3;
+  S41b = 3;
+  S42b = 3;
+  S43b = 3;
+  S44b = 3;
+  S45b = 3;
+  S46b = 3;
+  S47b = 3;
+  S48b = 3;
+  S49b = 3;
+  S50b = 3;
+  S51b = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  const C;
+end
+
+case01565 is "case01565"

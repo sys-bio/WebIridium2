@@ -1,0 +1,54 @@
+## start=0.0 end=8.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
+## tags=Amount,InitialValueReassigned,MultiCompartment,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case00289()
+
+  // Compartments and Species:
+  compartment compartment_, compartment1;
+  species S1 in compartment_, S2 in compartment_, S3 in compartment1, $S4 in compartment1;
+
+  // Assignment Rules:
+  S4 := k3*S3;
+
+  // Reactions:
+  reaction1: S1 + S2 => 2 S2; compartment_*k1*S1*S2;
+  reaction2: S2 => S3; compartment1*k2*(S2 + -1*S3);
+
+  // Species initializations:
+  S1 = 1/compartment_;
+  S1 has substance_per_volume;
+  S2 = 1/compartment_;
+  S2 has substance_per_volume;
+  S3 = 0;
+  S3 has substance_per_volume;
+  S4 has substance_per_volume;
+
+  // Compartment initializations:
+  compartment_ = 1;
+  compartment_ has volume;
+  compartment1 = 1;
+  compartment1 has volume;
+
+  // Variable initializations:
+  k3 = 0.25;
+  k1 = 0.75;
+  k2 = 0.25;
+
+  // Other declarations:
+  const compartment_, compartment1, k3, k1, k2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit area = metre^2;
+  unit length = metre;
+  unit extent = substance;
+  unit time_unit = second;
+  unit substance_per_volume = mole / litre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case00289 is "case00289"

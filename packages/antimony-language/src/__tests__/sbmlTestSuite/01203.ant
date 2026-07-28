@@ -1,0 +1,22 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y,z amounts=
+## tags=InitialValueReassigned,NonConstantParameter,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01203()
+
+  // Assignment Rules:
+  z := piecewise(piecewise(2, y > 1.49, 1), x <= 0.49, piecewise(1, y > 0.49, 0));
+
+  // Rate Rules:
+  y' = -2;
+  x' = 1;
+
+  // Variable initializations:
+  y = 2;
+  x = 0;
+
+  // Other declarations:
+  var z, y, x;
+end
+
+case01203 is "case01203"

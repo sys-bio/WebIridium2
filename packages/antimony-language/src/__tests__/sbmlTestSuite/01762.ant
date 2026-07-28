@@ -1,0 +1,27 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,LocalParameters
+
+// Created by libAntimony v3.0.0
+model *case01762()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  J0:  -> S1; avogadro/J0_avogadro;
+
+  // Species initializations:
+  S1 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  J0_avogadro = 1e+24;
+
+  // Other declarations:
+  const C;
+end
+
+case01762 is "case01762"

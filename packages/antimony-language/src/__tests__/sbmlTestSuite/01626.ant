@@ -1,0 +1,50 @@
+## start=0.0 end=100.0 points=1001 atol=0.15 rtol=0.0001 selections=S,errorLow,errorHigh,errorS2 amounts=
+## tags=AssignedVariableStoichiometry,EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,NonUnityStoichiometry,RandomEventExecution,SpeciesReferenceInMath
+
+// Created by libAntimony v3.0.0
+model *case01626()
+
+  // Compartments and Species:
+  compartment C;
+  species S2 in C;
+
+  // Assignment Rules:
+  S := Q + R;
+
+  // Rate Rules:
+  reset' = 1;
+
+  // Reactions:
+  J0: Q S2 -> R S2; 0.1;
+
+  // Events:
+  Qinc: at reset >= 0.01, priority = 1, persistent=false: Q = Q + 0.01, reset = 0;
+  Rinc: at reset >= 0.01, priority = 1, persistent=false: R = R + 0.01, reset = 0;
+  maxcheck: at abs(Q - R) > maxdiff: maxdiff = abs(Q - R);
+  error_check: at (time >= 99) && (maxdiff < 0.2): errorLow = 1;
+  error_check2: at maxdiff >= 4: errorHigh = 1;
+  error_check3: at abs(S2) >= 25: errorS2 = 1;
+
+  // Species initializations:
+  S2 = 0;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  reset = 0;
+  Q = 1;
+  R = 1;
+  maxdiff = 0;
+  errorLow = 0;
+  errorHigh = 0;
+  errorS2 = 0;
+  S2_det = 0;
+  maxS2diff = 0;
+
+  // Other declarations:
+  var reset, Q, R, maxdiff, errorLow, errorHigh, errorS2, S, S2_det, maxS2diff;
+  const C;
+end
+
+case01626 is "case01626"

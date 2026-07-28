@@ -1,0 +1,24 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,ConstantSpecies,NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case_01117()
+
+  // Compartments and Species:
+  compartment C;
+  species $S1 in C;
+
+  // Rate Rules:
+  C' = 1;
+
+  // Species initializations:
+  S1 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  var C;
+end
+
+case_01117 is "case_01117"

@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=false,False,FALSE amounts=
+## tags=testType:        TimeCourse
+
+// Created by libAntimony v3.0.0
+model *case01816()
+
+  // Variable initializations:
+  false_ = 4;
+  False_ = 5;
+  FALSE_ = 6;
+
+  // Other declarations:
+  const false_, False_, FALSE_;
+end

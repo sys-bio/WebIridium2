@@ -1,0 +1,45 @@
+## start=0.0 end=2.0 points=50 atol=1e-09 rtol=0.0001 selections=S1,S2,S3,S4,S5 amounts=
+## tags=Concentration,ConstantSpecies
+
+// Created by libAntimony v3.0.0
+model *case00600()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C, S4 in C, $S5 in C;
+
+  // Reactions:
+  reaction1: S1 + S2 => S3 + S4; C*k1*S1*S2;
+  reaction2: S3 + S4 => S1 + S2; C*k2*S3*S4*S5^-1;
+
+  // Species initializations:
+  S1 = 1e-06;
+  S1 has substance_per_volume;
+  S2 = 1.5e-06;
+  S2 has substance_per_volume;
+  S3 = 2e-06;
+  S3 has substance_per_volume;
+  S4 = 5e-07;
+  S4 has substance_per_volume;
+  S5 = 1e-06;
+  S5 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  k1 = 1300000;
+  k2 = 0.3;
+
+  // Other declarations:
+  const C, k1, k2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00600 is "case00600"

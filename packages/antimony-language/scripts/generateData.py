@@ -24,6 +24,7 @@ class TestParams:
     absolute_tolerance: float
     relative_tolerance: float
     selections: list[str] | None
+    amounts: list[str] | None = None
 
 
 param_regex = re.compile(r"\b([A-Za-z]+)=([A-Za-z0-9,-\[\]]+)\b")

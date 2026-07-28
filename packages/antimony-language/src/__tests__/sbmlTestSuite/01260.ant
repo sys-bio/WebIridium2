@@ -1,0 +1,21 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01260()
+
+  // Rate Rules:
+  p1' = 1;
+
+  // Events:
+  _E0: at time > 5.5: p2 = rateOf(p1);
+
+  // Variable initializations:
+  p2 = 10;
+  p1 = 2;
+
+  // Other declarations:
+  var p2, p1;
+end
+
+case01260 is "case01260"

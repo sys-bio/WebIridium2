@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=comp,Comp,cOmP amounts=
+## tags=MultiCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01805()
+
+  // Compartments and Species:
+  compartment comp, Comp, cOmP;
+
+  // Compartment initializations:
+  comp = 3;
+  Comp = 4;
+  cOmP = 5;
+
+  // Other declarations:
+  const comp, Comp, cOmP;
+end

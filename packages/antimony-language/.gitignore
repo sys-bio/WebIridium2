@@ -1,2 +1,4 @@
 scripts/.venv
-iridiumResults/
+simResults/
+src/__tests__/sbmlTestSuiteOriginal
+__pycache__/

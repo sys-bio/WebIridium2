@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,C amounts=p1
+## tags=Amount,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01297()
+
+  // Compartments and Species:
+  compartment C;
+  species p1 in C;
+
+  // Reactions:
+  J0:  -> p1; 0.01*p1;
+
+  // Events:
+  _E0: at time > 5.5: p2 = rateOf(p1);
+
+  // Species initializations:
+  p1 = 2;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  p2 = 10;
+
+  // Other declarations:
+  var p2;
+  const C;
+end
+
+case01297 is "case01297"

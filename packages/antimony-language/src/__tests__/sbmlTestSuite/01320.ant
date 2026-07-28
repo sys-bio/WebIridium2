@@ -1,0 +1,31 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,S1,C amounts=S1
+## tags=Amount,InitialValueReassigned,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01320()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Assignment Rules:
+  p2 := delay(S1, 1);
+
+  // Reactions:
+  J0:  -> S1; 1;
+
+  // Species initializations:
+  S1 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  p1 = 5;
+
+  // Other declarations:
+  var p1, p2;
+  const C;
+end
+
+case01320 is "case01320"

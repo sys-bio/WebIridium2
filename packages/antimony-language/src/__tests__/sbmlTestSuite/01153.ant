@@ -1,0 +1,46 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=i,z,A__A__Q,A__A__y amounts=
+## tags=InitialValueReassigned,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model foo(x)
+
+  // Rate Rules:
+  x' = 37 + y;
+
+  // Variable initializations:
+  x = 50*Q;
+  Q = 2;
+  y = 7;
+
+  // Other declarations:
+  var x;
+  const Q, y;
+end
+
+foo is "foo"
+
+model bar(y)
+
+  // Sub-modules, and any changes to those submodules:
+  A: foo(y);
+end
+
+bar is "bar"
+
+model *case01153()
+
+  // Sub-modules, and any changes to those submodules:
+  A: bar(z);
+
+  // Rate Rules:
+  z' = ;
+
+  // Variable initializations:
+  z = 34*i;
+  i = 2;
+
+  // Other declarations:
+  const i;
+end
+
+case01153 is "case01153"

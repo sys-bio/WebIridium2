@@ -1,0 +1,25 @@
+## start=0.0 end=2.0 points=50 atol=0.01 rtol=0.0001 selections=c amounts=
+## tags=NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case00904()
+
+  // Compartments and Species:
+  compartment c;
+
+  // Rate Rules:
+  c' = 0.25*c;
+
+  // Compartment initializations:
+  c = 3.2;
+  c has area;
+
+  // Other declarations:
+  var c;
+
+  // Unit definitions:
+  unit area = metre^2;
+  unit time_unit = time_unit;
+end
+
+case00904 is "case00904"

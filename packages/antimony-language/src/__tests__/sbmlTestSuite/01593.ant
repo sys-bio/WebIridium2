@@ -1,0 +1,33 @@
+## start=0.0 end=100.0 points=1001 atol=0.15 rtol=0.0001 selections=S,S2,errorLow,errorHigh amounts=
+## tags=EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,RandomEventExecution
+
+// Created by libAntimony v3.0.0
+model *case01593()
+
+  // Assignment Rules:
+  S := Q + R;
+  S2 := delay(Q, 1) + delay(R, 1);
+
+  // Rate Rules:
+  reset' = 1;
+
+  // Events:
+  Qinc: at reset >= 0.01, priority = 1, persistent=false: Q = Q + 0.01, reset = 0;
+  Rinc: at reset >= 0.01, priority = 1, persistent=false: R = R + 0.01, reset = 0;
+  maxcheck: at abs(Q - R) > maxdiff: maxdiff = abs(Q - R);
+  error_check: at (time >= 99) && (maxdiff < 0.2): errorLow = 1;
+  error_check2: at maxdiff >= 4: errorHigh = 1;
+
+  // Variable initializations:
+  reset = 0;
+  Q = 0;
+  R = 0;
+  maxdiff = 0;
+  errorLow = 0;
+  errorHigh = 0;
+
+  // Other declarations:
+  var reset, Q, R, maxdiff, errorLow, errorHigh, S, S2;
+end
+
+case01593 is "case01593"

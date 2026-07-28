@@ -1,0 +1,21 @@
+## start=0.0 end=2.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y,p,q amounts=
+## tags=EventUsesAssignmentTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00980()
+
+  // Events:
+  _E0: at 0.1 after time >= 0.98, fromTrigger=false: x = 2, y = y + x;
+  _E1: at 0.1 after time >= 0.99, fromTrigger=false: q = p + 1, p = 3;
+
+  // Variable initializations:
+  y = 0;
+  x = 0;
+  p = 0;
+  q = 0;
+
+  // Other declarations:
+  var y, x, p, q;
+end
+
+case00980 is "case00980"

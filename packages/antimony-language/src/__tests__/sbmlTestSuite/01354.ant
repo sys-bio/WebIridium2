@@ -1,0 +1,27 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=J1,A__x amounts=
+## tags=InitialValueReassigned,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model sub1()
+
+  // Variable initializations:
+  J0 = 2;
+  x = J0 + 2;
+
+  // Other declarations:
+  const J0, x;
+end
+
+sub1 is "sub1"
+
+model *case01354()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.J0 is J1;
+
+  // Variable initializations:
+  J1 = 5;
+end
+
+case01354 is "case01354"

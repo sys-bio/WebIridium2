@@ -1,0 +1,70 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=A__S1,Q,R,cf,X,U1,U2,A__y,A__k1 amounts=A__S1
+## tags=Amount,InitialValueReassigned,NonConstantParameter,comp:ConversionFactor,comp:ExtentConversionFactor,comp:SubmodelOutput,comp:TimeConversionFactor
+
+// Created by libAntimony v3.0.0
+model submod(q, r, x)
+
+  // Compartments and Species:
+  species S1;
+
+  // Assignment Rules:
+  q := x - 3;
+  unused2 := 3;
+
+  // Rate Rules:
+  x' = 0.2;
+  unused' = 0.3;
+
+  // Reactions:
+  _J0: S1 -> ; k1*S1;
+
+  // Events:
+  _E0: at x > 0.1515, priority = q: y = 4;
+  _E1: at x > 0.1515, priority = r: y = 5;
+
+  // Species initializations:
+  S1 = 7.2;
+
+  // Variable initializations:
+  x = 3;
+  y = 8.8;
+  r = -4;
+  unused = 10;
+  k1 = 1.06;
+
+  // Other declarations:
+  var x, q, y, unused2, unused;
+  const r, k1;
+end
+
+submod is "submod"
+
+model *case01169()
+
+  // Sub-modules, and any changes to those submodules:
+  A: submod(), timeconv = timeconv, extentconv = extentconv;
+  A.q is Q;
+  A.r is R;
+  A.x * cf is X;
+  A.unused is U1;
+  A.unused2 is U2;
+
+  // Assignment Rules:
+  U2 := 23;
+
+  // Rate Rules:
+  U1' = X/100;
+
+  // Variable initializations:
+  timeconv = 60;
+  extentconv = 10;
+  R = 20;
+  cf = 100;
+  X = 15;
+  U1 = 1.1;
+
+  // Other declarations:
+  const timeconv, extentconv, cf;
+end
+
+case01169 is "case01169"

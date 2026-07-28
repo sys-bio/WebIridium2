@@ -1,0 +1,28 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C,x amounts=S1
+## tags=Amount,InitialValueReassigned,NonConstantParameter,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01458()
+
+  // Compartments and Species:
+  compartment C;
+  species $S1 in C;
+
+  // Assignment Rules:
+  x := rateOf(S1);
+
+  // Rate Rules:
+  S1' = 2;
+
+  // Species initializations:
+  S1 = 1/C;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Other declarations:
+  var x;
+  const C;
+end
+
+case01458 is "case01458"

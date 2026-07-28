@@ -1,0 +1,21 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=EventUsesAssignmentTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01529()
+
+  // Rate Rules:
+  P1' = time;
+
+  // Events:
+  E0: at 2 after time > 1.5, fromTrigger=false: P2 = rateOf(P1);
+
+  // Variable initializations:
+  P2 = 0;
+  P1 = 0;
+
+  // Other declarations:
+  var P2, P1;
+end
+
+case01529 is "case01529"

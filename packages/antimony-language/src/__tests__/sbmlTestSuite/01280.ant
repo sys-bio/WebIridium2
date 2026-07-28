@@ -1,0 +1,16 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,p3 amounts=
+## tags=InitialValueReassigned,L3v2MathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01280()
+
+  // Assignment Rules:
+  p1 := max(-5, -time);
+  p2 := max(time);
+  p3 := max(5, time);
+
+  // Other declarations:
+  var p1, p2, p3;
+end
+
+case01280 is "case01280"

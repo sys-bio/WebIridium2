@@ -1,0 +1,30 @@
+## start=0.0 end=10.0 points=100 atol=0.0001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,ConversionFactors,NonUnityStoichiometry
+
+// Created by libAntimony v3.0.0
+model *case00975()
+
+  // Compartments and Species:
+  species S1, S2;
+
+  // Reactions:
+  _J0:  -> S1; k1;
+  _J1: 2 S1 -> 3 S2; k2*S1/S2;
+  _J2: S2 -> ; k3*S2;
+
+  // Species initializations:
+  S1 = 0;
+  S2 = 0.001;
+
+  // Variable initializations:
+  k1 = 1;
+  k2 = 3;
+  k3 = 1.4;
+  S1conv = 3;
+  modelconv = 4;
+
+  // Other declarations:
+  const k1, k2, k3, S1conv, modelconv;
+end
+
+case00975 is "case00975"

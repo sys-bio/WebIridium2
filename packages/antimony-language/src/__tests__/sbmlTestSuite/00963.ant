@@ -1,0 +1,32 @@
+## start=0.0 end=10.001 points=1001 atol=0.01 rtol=0.01 selections=Q,R,Q2,R2 amounts=
+## tags=EventIsNotPersistent,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00963()
+
+  // Events:
+  Qinc: at (time - reset) >= 0.01, priority = 1, persistent=false: Q = Q + 0.01, reset = time;
+  Rinc: at (time - reset) >= 0.01, priority = -1, persistent=false: R = R + 0.01, reset = time;
+  Qinc2: at (time - reset2) >= 0.01, priority = -1, persistent=false: Q2 = Q2 + 0.01, reset2 = time;
+  Rinc2: at (time - reset2) >= 0.01, priority = 1, persistent=false: R2 = R2 + 0.01, reset2 = time;
+
+  // Variable initializations:
+  reset = 0;
+  Q = 0;
+  R = 0;
+  reset2 = 0;
+  Q2 = 0;
+  R2 = 0;
+
+  // Other declarations:
+  var reset, Q, R, reset2, Q2, R2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit time_unit = time_unit;
+
+  // Notes:
+  model notes "Originally created by libAntimony v1.4 (using libSBML 5.0.0-a1)"
+end
+
+case00963 is "case00963"

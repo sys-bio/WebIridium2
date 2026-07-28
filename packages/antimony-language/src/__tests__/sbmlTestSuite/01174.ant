@@ -1,0 +1,36 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=t3,t4 amounts=
+## tags=InitialValueReassigned,NonConstantParameter,comp:TimeConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Algebraic Rules:
+  _alg0: 0 = t4 - delay(t3, time/2);
+
+  // Variable initializations:
+  t3 = time + 3;
+  t4 = 1;
+
+  // Other declarations:
+  var t4;
+  const t3;
+end
+
+model *case01174()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.t3 is t3;
+  sub1.t4 is t4;
+
+  // Algebraic Rules:
+  sub1._alg0: 0 = t4 - delay(t3, timeconv*(time/timeconv)/2);
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+case01174 is "case01174"

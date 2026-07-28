@@ -1,0 +1,17 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01665()
+
+  // Rate Rules:
+  p1' = avogadro/1e23;
+
+  // Variable initializations:
+  p1 = 1;
+
+  // Other declarations:
+  var p1;
+end
+
+case01665 is "case01665"

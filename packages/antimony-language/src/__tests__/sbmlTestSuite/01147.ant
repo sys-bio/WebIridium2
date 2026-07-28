@@ -1,0 +1,38 @@
+## start=0.0 end=1.0 points=10 atol=1e-05 rtol=0.0001 selections=sub1__sub1__t1 amounts=
+## tags=InitialValueReassigned,NonConstantParameter,comp:SubmodelOutput,comp:TimeConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Assignment Rules:
+  t1 := time + 3;
+
+  // Other declarations:
+  var t1;
+end
+
+model moddef2()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+model *case01147()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef2(), timeconv = timeconv;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+case01147 is "case01147"

@@ -1,0 +1,21 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=P1,P2 amounts=
+## tags=DelayInEventAssignment,EventUsesTriggerTimeValues,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01523()
+
+  // Rate Rules:
+  P1' = 1;
+
+  // Events:
+  E0: at 2 after P1 > 1.5: P2 = delay(P1, 1);
+
+  // Variable initializations:
+  P1 = 0;
+  P2 = 0;
+
+  // Other declarations:
+  var P1, P2;
+end
+
+case01523 is "case01523"

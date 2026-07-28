@@ -1,0 +1,20 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=C1,C2 amounts=
+## tags=DefaultValue,InitialValueReassigned,MultiCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case01786()
+
+  // Compartments and Species:
+  compartment C1, C2;
+
+  // Algebraic Rules:
+  _alg0: 0 = C2 - C1;
+
+  // Compartment initializations:
+  C1 = 2;
+  C2 = 3;
+
+  // Other declarations:
+  var C2;
+  const C1;
+end

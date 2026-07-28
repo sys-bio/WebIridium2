@@ -1,0 +1,28 @@
+## start=0.0 end=10.0 points=100 atol=0.001 rtol=0.001 selections=X amounts=X
+## tags=Amount,AssignedVariableStoichiometry,DefaultValue,HasOnlySubstanceUnits,InitialValueReassigned,NonUnityStoichiometry,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00992()
+
+  // Compartments and Species:
+  substanceOnly species X;
+
+  // Assignment Rules:
+  p1 := X;
+  Xref := p1;
+
+  // Reactions:
+  J0:  -> Xref X; k1;
+
+  // Species initializations:
+  X = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  var p1;
+  const k1;
+end
+
+case00992 is "case00992"

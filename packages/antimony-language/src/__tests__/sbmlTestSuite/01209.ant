@@ -1,0 +1,14 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=x amounts=
+## tags=InitialValueReassigned,UncommonMathML
+
+// Created by libAntimony v3.0.0
+model *case01209()
+
+  // Variable initializations:
+  x = piecewise(1, 1 < 2 < 1, 3);
+
+  // Other declarations:
+  const x;
+end
+
+case01209 is "case01209"

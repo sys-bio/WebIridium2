@@ -1,0 +1,28 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
+## tags=Amount,HasOnlySubstanceUnits,LocalParameters
+
+// Created by libAntimony v3.0.0
+model *case01800()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species S1 in C;
+
+  // Reactions:
+  J1:  -> S1_stoich S1; J1_S1_stoich*2;
+
+  // Species initializations:
+  S1 = 2/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  S1_stoich = 1;
+  J1_S1_stoich = 0.1;
+
+  // Other declarations:
+  const C;
+end
+
+case01800 is "case01800"

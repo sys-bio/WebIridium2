@@ -1,0 +1,29 @@
+## start=0.0 end=5.0 points=50 atol=0.01 rtol=0.0001 selections=c amounts=
+## tags=NonConstantCompartment,NonUnityCompartment
+
+// Created by libAntimony v3.0.0
+model *case00901()
+
+  // Compartments and Species:
+  compartment c;
+
+  // Rate Rules:
+  c' = -1*c*k1;
+
+  // Compartment initializations:
+  c = 5;
+  c has volume;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  var c;
+  const k1;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit time_unit = time_unit;
+end
+
+case00901 is "case00901"

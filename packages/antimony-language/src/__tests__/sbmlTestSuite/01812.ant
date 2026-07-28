@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=NAN,NaN,nan amounts=
+## tags=testType:        TimeCourse
+
+// Created by libAntimony v3.0.0
+model *case01812()
+
+  // Variable initializations:
+  NAN_ = 0.1;
+  NaN_ = 0.01;
+  nan_ = 0.001;
+
+  // Other declarations:
+  const NAN_, NaN_, nan_;
+end

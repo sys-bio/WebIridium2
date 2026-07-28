@@ -1,0 +1,59 @@
+## start=0.0 end=10.0 points=1005 atol=0.08 rtol=0.0001 selections=S1,S2,S3,S4,k1,k2,k3,k4,k5,kavo,comp,comp2 amounts=S1,S2,S3,S4
+## tags=Amount,AssignedConstantStoichiometry,AssignedVariableStoichiometry,BoundaryCondition,ConstantSpecies,ConversionFactors,EventIsNotPersistent,EventIsPersistent,EventT0Firing,EventUsesAssignmentTimeValues,EventUsesTriggerTimeValues,HasOnlySubstanceUnits,InitialValueReassigned,LocalParameters,MultiCompartment,NonConstantCompartment,NonConstantParameter,NonUnityCompartment,NonUnityStoichiometry,ReversibleReaction,SpeciesReferenceInMath
+
+// Created by libAntimony v3.0.0
+model *case01000()
+
+  // Compartments and Species:
+  compartment comp, comp2;
+  species S1 in comp, S2 in comp2;
+  substanceOnly species $S3 in comp2, $S4 in comp2;
+
+  // Assignment Rules:
+  comp2 := k4;
+  S2ref := k1*S1;
+
+  // Rate Rules:
+  comp' = 1;
+  k4' = time;
+
+  // Reactions:
+  _J0: $S3 + S1ref S1 -> S2ref S2; (-_J0_k1 + k2 + k3 + k4 + k5 + S1 + S1ref + S3 + S4 + S2)/10;
+
+  // Events:
+  _E0: at time >= 0.5: k4 = 0.1;
+  _E1: at 2 after time >= 1, priority = 1: k3 = 4;
+  _E2: at 2 after time >= 1, priority = 2, fromTrigger=false: k4 = k3;
+  _E3: at 2 after time >= 1, priority = 3: k5 = k4;
+  _E4: at 2 after time >= 1, priority = 4, fromTrigger=false: k3 = k5;
+  _E5: at 1 after comp <= 5.1, t0=false: S3 = 4;
+  _E6: at 4.995 after (time >= 1) && (time <= 4): k4 = 14.5;
+  _E7: at 4.995 after (time >= 1) && (time <= 4), persistent=false: k5 = 0;
+
+  // Species initializations:
+  S1 = 1/comp;
+  S2 = 3;
+  S3 = 4/comp2;
+  S4 = 2;
+
+  // Compartment initializations:
+  comp = 5;
+
+  // Variable initializations:
+  k4 = 1;
+  k3 = 2.5;
+  k5 = 2.8;
+  kavo = avogadro/6.022e23;
+  k1 = 1.1;
+  k2 = 8.12;
+  conversion1 = 10;
+  conversion2 = 100;
+  S1ref = k1;
+  _J0_k1 = 1;
+
+  // Other declarations:
+  var comp, comp2, k4, k3, k5, S2ref;
+  const kavo, k1, k2, conversion1, conversion2;
+end
+
+case01000 is "case01000"

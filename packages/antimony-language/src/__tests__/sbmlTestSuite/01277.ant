@@ -1,0 +1,14 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1 amounts=
+## tags=InitialValueReassigned,L3v2MathML,NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case01277()
+
+  // Assignment Rules:
+  p1 := quotient(time, 2);
+
+  // Other declarations:
+  var p1;
+end
+
+case01277 is "case01277"

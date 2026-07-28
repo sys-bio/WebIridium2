@@ -1,0 +1,37 @@
+## start=0.0 end=4.0 points=50 atol=1e-07 rtol=0.0001 selections=S1,S2 amounts=S1,S2
+## tags=Amount,BoundaryCondition
+
+// Created by libAntimony v3.0.0
+model *case00866()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, $S2 in C;
+
+  // Reactions:
+  reaction1: S1 => $S2; C*k1*S1*time;
+
+  // Species initializations:
+  S1 = 0.00015/C;
+  S1 has substance_per_volume;
+  S2 = 0;
+  S2 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 1;
+  C has volume;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  const C, k1;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = time_unit;
+  unit substance_per_volume = mole / litre;
+end
+
+case00866 is "case00866"

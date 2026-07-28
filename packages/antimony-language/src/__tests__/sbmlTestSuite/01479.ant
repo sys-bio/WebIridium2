@@ -1,0 +1,17 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=P1 amounts=
+## tags=InitialValueReassigned
+
+// Created by libAntimony v3.0.0
+model *case01479()
+
+  // Algebraic Rules:
+  _alg0: 0 = avogadro/1e23 - P1;
+
+  // Variable initializations:
+  P1 = ;
+
+  // Other declarations:
+  var P1;
+end
+
+case01479 is "case01479"

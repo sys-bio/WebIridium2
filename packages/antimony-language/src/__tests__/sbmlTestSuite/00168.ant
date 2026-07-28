@@ -1,0 +1,30 @@
+## start=0.0 end=8.0 points=50 atol=1e-05 rtol=0.0001 selections=S1,S2,S3,S4 amounts=
+## tags=NonConstantParameter
+
+// Created by libAntimony v3.0.0
+model *case00168()
+
+  // Rate Rules:
+  S1' = -1*k1*S1*S2 + k2*S3 + k3*S3;
+  S2' = k2*S3 + -1*k1*S1*S2;
+  S3' = k1*S1*S2 + -1*k2*S3 + -1*k3*S3;
+  S4' = k3*S3;
+
+  // Variable initializations:
+  S1 = 0.02;
+  k1 = 100;
+  S2 = 0.02;
+  k2 = 0.9;
+  S3 = 0;
+  k3 = 0.7;
+  S4 = 0;
+
+  // Other declarations:
+  var S1, S2, S3, S4;
+  const k1, k2, k3;
+
+  // Unit definitions:
+  unit time_unit = time_unit;
+end
+
+case00168 is "case00168"

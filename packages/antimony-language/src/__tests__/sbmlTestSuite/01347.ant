@@ -1,0 +1,46 @@
+## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,J1,C,A__x amounts=S1
+## tags=Amount,NonConstantParameter,comp:SubmodelOutput
+
+// Created by libAntimony v3.0.0
+model sub1()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  J0:  -> S1; 2;
+
+  // Events:
+  E0: at time > 5.5, priority = J0: x = 4;
+  E1: at time > 5.5, priority = 4: x = 10;
+
+  // Species initializations:
+  S1 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  x = 1;
+
+  // Other declarations:
+  var x;
+  const C;
+end
+
+sub1 is "sub1"
+
+model *case01347()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.C is C;
+  A.S1 is S1;
+  A.J0 is J1;
+
+  // Reactions:
+  J1:  -> S1; 5;
+end
+
+case01347 is "case01347"

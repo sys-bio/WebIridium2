@@ -1,0 +1,37 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=p8,conv amounts=
+## tags=InitialValueReassigned,comp:ConversionFactor
+
+// Created by libAntimony v3.0.0
+model moddef1()
+
+  // Assignment Rules:
+  p80 := 80;
+
+  // Other declarations:
+  var p80;
+end
+
+moddef1 is "moddef1"
+
+model moddef2()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+end
+
+moddef2 is "moddef2"
+
+model *case01467()
+
+  // Sub-modules, and any changes to those submodules:
+  sub2: moddef2();
+  sub2.sub1.p80 * conv is p8;
+
+  // Variable initializations:
+  conv = 0.1;
+
+  // Other declarations:
+  const conv;
+end
+
+case01467 is "case01467"
