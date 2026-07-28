@@ -30,6 +30,12 @@ int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
     );
 }
 
+// For the empty RHS, there will be one dummy value in the state vector. We just set it to 0.
+int empty_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
+    NV_Ith_S(ydot, 0) = 0;
+    return CV_SUCCESS;
+}
+
 int delegating_roots(double t, N_Vector y, double *gout, Model *model) {
     // TODO: we need to optimize this so we aren't recalculating everything for each event
     model->rhs_fn_(t, NV_DATA_S(y), model->dummy_y_dot_, model->p_.data(), model->current_triggered_events_.data());
@@ -74,10 +80,16 @@ Model::Model(
 
     cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
 
-    y_ = N_VNew_Serial(y.size(), ctx_);
+    if (original_y_.empty()) {
+        // Make a dummy 1d state vector.
+        y_ = N_VNew_Serial(1, ctx_);
+    } else {
+        y_ = N_VNew_Serial(y.size(), ctx_);
+    }
+
     p_.resize(original_p_.size() + num_reactions_);
     dummy_y_dot_ = new double[original_y_.size()];
-    abs_tol_v_ = N_VNew_Serial(y.size(), ctx_);
+    abs_tol_v_ = N_VNew_Serial(original_y_.size(), ctx_);
 
     std::cout << "y_size: " << original_y_.size() << std::endl;
     matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
@@ -118,8 +130,13 @@ Model::~Model() {
 void Model::ResetState() {
     time_ = 0.0;
 
-    for (int i = 0; i < original_y_.size(); i++) {
-        NV_Ith_S(y_, i) = original_y_[i];
+    if (original_y_.empty()) {
+        // Reset the dummy value.
+        NV_Ith_S(y_, 0) = 0;
+    } else {
+        for (int i = 0; i < original_y_.size(); i++) {
+            NV_Ith_S(y_, i) = original_y_[i];
+        }
     }
 
     for (int i = 0; i < original_p_.size(); i++) {
@@ -165,7 +182,11 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
 
     if (!has_init_) {
-        CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
+        if (original_y_.empty()) {
+            CVodeInit(cvode_mem_, (CVRhsFn)empty_rhs, time_, y_);
+        } else {
+            CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
+        }
 
         CVodeSetNonlinearSolver(cvode_mem_, non_lin_solver_);
         CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
@@ -177,15 +198,19 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     }
 
     // Update tolerances using scaling factor
-    for (int i = 0; i < NV_LENGTH_S(y_); i++) {
-        double y_i = std::abs(NV_Ith_S(y_, i));
-        NV_Ith_S(abs_tol_v_, i) =
-            (y_i == 0)
-                ? abs_tol_factor_
-                : std::abs(y_i) * abs_tol_factor_;
-    }
+    if (original_y_.empty()) {
+        CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_factor_);
+    } else {
+        for (int i = 0; i < NV_LENGTH_S(y_); i++) {
+            double y_i = std::abs(NV_Ith_S(y_, i));
+            NV_Ith_S(abs_tol_v_, i) =
+                (y_i == 0)
+                    ? abs_tol_factor_
+                    : std::abs(y_i) * abs_tol_factor_;
+        }
 
-    CVodeSVtolerances(cvode_mem_, rel_tol_, abs_tol_v_);
+        CVodeSVtolerances(cvode_mem_, rel_tol_, abs_tol_v_);
+    }
 
     InitializeOutputArray(num_points);
 
