@@ -71,7 +71,7 @@ def plot_heatmap(pass_arr, names, figsize=(10, 10)):
 
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(f"SBML Test Results: {n} tests — grid {rows}x{cols}")
+    ax.set_title(f"SBML Test Results: grid {rows}x{cols}")
 
     # grid lines
     for x in range(cols + 1):
