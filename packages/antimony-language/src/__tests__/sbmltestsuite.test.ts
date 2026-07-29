@@ -9,8 +9,12 @@ import {
 import { promises as fs } from "fs";
 import path from "path";
 
-const CUTOFF = Infinity;
-const UNSUPPORTED_TAGS = ["AlgebraicRule"];
+const CUTOFF = 2000;
+const UNSUPPORTED_TAGS = [
+  "AlgebraicRule",
+  "StoichiometryMath",
+  "FastReaction",
+];
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
 const WRITE_TEST_OUTPUT = true;

@@ -12,12 +12,12 @@ import {
 import { CompileError } from "../../errors";
 import { deriveModels } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
-import defaultModel from "../../__tests__/results/substanceOnly_initial.ant?raw";
+import defaultModel from "@/assets/default.ant?raw";
 import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
 // useful to use with WABT to analyze the WebAssembly output.
-const WRITE_BASIC_MODEL = true;
+const WRITE_BASIC_MODEL = false;
 
 const variables = (variables: {
   [name: string]: DslVariable;
@@ -195,7 +195,7 @@ describe("ir", () => {
   });
 
   describe("models", () => {
-    describe("species and parameters", () => {
+    describe("variables", () => {
       it("should compile species and reactions", () => {
         expectCompilesTo(
           "species A = 1, B = 1; J: A -> B; k1",
@@ -225,11 +225,12 @@ describe("ir", () => {
 
       it("should compile default values", () => {
         expectCompilesTo(
-          "A -> B; 3",
+          "compartment C; A -> B; 3",
           model({
             variables: {
               A: species(0),
               B: species(0),
+              C: parameter(1),
             },
           }),
         );

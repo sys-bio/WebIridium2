@@ -28,7 +28,7 @@ export const parseTestParams = (code: string): TestParams => {
     numberOfPoints: Number(params["points"]),
     absoluteTolerance: Number(params["atol"]),
     relativeTolerance: Number(params["rtol"]),
-    amounts: (params["amounts"] ?? "").split(","),
+    amounts: (params["amounts"] ?? "").split(",").filter((v) => v.trim()),
   };
 };
 

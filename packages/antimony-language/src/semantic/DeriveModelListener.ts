@@ -331,6 +331,9 @@ export class DeriveModelListener implements AntimonyListener {
 
     this.#updateToDeclarationIfNecessary(ctx, variable);
 
+    const formula = ctx.formula();
+    if (!formula) return;
+
     const mod = ctx._mod?.text;
     if (mod === ":") {
       if (variable.assignment?.kind === "rate") {
@@ -343,7 +346,7 @@ export class DeriveModelListener implements AntimonyListener {
 
       variable.assignment = {
         kind: "rule",
-        rule: ctx.formula(),
+        rule: formula,
       };
     } else if (mod === "'") {
       if (variable.assignment?.kind === "rule") {
@@ -356,7 +359,7 @@ export class DeriveModelListener implements AntimonyListener {
 
       variable.assignment = {
         kind: "rate",
-        rate: ctx.formula(),
+        rate: formula,
         initial: variable?.assignment?.initial,
       };
     } else {
@@ -371,10 +374,10 @@ export class DeriveModelListener implements AntimonyListener {
       if (!variable.assignment) {
         variable.assignment = {
           kind: "set",
-          initial: ctx.formula(),
+          initial: formula,
         };
       } else {
-        variable.assignment.initial = ctx.formula();
+        variable.assignment.initial = formula;
       }
     }
   }

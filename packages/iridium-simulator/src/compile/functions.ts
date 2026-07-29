@@ -142,6 +142,11 @@ const builtinFunctionDefinitions: {
         | (Extract<WasmFunction, { kind: "inline" }> & { name: Name })
     : never;
 } = {
+  abs: {
+    kind: "inline",
+    name: "abs",
+    emit: (emitter) => emitter.emitByte(OpCode.f64abs),
+  },
   ln: {
     kind: "import",
     name: "ln",
@@ -149,30 +154,12 @@ const builtinFunctionDefinitions: {
     results: [ValType.f64],
     js: Math.log,
   },
-  abs: {
-    kind: "inline",
-    name: "abs",
-    emit: (emitter) => emitter.emitByte(OpCode.f64abs),
-  },
-  not: {
-    kind: "inline",
-    name: "not",
-    emit: (emitter) => {
-      emitter.emitF64ConstOp(0);
-      emitter.emitByte(OpCode.f64eq);
-      emitter.emitByte(OpCode.f64convert_u_i32);
-    },
-  },
-  implies: {
-    kind: "compile",
-    isExported: false,
-    name: "implies",
-    params: [ValType.f64, ValType.f64],
+  exp: {
+    kind: "import",
+    name: "exp",
+    params: [ValType.f64],
     results: [ValType.f64],
-    compileBody: createBooleanFunction((emitter) => {
-      emitter.emitByte(OpCode.i32eqz);
-      emitter.emitByte(OpCode.i32or);
-    }, false),
+    js: Math.exp,
   },
   ceil: {
     kind: "inline",
@@ -247,6 +234,26 @@ const builtinFunctionDefinitions: {
 
       return emitter.getOutput();
     },
+  },
+  not: {
+    kind: "inline",
+    name: "not",
+    emit: (emitter) => {
+      emitter.emitF64ConstOp(0);
+      emitter.emitByte(OpCode.f64eq);
+      emitter.emitByte(OpCode.f64convert_u_i32);
+    },
+  },
+  implies: {
+    kind: "compile",
+    isExported: false,
+    name: "implies",
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: createBooleanFunction((emitter) => {
+      emitter.emitByte(OpCode.i32eqz);
+      emitter.emitByte(OpCode.i32or);
+    }, false),
   },
   sin: {
     kind: "import",

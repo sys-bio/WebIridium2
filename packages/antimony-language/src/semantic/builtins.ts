@@ -73,7 +73,23 @@ export const builtinFunctions = {
     arity: 1,
   },
   ln: {
-    description: "The natural logarithm",
+    description: "The natural logarithm.",
+    arity: 1,
+  },
+  exp: {
+    description: "The exponential function.",
+    arity: 1,
+  },
+  ceil: {
+    description: "Round up to the next integer.",
+    arity: 1,
+  },
+  floor: {
+    description: "Round down to the next integer.",
+    arity: 1,
+  },
+  factorial: {
+    description: "The factorial function.",
     arity: 1,
   },
 
@@ -101,20 +117,6 @@ export const builtinFunctions = {
     description:
       "Returns false if the first argument is true and the second argument is false, otherwise returns true.",
     arity: 2,
-  },
-
-  // Math
-  ceil: {
-    description: "Round up to the next integer.",
-    arity: 1,
-  },
-  floor: {
-    description: "Round down to the next integer.",
-    arity: 1,
-  },
-  factorial: {
-    description: "The factorial function.",
-    arity: 1,
   },
 
   // Trig

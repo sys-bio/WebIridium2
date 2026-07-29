@@ -60,7 +60,7 @@ reactionFormula : left=reactantList? ARROW right=reactantList
 reactantList : reactant ('+' reactant)*;
 reactant : NUMBER? variable;
 
-assignment : variable inCompartment? mod=('\'' | ':')? '=' formula;
+assignment : variable inCompartment? mod=('\'' | ':')? '=' formula?;
 
 declaration     : declarationHead declarationTerm (',' declarationTerm)*;
 declarationHead : CONST_MODIFIER SUBS_ONLY? DECL_WORD

@@ -31,6 +31,7 @@ import {
 import { emitComparisonOperator, emitExpression } from "./expression.ts";
 import type { IridiumEvent } from "../ir/model.ts";
 import type { RuntimeEvent, RuntimePieceEvent } from "../runtime/model.ts";
+import { builtinConstants } from "antimony-language/semantic/builtins";
 
 const ROOTS_PARAMS = [
   ValType.f64,
@@ -290,7 +291,11 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
       throw new CompileError("Expected boolean expression.", expr.metadata);
     },
     visitVariable(expr) {
-      throw new CompileError("Expected boolean expression.", expr.metadata);
+      if (builtinConstants[expr.name]) {
+        treeStack.push(builtinConstants[expr.name].value !== 0);
+      } else {
+        throw new CompileError("Expected boolean expression.", expr.metadata);
+      }
     },
   };
 
@@ -918,19 +923,9 @@ const compileGetAssignments = (
 
   emitter.emitListHeader(0);
 
-  const ordering = getAssignmentOrder(
-    new Map(event.assignments.map((a) => [a.name, a.value])),
-    {
-      allowSelfCycle: true,
-    },
-  );
-
   const scope = new Scope(compilation, localsTable, functionTable);
 
-  const assignmentMap = new Map(event.assignments.map((a) => [a.name, a]));
-  for (const name of ordering) {
-    const assignment = assignmentMap.get(name)!;
-
+  for (const { name, value, metadata } of event.assignments) {
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(Y_OUT_PARAM));
@@ -938,12 +933,19 @@ const compileGetAssignments = (
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(P_OUT_PARAM));
     } else if (name === TIME_NAME) {
-      throw new CompileError("You cannot assign to time.", assignment.metadata);
+      throw new CompileError("You cannot assign to time.", metadata);
     } else {
-      throw new CompileError("Unexpected assignment.", assignment.metadata);
+      throw new CompileError("Unexpected assignment.", metadata);
     }
 
-    emitExpression(assignment.value, emitter, compilation, scope);
+    emitExpression(value, emitter, compilation, scope);
+
+    const variable = compilation.variables.get(name)!;
+    const compartment = compilation.compartments.get(name);
+    if (!variable.hasSubstanceOnly && compartment) {
+      scope.emitLoadVariableFromName(emitter, compartment.name);
+      emitter.emitUint(OpCode.f64mul);
+    }
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);

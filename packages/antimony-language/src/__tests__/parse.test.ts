@@ -125,6 +125,10 @@ describe("assignment", () => {
     compartmentInitial: "A in B = 5",
     compartmentRule: "A in B := 5",
     compartmentRate: "A in B '= 5",
+    empty: "A=",
+    empty2: "A:=",
+    empty3: "A'=",
+    empty4: "A'=;A=",
   });
 });
 

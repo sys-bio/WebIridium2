@@ -161,7 +161,13 @@ export const compileToIridium = (
       let value: IridiumVariableValue<Metadata>;
 
       if (variable.assignment === undefined) {
-        value = { kind: "initial", initial: { kind: "number", value: 0 } };
+        value = {
+          kind: "initial",
+          initial: {
+            kind: "number",
+            value: variable.kind === "compartment" ? 1 : 0,
+          },
+        };
       } else if (variable.assignment.kind === "set") {
         value = {
           kind: "initial",

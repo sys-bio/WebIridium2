@@ -270,6 +270,17 @@ describe("declarations", () => {
     );
   });
 
+  it("should treat skip empty assignment", () => {
+    expectModel(
+      "A;=;A=",
+      model({
+        variables: {
+          A: parameter(),
+        },
+      }),
+    );
+  });
+
   it("should update on assignment", () => {
     expectModel(
       "A = 0; const species A = 5",
