@@ -18,7 +18,6 @@ import {
   EVENTS_PARAM,
 } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
-import { getAssignmentOrder } from "./evaluate";
 import type { WasmFunction } from "./functions";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";

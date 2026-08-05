@@ -51,15 +51,15 @@ export class IndexSymbolTable {
  */
 export class FunctionTable {
   #map: Map<string, number>;
-  #exposedMap: Map<string, number>;
+  #currentIndex: number;
 
   constructor() {
     this.#map = new Map();
-    this.#exposedMap = new Map();
+    this.#currentIndex = 0;
   }
 
   get(funcName: string): number {
-    const index = this.#exposedMap.get(funcName);
+    const index = this.#map.get(funcName);
     if (index === undefined) {
       throw new Error(`Missing: ${funcName}`);
     }
@@ -69,23 +69,17 @@ export class FunctionTable {
   add(funcName: string): number {
     if (this.#map.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
 
-    const index = this.#map.size;
-    this.#exposedMap.set(funcName, index);
+    const index = this.#currentIndex++;
     this.#map.set(funcName, index);
     return index;
   }
 
-  addExported(funcName: string): number {
-    funcName = "$reserved_export_" + funcName;
-    if (this.#map.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
-
-    const index = this.#map.size;
-    this.#map.set(funcName, index);
-    return index;
+  addExported(_funcName: string): number {
+    return this.#currentIndex++;
   }
 
   has(funcName: string): boolean {
-    return this.#exposedMap.has(funcName);
+    return this.#map.has(funcName);
   }
 }
 
