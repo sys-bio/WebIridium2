@@ -147,12 +147,24 @@ const builtinFunctionDefinitions: {
     name: "abs",
     emit: (emitter) => emitter.emitByte(OpCode.f64abs),
   },
+  sqrt: {
+    kind: "inline",
+    name: "sqrt",
+    emit: (emitter) => emitter.emitByte(OpCode.f64sqrt),
+  },
   ln: {
     kind: "import",
     name: "ln",
     params: [ValType.f64],
     results: [ValType.f64],
     js: Math.log,
+  },
+  log10: {
+    kind: "import",
+    name: "log10",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.log10,
   },
   exp: {
     kind: "import",
@@ -446,6 +458,27 @@ const builtinFunctionDefinitions: {
     results: [ValType.f64],
     depends: ["arctanh"],
     compileBody: createInverseReciprocal("arctanh"),
+  },
+  asin: {
+    kind: "import",
+    name: "asin",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.asin,
+  },
+  acos: {
+    kind: "import",
+    name: "acos",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.acos,
+  },
+  atan: {
+    kind: "import",
+    name: "atan",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.atan,
   },
 };
 

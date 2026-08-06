@@ -147,7 +147,7 @@ export const getReferencedFunctions = (
   const referenced = new Set<string>();
   const listener: IridiumExpressionListener = {
     beforeCall(expr) {
-      const { name, args } = expr;
+      const { name } = expr;
       if (name === PIECEWISE_NAME) {
         if (shouldTrackPiecewise) {
           const cases = [];
@@ -215,12 +215,10 @@ export const getReferencedFunctions = (
 
     result.add(name);
 
-    if (!referenced.has(name)) {
-      const definition = predefinedFuncDefs[name];
-      if (definition && "depends" in definition && definition.depends) {
-        for (const dependency of definition.depends) {
-          referencedQueue.push(dependency);
-        }
+    const definition = predefinedFuncDefs[name];
+    if (definition && "depends" in definition && definition.depends) {
+      for (const dependency of definition.depends) {
+        referencedQueue.push(dependency);
       }
     }
   }

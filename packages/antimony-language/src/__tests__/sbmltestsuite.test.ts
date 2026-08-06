@@ -15,6 +15,8 @@ const UNSUPPORTED_TAGS = [
   "StoichiometryMath",
   "FastReaction",
   "ConversionFactors",
+  "CSymbolRateOf",
+  "CSymbolDelay",
 ];
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.

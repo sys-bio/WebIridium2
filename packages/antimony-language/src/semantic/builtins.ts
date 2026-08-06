@@ -72,8 +72,16 @@ export const builtinFunctions = {
     description: "Returns the absolute value.",
     arity: 1,
   },
+  sqrt: {
+    description: "Returns the square root.",
+    arity: 1,
+  },
   ln: {
     description: "The natural logarithm.",
+    arity: 1,
+  },
+  log10: {
+    description: "The logarithm function with base 10",
     arity: 1,
   },
   exp: {
@@ -214,6 +222,20 @@ export const builtinFunctions = {
   },
   arccoth: {
     description: "The inverse hyperbolic cotangent function",
+    arity: 1,
+  },
+
+  // Trig alternate names
+  asin: {
+    description: "The inverse sine function",
+    arity: 1,
+  },
+  acos: {
+    description: "The inverse cosine function",
+    arity: 1,
+  },
+  atan: {
+    description: "The inverse tangent function",
     arity: 1,
   },
 } satisfies Record<string, BuiltinFunctionInfo>;
