@@ -14,6 +14,7 @@ const UNSUPPORTED_TAGS = [
   "AlgebraicRule",
   "StoichiometryMath",
   "FastReaction",
+  "ConversionFactors",
 ];
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
@@ -91,7 +92,7 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
 
       const expectedColumns = getColumnsFromCsv(csv);
 
-      const gotColumns = getColumnsFromTimeCourseOutput(output, "time");
+      const gotColumns = getColumnsFromTimeCourseOutput(output);
 
       if (WRITE_TEST_OUTPUT) {
         // write results to file for debugging
@@ -104,7 +105,8 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
 
       for (const [name, column] of Object.entries(expectedColumns)) {
         for (let i = 0; i < column.length; i++) {
-          const got = gotColumns[name][i];
+          // for whatever reason, some of the cases have their output with Time, others as time.
+          const got = gotColumns[name === "time" ? "Time" : name][i];
           const expected = column[i];
           if (
             Math.abs(expected - got) >

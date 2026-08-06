@@ -143,7 +143,7 @@ export const emitExpression = (
           for (; i + 2 < expr.args.length; i += 2) {
             const branch = expr.args[i];
             const condition = expr.args[i + 1];
-            const eventIndex = compilation.getPiecewisePiece(condition);
+            const eventIndex = compilation.getPiecewisePieceIndex(condition);
 
             emitter.emitByte(OpCode.localget);
             emitter.emitUint(scope.localsTable.getParam(EVENTS_PARAM));

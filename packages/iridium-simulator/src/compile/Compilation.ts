@@ -24,7 +24,16 @@ export class Compilation {
   yTable: IndexSymbolTable;
   pTable: IndexSymbolTable;
 
-  piecewisePieces: Map<IridiumExpression, number>;
+  /**
+   * Indexes and conditions for the branches of a piecewise function. Each index corresponds to an event index
+   * which will be true when the branch of the piecewise function is true. Note that the branch and condition are
+   * not necessarily the same because we compile each branch to a different expression that is only true when the
+   * other branches are false.
+   */
+  piecewisePieces: Map<
+    IridiumExpression,
+    { index: number; condition: IridiumExpression }
+  >;
 
   constructor(model: IridiumModel) {
     this.variables = new Map(model.variables.map((s) => [s.name, s]));
@@ -77,23 +86,26 @@ export class Compilation {
     }
   }
 
-  addPiecewisePiece(condition: IridiumExpression): number {
-    if (this.piecewisePieces.has(condition)) {
+  addPiecewisePiece(
+    branch: IridiumExpression,
+    condition: IridiumExpression,
+  ): number {
+    if (this.piecewisePieces.has(branch)) {
       throw new CompileInvariantError("Duplicate piecewise index.");
     }
 
     const index = this.piecewisePieces.size;
-    this.piecewisePieces.set(condition, index);
+    this.piecewisePieces.set(branch, { index, condition });
     return index;
   }
 
-  getPiecewisePiece(condition: IridiumExpression): number {
-    const index = this.piecewisePieces.get(condition);
-    if (index === undefined) {
+  getPiecewisePieceIndex(branch: IridiumExpression): number {
+    const piece = this.piecewisePieces.get(branch);
+    if (piece === undefined) {
       throw new CompileInvariantError("Missing piecewise index?");
     }
 
-    return index;
+    return piece.index;
   }
 
   forAllExpressions(callback: (expr: IridiumExpression) => void): void {

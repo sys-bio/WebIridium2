@@ -31,7 +31,11 @@ import {
   CONVERT_RESULTS,
 } from "./convertConcentration.ts";
 import type { IridiumModel } from "../ir/model.ts";
-import { walkExpression, type IridiumExpressionListener } from "../ir/ast.ts";
+import {
+  walkExpression,
+  type IridiumExpression,
+  type IridiumExpressionListener,
+} from "../ir/ast.ts";
 import type {
   RuntimeEvent,
   RuntimeModel,
@@ -142,11 +146,42 @@ export const getReferencedFunctions = (
 ): Set<string> => {
   const referenced = new Set<string>();
   const listener: IridiumExpressionListener = {
-    beforeCall({ name, args }) {
+    beforeCall(expr) {
+      const { name, args } = expr;
       if (name === PIECEWISE_NAME) {
         if (shouldTrackPiecewise) {
-          for (let i = 1; i < args.length; i += 2) {
-            compilation.addPiecewisePiece(args[i]);
+          const cases = [];
+          for (let i = 0; i + 2 < expr.args.length; i += 2) {
+            cases.push({ branch: expr.args[i], condition: expr.args[i + 1] });
+          }
+
+          for (let i = 0; i < cases.length; i++) {
+            let pieceExpression: IridiumExpression | undefined;
+            for (let j = 0; j < cases.length; j++) {
+              let conditionExpression: IridiumExpression;
+              if (j == i) {
+                conditionExpression = cases[j].condition;
+              } else {
+                conditionExpression = {
+                  kind: "unary",
+                  op: "not",
+                  expr: cases[j].condition,
+                };
+              }
+
+              if (pieceExpression) {
+                pieceExpression = {
+                  kind: "binary",
+                  op: "and",
+                  left: pieceExpression,
+                  right: conditionExpression,
+                };
+              } else {
+                pieceExpression = conditionExpression;
+              }
+            }
+
+            compilation.addPiecewisePiece(cases[i].condition, pieceExpression!);
           }
         }
       } else if (

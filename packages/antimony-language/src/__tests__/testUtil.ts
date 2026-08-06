@@ -62,11 +62,10 @@ export const getColumnsFromCsv = (csv: string): Columns => {
 
 export const getColumnsFromTimeCourseOutput = (
   output: TimeCourseOutput,
-  timeName: string = "Time",
 ): Columns => {
   const columns: Columns = {};
 
-  columns[timeName] = output.sliceColumn("time");
+  columns["Time"] = output.sliceColumn("time");
   for (const name of output.columnNames) {
     if (name !== "time") {
       columns[name] = output.sliceColumn(name);
@@ -87,6 +86,7 @@ export const simulateOnce = async (
 ): Promise<TimeCourseOutput> => {
   const simulator = await createCvodeSimulator();
   const ir = compileToIridium(deriveModels(model));
+  console.log(ir);
   const runtimeModel = await compile(ir);
 
   await simulator.setModel(runtimeModel);

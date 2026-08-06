@@ -240,7 +240,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     double time_step = (end_time - start_time) / num_steps;
 
     for (int i = 0; i < num_steps; i++) {
-        target_time += time_step;
+        // Do multiplication like this to avoid accumulating floating-point errors.
+        target_time = (i + 1) * time_step;
 
         Integrate(target_time);
 

@@ -82,11 +82,30 @@ type ComparisonOperator =
   | "ge"
   | "eq"
   | "neq";
-type Condition = {
+
+/**
+ * Simple conditions express your normal comparison expressions.
+ * They compile to signed distance functions (except for lt and gt
+ * which we need to handle separately since they don't have a boundary).
+ */
+type SimpleCondition = {
   op: ComparisonOperator;
   left: IridiumExpression;
   right: IridiumExpression;
 };
+
+/**
+ * Complex conditions are basically anything that we aren't sure is a boolean.
+ * They are also used in the conditions for piecewise since they simplify things
+ * a lot.
+ * Unlike simple conditions, complex conditions will compile to a function that flips
+ * between -1 and 1 based on if the expression equals 0.
+ */
+type ComplexCondition = {
+  expression: IridiumExpression;
+};
+
+type Condition = SimpleCondition | ComplexCondition;
 
 type LogicTree =
   | number
@@ -103,31 +122,57 @@ type InternalEvent = {
 };
 
 const emitConditionAsRoot = (
-  expression: Condition,
+  condition: Condition,
   emitter: Emitter,
   compilation: Compilation,
   scope: Scope,
 ): void => {
-  emitExpression(expression.left, emitter, compilation, scope);
-  emitExpression(expression.right, emitter, compilation, scope);
-  emitter.emitByte(OpCode.f64sub);
+  if ("op" in condition) {
+    // It's a simple condition, compile it as a signed distance function unless it is gt or lt.
+    if (condition.op === "lt" || condition.op === "gt") {
+      // We need to do a little trick when we end up exactly at the event boundary.
+      // For example, take the event `at time > 0:`. CVODE will ignore the root at
+      // the beginning because the sign does not change. To fix this, we convert the
+      // root function so that it flips between -1 and 1 if the condition is true.
+      // This way the boundary is treated correctly, at the cost of CVODE having
+      // less information.
+      emitExpression(condition.left, emitter, compilation, scope);
+      emitExpression(condition.right, emitter, compilation, scope);
+      emitComparisonOperator(emitter, condition.op);
 
-  // We need to do a little trick when we end up exactly at the event boundary.
-  // For example, take the event `at time > 0:`. CVODE will ignore the root at
-  // the beginning because the sign does not change. To fix this, we nudge the
-  // function a very very very tiny amount down (or up if it is <). That way
-  // it will be like -0.000000000000000000001 then 0.001 or whatever and
-  // CVODE will see the sign change! But if we do this, another issue comes up:
-  // What if we end up exactly at where we nudged the boundary? In such cases,
-  // I think it is fair to give up. What RoadRunner seems to do is have its events as
-  // discontinuous function that is 1 on true and -1 on false. We can also do that,
-  // it will actually be way less of a headache.
-  if (expression.op === "gt") {
-    emitter.emitF64ConstOp(Number.EPSILON);
-    emitter.emitByte(OpCode.f64sub);
-  } else if (expression.op === "lt") {
-    emitter.emitF64ConstOp(Number.EPSILON);
-    emitter.emitByte(OpCode.f64add);
+      emitter.emitI32ConstOp(0);
+      emitter.emitByte(OpCode.i32ne);
+
+      emitter.emitIf(
+        ValType.f64,
+        () => {
+          emitter.emitF64ConstOp(condition.op === "gt" ? 1 : -1);
+        },
+        () => {
+          emitter.emitF64ConstOp(condition.op === "gt" ? -1 : 1);
+        },
+      );
+    } else {
+      emitExpression(condition.left, emitter, compilation, scope);
+      emitExpression(condition.right, emitter, compilation, scope);
+      emitter.emitByte(OpCode.f64sub);
+    }
+  } else {
+    // It's complex condition, compile it as a discrete -1, 1 flipper
+    emitExpression(condition.expression, emitter, compilation, scope);
+
+    emitter.emitF64ConstOp(0);
+    emitter.emitByte(OpCode.f64ne);
+
+    emitter.emitIf(
+      ValType.f64,
+      () => {
+        emitter.emitF64ConstOp(1);
+      },
+      () => {
+        emitter.emitF64ConstOp(-1);
+      },
+    );
   }
 };
 
@@ -283,19 +328,24 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
           child,
         });
       } else {
-        throw new CompileError("Expected boolean expression.", expr.metadata);
+        visitNonBooleanExpression(expr);
       }
     },
     visitNumber(expr) {
-      throw new CompileError("Expected boolean expression.", expr.metadata);
+      visitNonBooleanExpression(expr);
     },
     visitVariable(expr) {
       if (builtinConstants[expr.name]) {
         treeStack.push(builtinConstants[expr.name].value !== 0);
       } else {
-        throw new CompileError("Expected boolean expression.", expr.metadata);
+        visitNonBooleanExpression(expr);
       }
     },
+  };
+
+  const visitNonBooleanExpression = (expression: IridiumExpression): void => {
+    treeStack.push(conditions.length);
+    conditions.push({ expression });
   };
 
   const visitVariadicFunction = (
@@ -340,8 +390,11 @@ export const compileEvents = (
   const runtimeEvents: (RuntimeEvent | RuntimePieceEvent)[] = [];
   const eventFns: WasmFunction[] = [];
 
-  for (const [piece, index] of compilation.piecewisePieces) {
-    const internalEvent = createInternalEvent(piece);
+  for (const { index, condition } of compilation.piecewisePieces.values()) {
+    const internalEvent: InternalEvent = {
+      conditions: [{ expression: condition }],
+      tree: 0,
+    };
     internalEvents[index] = internalEvent;
     runtimeEvents.push({
       isForPiecewise: true,
@@ -602,7 +655,10 @@ const compileCheckRoots = (
     const startRootIndex = currentRootIndex;
 
     for (const condition of event.conditions) {
-      if (condition.op === "eq" || condition.op === "neq") {
+      if (
+        "op" in condition &&
+        (condition.op === "eq" || condition.op === "neq")
+      ) {
         // For equality, we want to check the condition again if it is true
         // even if no root was hit since we may not be equal anymore (which wouldn't
         // be detected by the root-finder usually)
@@ -685,7 +741,12 @@ const compileCheckRoots = (
           emitter.emitUint(MEM_ALIGNMENT);
           emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
-          if (condition.op === "ge" || condition.op === "gt") {
+          if (
+            "expression" in condition ||
+            condition.op === "ge" ||
+            condition.op === "gt"
+          ) {
+            // Complex conditions go from -1 to 1 when they become true so they go on this branch
             emitter.emitI32ConstOp(0);
             emitter.emitByte(OpCode.i32ge_s);
           } else if (condition.op === "le" || condition.op === "lt") {
@@ -765,78 +826,22 @@ const compileUpdateConditions = (
 
     // update every condition
     for (const condition of event.conditions) {
-      // These have to be handled specially because we are not able to really implement them at a boundary
-      // without stepping an infitesimal step forward. Our strategy is to NOT do anything if we end up
-      // at a boundary. Instead, in the root function, we nudge the inequalities slightly so a root will be
-      // found if we end up moving in the right direction. Then we can just rely on the normal root check code.
-      if (condition.op === "gt" || condition.op === "lt") {
-        emitExpression(condition.left, emitter, compilation, scope);
-        emitter.emitByte(OpCode.localset);
-        emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-        emitExpression(condition.right, emitter, compilation, scope);
-        emitter.emitByte(OpCode.localset);
-        emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
-
-        emitter.emitByte(OpCode.f64eq);
-
-        // case: boundary, can't make any conclusions about this event
-        emitter.emitIf(
-          OpCode.blockNoType,
-          () => {
-            // Set local so we know to ignore updating the event.
-            emitter.emitI32ConstOp(1);
-
-            emitter.emitByte(OpCode.localset);
-            emitter.emitByte(localsTable.getLocal(SHOULD_SKIP_EVENT_LOCAL));
-
-            // It's OK to set the condition to false because at the boundary it is not true yet.
-            // If the root-finding function hits it, this will update as required.
-            emitter.emitByte(OpCode.localget);
-            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
-
-            emitter.emitI32ConstOp(0);
-
-            emitter.emitByte(OpCode.i32store);
-            emitter.emitUint(MEM_ALIGNMENT);
-            emitter.emitUint(SIZEOF_INT * currentRootIndex);
-          },
-          () => {
-            // case: not a boundary, we can confidently update the condition
-            emitter.emitByte(OpCode.localget);
-            emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
-
-            emitter.emitByte(OpCode.localget);
-            emitter.emitUint(localsTable.getLocal(LEFT_LOCAL));
-
-            emitter.emitByte(OpCode.localget);
-            emitter.emitUint(localsTable.getLocal(RIGHT_LOCAL));
-
-            emitComparisonOperator(emitter, condition.op);
-
-            emitter.emitByte(OpCode.i32store);
-            emitter.emitUint(MEM_ALIGNMENT);
-            emitter.emitUint(SIZEOF_INT * currentRootIndex);
-          },
-        );
+      if ("expression" in condition) {
+        emitExpression(condition.expression, emitter, compilation, scope);
+        emitter.emitF64ConstOp(0);
+        emitter.emitByte(OpCode.f64ne);
       } else {
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
-
         emitExpression(condition.left, emitter, compilation, scope);
         emitExpression(condition.right, emitter, compilation, scope);
         emitComparisonOperator(emitter, condition.op);
-
-        emitter.emitByte(OpCode.i32store);
-        emitter.emitUint(MEM_ALIGNMENT);
-        emitter.emitUint(SIZEOF_INT * currentRootIndex);
       }
+
+      emitter.emitByte(OpCode.i32store);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_INT * currentRootIndex);
 
       currentRootIndex += 1;
     }
