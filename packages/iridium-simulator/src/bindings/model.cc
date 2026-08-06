@@ -238,10 +238,11 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
     int num_steps = num_points - 1; // minus 1 because 0 counts as the first
     double time_step = (end_time - start_time) / num_steps;
+    double sim_start_time = time_;
 
     for (int i = 0; i < num_steps; i++) {
         // Do multiplication like this to avoid accumulating floating-point errors.
-        target_time = (i + 1) * time_step;
+        target_time = sim_start_time + (i + 1) * time_step;
 
         Integrate(target_time);
 
@@ -483,19 +484,7 @@ void Model::RunPendingEventInvocations() {
 void Model::RunEventInvocation(const EventInvocation &invocation) {
     const EventInfo *info = invocation.event_info;
 
-    for (int iy = 0; iy < info->y_indices.size(); iy++) {
-        NV_Ith_S(y_, info->y_indices[iy]) = invocation.y_values[iy];
-#ifdef DEBUG_LOG
-        std::cout << "y[" << info->y_indices[iy] << "] = " << invocation.y_values[iy] << std::endl;
-#endif
-    }
-
-    for (int ip = 0; ip < info->p_indices.size(); ip++) {
-        p_[info->p_indices[ip]] = invocation.p_values[ip];
-#ifdef DEBUG_LOG
-        std::cout << "p[" << info->p_indices[ip] << "] = " << invocation.p_values[ip] << std::endl;
-#endif
-    }
+    ((SetAssignmentsFn*)info->set_assignments_fn)(NV_DATA_S(y_), p_.data(), invocation.y_values.data(), invocation.p_values.data());
 
     rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 

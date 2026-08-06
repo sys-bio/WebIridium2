@@ -137,6 +137,7 @@ export class CvodeSimulator {
             y_indices: yIndices,
             p_indices: pIndices,
             get_assignments_fn: nullptr,
+            set_assignments_fn: nullptr,
             get_delay_fn: nullptr,
             get_priority_fn: nullptr,
             is_from_trigger: false,
@@ -151,6 +152,11 @@ export class CvodeSimulator {
             instance.exports[event.getAssignmentsExport],
           ) as number;
           funcPtrs.push(getAssignmentsPtr);
+
+          const setAssignmentsPtr = this.#bindings.addFunction(
+            instance.exports[event.setAssignmentsExport],
+          ) as number;
+          funcPtrs.push(setAssignmentsPtr);
 
           let getDelayPtr: number | undefined;
           if (event.getDelayExport) {
@@ -184,6 +190,7 @@ export class CvodeSimulator {
             y_indices: yIndices,
             p_indices: pIndices,
             get_assignments_fn: getAssignmentsPtr,
+            set_assignments_fn: setAssignmentsPtr,
             get_delay_fn: getDelayPtr ?? nullptr,
             get_priority_fn: getPriorityPtr ?? nullptr,
             is_from_trigger: event.isFromTrigger,

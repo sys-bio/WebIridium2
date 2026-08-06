@@ -43,6 +43,14 @@ using GetAssignmentsFn = void(
     double pout[]
 );
 
+// Generated for each event. Sets y[] and p[] based on the y_assignments and p_assignments arrays.
+using SetAssignmentsFn = void(
+    double y[],
+    double p[],
+    const double y_assignments[],
+    const double p_assignments[]
+);
+
 struct EventInfo {
     // Special tag for events that just exist to flag piecewise functions.
     // An event with this will never be run.
@@ -57,6 +65,7 @@ struct EventInfo {
     uintptr_t get_delay_fn;
     uintptr_t get_priority_fn;
     uintptr_t get_assignments_fn;
+    uintptr_t set_assignments_fn;
 };
 
 struct EventInvocation {

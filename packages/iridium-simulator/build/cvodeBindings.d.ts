@@ -54,7 +54,8 @@ export type EventInfo = {
   p_indices: IntVector,
   get_priority_fn: number,
   get_delay_fn: number,
-  get_assignments_fn: number
+  get_assignments_fn: number,
+  set_assignments_fn: number
 };
 
 export interface EventInfoVector extends ClassHandle, Iterable<EventInfo> {

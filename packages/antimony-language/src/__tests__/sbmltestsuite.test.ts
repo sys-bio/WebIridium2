@@ -12,12 +12,15 @@ import path from "path";
 const CUTOFF = 2000;
 const UNSUPPORTED_TAGS = [
   "AlgebraicRule",
-  "StoichiometryMath",
   "FastReaction",
   "ConversionFactors",
   "CSymbolRateOf",
   "CSymbolDelay",
+  "RandomEventExecution",
 ];
+const SKIP_CASES = new Set([
+  998, // This one doesn't work because Antimony doesn't distinguish between initialAmount and initialConcentration (it always assumes initialAmount)
+]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
 const WRITE_TEST_OUTPUT = true;
@@ -62,7 +65,10 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
   if (modelNumber > CUTOFF) {
     continue;
   }
-  if (UNSUPPORTED_TAGS.some((t) => tags.includes(t))) {
+  if (
+    UNSUPPORTED_TAGS.some((t) => tags.includes(t)) ||
+    SKIP_CASES.has(modelNumber)
+  ) {
     await appendResult({
       number: modelNumber,
       pass: "skip",

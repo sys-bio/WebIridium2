@@ -13,6 +13,7 @@ export type RuntimeEvent = {
   getDelayExport?: string;
   getPriorityExport?: string;
   getAssignmentsExport: string;
+  setAssignmentsExport: string;
 };
 
 /**

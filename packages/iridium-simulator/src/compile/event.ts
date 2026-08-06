@@ -24,7 +24,6 @@ import { Scope } from "./Scope.ts";
 import {
   visitExpression,
   type IridiumExpression,
-  type IridiumExpressionBinary,
   type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
 import { emitComparisonOperator, emitExpression } from "./expression.ts";
@@ -72,6 +71,14 @@ const GET_ASSIGNMENTS_PARAMS = [
   ValType.i32,
 ];
 const GET_ASSIGNMENTS_RESULTS: ValType[] = [];
+
+const SET_ASSIGNMENTS_PARAMS = [
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+  ValType.i32,
+];
+const SET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
 type ComparisonOperator =
   | "and"
@@ -174,20 +181,6 @@ const emitConditionAsRoot = (
       },
     );
   }
-};
-
-const isComparisonExpression = (
-  expr: IridiumExpression,
-): expr is IridiumExpressionBinary => {
-  return (
-    expr.kind === "binary" &&
-    (expr.op === "eq" ||
-      expr.op === "neq" ||
-      expr.op === "lt" ||
-      expr.op === "le" ||
-      expr.op === "gt" ||
-      expr.op == "ge")
-  );
 };
 
 /**
@@ -406,6 +399,7 @@ export const compileEvents = (
     let getDelayExport: string | undefined;
     let getPriorityExport: string | undefined;
     const getAssignmentsExport = generateSymbol("getAssignments");
+    const setAssignmentsExport = generateSymbol("setAssignments");
 
     if (event.delay) {
       getDelayExport = generateSymbol("getDelay");
@@ -457,8 +451,25 @@ export const compileEvents = (
         ).getOutput(),
     });
 
+    eventFns.push({
+      kind: "compile",
+      isExported: true,
+      name: setAssignmentsExport,
+      params: SET_ASSIGNMENTS_PARAMS,
+      results: SET_ASSIGNMENTS_RESULTS,
+      compileBody: (functionTable) =>
+        compileSetAssignments(
+          compilation,
+          event,
+          yIndices,
+          pIndices,
+          functionTable,
+        ).getOutput(),
+    });
+
     runtimeEvents.push({
       getAssignmentsExport,
+      setAssignmentsExport,
       getDelayExport,
       getPriorityExport,
       numRoots: internalEvent.conditions.length,
@@ -925,6 +936,77 @@ const compileGetAssignments = (
 
     emitExpression(value, emitter, compilation, scope);
 
+    if (yIndices.has(name)) {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * yIndices.get(name));
+    } else if (pIndices.has(name)) {
+      emitter.emitByte(OpCode.f64store);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * pIndices.get(name));
+    }
+  }
+
+  emitter.emitByte(OpCode.end);
+
+  return emitter;
+};
+
+const compileSetAssignments = (
+  compilation: Compilation,
+  event: IridiumEvent,
+  yIndices: IndexSymbolTable,
+  pIndices: IndexSymbolTable,
+  functionTable: FunctionTable,
+): Emitter => {
+  const emitter = new Emitter();
+
+  const localsTable = new LocalsSymbolTable([
+    Y_PARAM,
+    P_PARAM,
+    Y_OUT_PARAM,
+    P_OUT_PARAM,
+    // NOTE: we actually don't have these as a parameter, just pass it to please Scope
+    // TODO: please do this better
+    T_PARAM,
+    EVENTS_PARAM,
+  ]);
+
+  const scope = new Scope(compilation, localsTable, functionTable);
+
+  emitter.emitListHeader(0);
+
+  for (const { name, metadata } of event.assignments) {
+    if (yIndices.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(Y_PARAM));
+    } else if (pIndices.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(P_PARAM));
+    }
+
+    if (yIndices.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(Y_OUT_PARAM));
+    } else if (pIndices.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(P_OUT_PARAM));
+    } else if (name === TIME_NAME) {
+      throw new CompileError("You cannot assign to time.", metadata);
+    } else {
+      throw new CompileError("Unexpected assignment.", metadata);
+    }
+
+    if (yIndices.has(name)) {
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * yIndices.get(name));
+    } else if (pIndices.has(name)) {
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * pIndices.get(name));
+    }
+
     const variable = compilation.variables.get(name)!;
     const compartment = compilation.compartments.get(name);
     if (!variable.hasSubstanceOnly && compartment) {
@@ -935,11 +1017,11 @@ const compileGetAssignments = (
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint(MEM_ALIGNMENT);
-      emitter.emitUint(SIZEOF_DOUBLE * yIndices.get(name));
+      emitter.emitUint(SIZEOF_DOUBLE * compilation.yTable.get(name));
     } else if (pIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
       emitter.emitUint(MEM_ALIGNMENT);
-      emitter.emitUint(SIZEOF_DOUBLE * pIndices.get(name));
+      emitter.emitUint(SIZEOF_DOUBLE * compilation.pTable.get(name));
     }
   }
 

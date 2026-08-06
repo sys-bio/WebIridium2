@@ -37,7 +37,8 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .field("p_indices", &EventInfo::p_indices)
         .field("get_priority_fn", &EventInfo::get_priority_fn)
         .field("get_delay_fn", &EventInfo::get_delay_fn)
-        .field("get_assignments_fn", &EventInfo::get_assignments_fn);
+        .field("get_assignments_fn", &EventInfo::get_assignments_fn)
+        .field("set_assignments_fn", &EventInfo::set_assignments_fn);
 
     emscripten::value_object<EventParams>("EventParams")
         .field("event_info", &EventParams::event_info)
