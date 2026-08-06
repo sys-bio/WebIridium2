@@ -234,42 +234,23 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
         case "le":
         case "gt":
         case "ge":
-          if (isComparisonExpression(left)) {
-            visitExpression(left, visitor);
-          }
-
-          if (isComparisonExpression(right)) {
-            visitExpression(right, visitor);
-          }
-
           treeStack.push(conditions.length);
 
-          // It's left recursive. We want to split things like `(((0 < x) < 5) == 5)` into `0 < x && x < 5 && 5 == 5`
-          if (isComparisonExpression(left)) {
-            conditions.push({
-              op: op as ComparisonOperator,
-              left: left.right,
-              right: right,
-            });
-
-            pushBinaryLogicalOp(expr, "and");
-          } else {
-            // We flip the != so it is false more often than it is true.
-            // This is so they are more likely to fire when they should
-            // (it is not perfect though)
-            if (op === "neq") {
-              treeStack.push({
-                kind: "not",
-                child: treeStack.pop() as LogicTree,
-              });
-            }
-
-            conditions.push({
-              op: op as ComparisonOperator,
-              left,
-              right,
+          // We flip the != so it is false more often than it is true.
+          // This is so they are more likely to fire when they should
+          // (it is not perfect though)
+          if (op === "neq") {
+            treeStack.push({
+              kind: "not",
+              child: treeStack.pop() as LogicTree,
             });
           }
+
+          conditions.push({
+            op: op as ComparisonOperator,
+            left,
+            right,
+          });
           break;
         default:
           throw new CompileError("Expected boolean expression.", expr.metadata);

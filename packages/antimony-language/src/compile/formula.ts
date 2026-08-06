@@ -19,7 +19,10 @@ import {
   type ProductContext,
   type VarContext,
 } from "../grammar";
-import type { IridiumExpression } from "iridium-simulator";
+import type {
+  IridiumExpression,
+  IridiumExpressionBinary,
+} from "iridium-simulator";
 import type { Metadata } from "./metadata";
 import { CompileInvariantError } from "../errors";
 
@@ -40,6 +43,20 @@ const getVariableName = (ctx: VariableContext): string => {
     return getVariableName(ctx.variable());
   }
   throw new CompileInvariantError("Unknown variable.");
+};
+
+const isComparisonExpression = (
+  expr: IridiumExpression,
+): expr is IridiumExpressionBinary => {
+  return (
+    expr.kind === "binary" &&
+    (expr.op === "eq" ||
+      expr.op === "neq" ||
+      expr.op === "lt" ||
+      expr.op === "le" ||
+      expr.op === "gt" ||
+      expr.op == "ge")
+  );
 };
 
 const unreachable = (message: string): never => {
@@ -147,26 +164,49 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitCompare(ctx: CompareContext): void {
-    this.#stack.push({
-      kind: "binary",
-      op:
-        ctx._op.text === ">="
-          ? "ge"
-          : ctx._op.text === "<="
-            ? "le"
-            : ctx._op.text === ">"
-              ? "gt"
-              : ctx._op.text === "<"
-                ? "lt"
-                : ctx._op.text === "=="
-                  ? "eq"
-                  : ctx._op.text === "!="
-                    ? "neq"
-                    : unreachable(`Unknown operator: ${ctx._op}`),
-      right: this.#stack.pop()!,
-      left: this.#stack.pop()!,
-      metadata: { tree: ctx },
-    });
+    const right = this.#stack.pop()!;
+    const left = this.#stack.pop()!;
+
+    const op =
+      ctx._op.text === ">="
+        ? "ge"
+        : ctx._op.text === "<="
+          ? "le"
+          : ctx._op.text === ">"
+            ? "gt"
+            : ctx._op.text === "<"
+              ? "lt"
+              : ctx._op.text === "=="
+                ? "eq"
+                : ctx._op.text === "!="
+                  ? "neq"
+                  : unreachable(`Unknown operator: ${ctx._op}`);
+
+    // convert a < b < c == d into a < b && b < c && c == d
+    const leftCtx = ctx.formula(0);
+    if (leftCtx instanceof CompareContext) {
+      this.#stack.push({
+        kind: "binary",
+        op: "and",
+        left: left,
+        right: {
+          kind: "binary",
+          op: op,
+          left: compileFormula(leftCtx.formula(1)),
+          right: right,
+          metadata: { tree: leftCtx },
+        },
+        metadata: { tree: ctx },
+      });
+    } else {
+      this.#stack.push({
+        kind: "binary",
+        op,
+        left,
+        right,
+        metadata: { tree: ctx },
+      });
+    }
   }
 
   exitNot(ctx: NotContext): void {

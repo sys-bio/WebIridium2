@@ -86,7 +86,6 @@ export const simulateOnce = async (
 ): Promise<TimeCourseOutput> => {
   const simulator = await createCvodeSimulator();
   const ir = compileToIridium(deriveModels(model));
-  console.log(ir);
   const runtimeModel = await compile(ir);
 
   await simulator.setModel(runtimeModel);
