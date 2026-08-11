@@ -76,6 +76,10 @@ export const builtinFunctions = {
     description: "Round up to the next integer.",
     arity: 1,
   },
+  ceiling: {
+    description: "Round up to the next integer.",
+    arity: 1,
+  },
   exp: {
     description: "The exponential function.",
     arity: 1,

@@ -154,6 +154,13 @@ const builtinFunctionDefinitions: {
       emitter.emitByte(OpCode.f64ceil);
     },
   },
+  ceiling: {
+    kind: "inline",
+    name: "ceiling",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64ceil);
+    },
+  },
   exp: {
     kind: "import",
     name: "exp",
