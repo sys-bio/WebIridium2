@@ -25,6 +25,8 @@ import type {
   AntimonyModel,
   AntimonyReactionTerm,
   VariableKind,
+  AntimonyObject,
+  AntimonyModelObject,
 } from "./model";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -68,10 +70,9 @@ export class DeriveModelListener implements AntimonyListener {
   constructor({ diagnostics }: { diagnostics?: Error[] } = {}) {
     this.#models = new Map();
     this.#baseModel = {
+      kind: "model",
       name: DEFAULT_MODEL_NAME,
-      variables: new Map(),
-      reactions: new Map(),
-      events: new Map(),
+      objects: new Map(),
     };
     this.#models.set(this.#baseModel.name, this.#baseModel);
 
@@ -103,21 +104,21 @@ export class DeriveModelListener implements AntimonyListener {
     variable: AntimonyVariable,
     kind: VariableKind,
   ): void {
-    if (variable.kind === "species" && kind === "compartment") {
+    if (variable.variableKind === "species" && kind === "compartment") {
       this.#reportError(
         `Cannot convert ${variable.name} to compartment when it is a species.`,
         ctx,
       );
     }
 
-    if (variable.kind === "compartment" && kind !== "compartment") {
+    if (variable.variableKind === "compartment" && kind !== "compartment") {
       this.#reportError(
         `Cannot convert ${variable.name} from compartment.`,
         ctx,
       );
     }
 
-    variable.kind = kind;
+    variable.variableKind = kind;
   }
 
   #getOrCreateCompartment(
@@ -126,13 +127,13 @@ export class DeriveModelListener implements AntimonyListener {
     if (!compartmentCtx) {
       return null;
     } else {
-      const compartmentVariable = this.#getOrCreateVariable(
+      const compartmentObject = this.#getOrCreateObject(
         compartmentCtx.variable(),
         undefined,
         "compartment",
       );
 
-      if (!compartmentVariable) {
+      if (!compartmentObject) {
         this.#reportError(
           "Cannot use built-in as a compartment",
           compartmentCtx,
@@ -140,9 +141,17 @@ export class DeriveModelListener implements AntimonyListener {
         return null;
       }
 
-      this.#setVariableKind(compartmentCtx, compartmentVariable, "compartment");
+      if (compartmentObject.kind !== "variable") {
+        this.#reportError(
+          `${compartmentObject.name} of type ${compartmentObject.kind} cannot be used as a compartment.`,
+          compartmentCtx,
+        );
+        return null;
+      }
 
-      return compartmentVariable.name;
+      this.#setVariableKind(compartmentCtx, compartmentObject, "compartment");
+
+      return compartmentObject.name;
     }
   }
 
@@ -151,18 +160,19 @@ export class DeriveModelListener implements AntimonyListener {
    * If the variable has the name of a built-in, does not create
    * the varaible, instead returns undefined.
    */
-  #getOrCreateVariable(
+  #getOrCreateObject(
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
-    defaultKind?: VariableKind,
-  ): AntimonyVariable | undefined {
+    defaultVariableKind?: VariableKind,
+  ): AntimonyModelObject | undefined {
     const model = this.#getActiveModel();
     const fullName = getVariableName(variableCtx);
 
     if (fullName.length > 1) {
       // TODO: actually do this properly instead of making fake throwaway variable
       return {
-        kind: "parameter",
+        kind: "variable",
+        variableKind: "parameter",
         compartment: this.#getOrCreateCompartment(compartmentCtx),
         isConst: false,
         hasSubstanceOnly: false,
@@ -176,11 +186,13 @@ export class DeriveModelListener implements AntimonyListener {
       return undefined;
     }
 
-    let variable = model.variables.get(name);
+    let object = model.objects.get(name);
 
-    if (!variable) {
-      variable = {
-        kind: defaultKind ?? this.#currentDeclaration?.kind ?? "parameter",
+    if (!object) {
+      object = {
+        kind: "variable",
+        variableKind:
+          defaultVariableKind ?? this.#currentDeclaration?.kind ?? "parameter",
         compartment: this.#getOrCreateCompartment(compartmentCtx),
         name: name,
         isConst:
@@ -188,21 +200,20 @@ export class DeriveModelListener implements AntimonyListener {
           (this.#currentDeclaration?.isConst ?? false),
         hasSubstanceOnly: false,
       };
-      model.variables.set(variable.name, variable);
+      model.objects.set(object.name, object);
     } else if (compartmentCtx) {
-      variable.compartment = this.#getOrCreateCompartment(compartmentCtx);
+      object.compartment = this.#getOrCreateCompartment(compartmentCtx);
     }
 
-    if (variableCtx instanceof ConstantContext) {
-      variable.isConst = true;
+    if (object.kind === "variable" && variableCtx instanceof ConstantContext) {
+      object.isConst = true;
     }
 
-    return variable;
+    return object;
   }
 
   #getOrDefaultName(
     nameLabelCtx: NameLabelContext | undefined,
-    map: Map<string, unknown>,
     prefix: string,
   ): { name: string; compartment: string | null } {
     if (nameLabelCtx) {
@@ -215,7 +226,7 @@ export class DeriveModelListener implements AntimonyListener {
       let i = 0;
       do {
         candidate = `${prefix}${i++}`;
-      } while (map.has(candidate));
+      } while (this.#getActiveModel().objects.has(candidate));
 
       return { name: candidate, compartment: null };
     }
@@ -223,19 +234,36 @@ export class DeriveModelListener implements AntimonyListener {
 
   #updateToDeclarationIfNecessary(
     ctx: ParserRuleContext,
-    variable: AntimonyVariable,
+    object: AntimonyObject,
   ): void {
     if (this.#currentDeclaration) {
-      if (this.#currentDeclaration.isConst !== undefined) {
-        variable.isConst = this.#currentDeclaration.isConst;
+      if (
+        object.kind === "variable" &&
+        this.#currentDeclaration.isConst !== undefined
+      ) {
+        object.isConst = this.#currentDeclaration.isConst;
       }
 
       if (this.#currentDeclaration.kind !== undefined) {
-        this.#setVariableKind(ctx, variable, this.#currentDeclaration.kind);
+        if (object.kind === "variable") {
+          this.#setVariableKind(ctx, object, this.#currentDeclaration.kind);
+        } else {
+          this.#reportError(
+            `${object.name} is a ${object.kind}, not a variable.`,
+            ctx,
+          );
+        }
       }
 
       if (this.#currentDeclaration.hasSubstanceOnly !== undefined) {
-        variable.hasSubstanceOnly = this.#currentDeclaration.hasSubstanceOnly;
+        if (object.kind === "variable") {
+          object.hasSubstanceOnly = this.#currentDeclaration.hasSubstanceOnly;
+        } else {
+          this.#reportError(
+            `${object.name} is a ${object.kind}, not a variable.`,
+            ctx,
+          );
+        }
       }
     }
   }
@@ -285,7 +313,7 @@ export class DeriveModelListener implements AntimonyListener {
     if (!this.#currentDeclaration) return;
 
     // TODO: is it always OK to re-assign?
-    const variable = this.#getOrCreateVariable(
+    const variable = this.#getOrCreateObject(
       ctx.variable(),
       ctx.inCompartment(),
     );
@@ -316,27 +344,32 @@ export class DeriveModelListener implements AntimonyListener {
   */
 
   enterVar(ctx: VarContext): void {
-    this.#getOrCreateVariable(ctx.variable(), undefined);
+    this.#getOrCreateObject(ctx.variable(), undefined);
   }
 
   enterAssignment(ctx: AssignmentContext): void {
-    const variable = this.#getOrCreateVariable(
-      ctx.variable(),
-      ctx.inCompartment(),
-    );
-    if (!variable) {
+    const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
+    if (!object) {
       this.#reportError("Cannot assign to built-in.", ctx);
       return;
     }
 
-    this.#updateToDeclarationIfNecessary(ctx, variable);
+    this.#updateToDeclarationIfNecessary(ctx, object);
 
     const formula = ctx.formula();
     if (!formula) return;
 
     const mod = ctx._mod?.text;
     if (mod === ":") {
-      if (variable.assignment?.kind === "rate") {
+      if (object.kind !== "variable") {
+        this.#reportError(
+          `${object.name} is a ${object.kind} and cannot have assignment rule.`,
+          ctx,
+        );
+        return;
+      }
+
+      if (object.assignment?.kind === "rate") {
         this.#reportError(
           "Variable defined by rate assignment cannot simultaneously be defined by rule assignment.",
           ctx,
@@ -344,12 +377,20 @@ export class DeriveModelListener implements AntimonyListener {
         return;
       }
 
-      variable.assignment = {
+      object.assignment = {
         kind: "rule",
         rule: formula,
       };
     } else if (mod === "'") {
-      if (variable.assignment?.kind === "rule") {
+      if (object.kind !== "variable") {
+        this.#reportError(
+          `${object.name} is a ${object.kind} and cannot have rate rule.`,
+          ctx,
+        );
+        return;
+      }
+
+      if (object.assignment?.kind === "rule") {
         this.#reportError(
           "Variable defined by rule assignment cannot simultaneously be defined by rate assignment.",
           ctx,
@@ -357,27 +398,39 @@ export class DeriveModelListener implements AntimonyListener {
         return;
       }
 
-      variable.assignment = {
+      object.assignment = {
         kind: "rate",
         rate: formula,
-        initial: variable?.assignment?.initial,
+        initial: object?.assignment?.initial,
       };
     } else {
-      if (variable.assignment?.kind === "rule") {
+      if (object.kind === "variable") {
+        if (object.assignment?.kind === "rule") {
+          this.#reportError(
+            "Cannot set initial value on variable defined by rule assignment.",
+            ctx,
+          );
+          return;
+        }
+
+        if (!object.assignment) {
+          object.assignment = {
+            kind: "initial",
+            initial: formula,
+          };
+        } else {
+          object.assignment.initial = formula;
+        }
+      } else if (object.kind === "event") {
+        object.trigger = formula;
+      } else if (object.kind === "reaction") {
+        object.rate = formula;
+      } else {
         this.#reportError(
-          "Cannot set initial value on variable defined by rule assignment.",
+          `${(object as AntimonyObject).name} of type ${(object as AntimonyObject).kind} cannot be assigned to.`,
           ctx,
         );
         return;
-      }
-
-      if (!variable.assignment) {
-        variable.assignment = {
-          kind: "set",
-          initial: formula,
-        };
-      } else {
-        variable.assignment.initial = formula;
       }
     }
   }
@@ -385,25 +438,34 @@ export class DeriveModelListener implements AntimonyListener {
   #getReactionTerms(ctx: ReactantListContext): AntimonyReactionTerm[] {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
-      const variable = this.#getOrCreateVariable(
-        reactant.variable(),
-        undefined,
-      );
-      if (!variable) {
+      const object = this.#getOrCreateObject(reactant.variable(), undefined);
+
+      if (!object) {
         this.#reportError("Cannot use built-in within reaction.", reactant);
         continue;
       }
 
-      // TODO: How does the original antimony handle this? We should do the same.
-      if (variable.kind === "compartment") {
-        this.#reportError("Cannot use compartment in reaction.", reactant);
+      if (object.kind !== "variable") {
+        this.#reportError(
+          `${object.name} is of type ${object.kind} and cannot be used in a reaction.`,
+          ctx,
+        );
         continue;
       }
 
-      this.#setVariableKind(reactant, variable, "species");
+      // TODO: How does the original antimony handle this? We should do the same.
+      if (object.variableKind === "compartment") {
+        this.#reportError(
+          `${object.name} is a compartment and cannot be used in a reaction.`,
+          reactant,
+        );
+        continue;
+      }
+
+      this.#setVariableKind(reactant, object, "species");
 
       terms.push({
-        name: variable.name,
+        name: object.name,
         stoichiometry: Number(reactant.NUMBER()?.text ?? "1"),
       });
     }
@@ -413,11 +475,7 @@ export class DeriveModelListener implements AntimonyListener {
   enterReaction(ctx: ReactionContext): void {
     const model = this.#getActiveModel();
 
-    const nameResult = this.#getOrDefaultName(
-      ctx.nameLabel(),
-      this.#getActiveModel().reactions,
-      "_J",
-    );
+    const nameResult = this.#getOrDefaultName(ctx.nameLabel(), "_J");
 
     const name = nameResult.name;
     let compartment = nameResult.compartment;
@@ -435,7 +493,7 @@ export class DeriveModelListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of reactants) {
-          const reactant = model.variables.get(term.name)!;
+          const reactant = model.objects.get(term.name) as AntimonyVariable;
           reactant.compartment = compartment;
         }
       }
@@ -446,7 +504,7 @@ export class DeriveModelListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of products) {
-          const product = model.variables.get(term.name)!;
+          const product = model.objects.get(term.name) as AntimonyVariable;
           product.compartment = compartment;
         }
       }
@@ -454,7 +512,8 @@ export class DeriveModelListener implements AntimonyListener {
 
     // TODO: throw when two reactions have the same name
 
-    model.reactions.set(name, {
+    model.objects.set(name, {
+      kind: "reaction",
       name,
       compartment,
       reactants,
@@ -464,9 +523,9 @@ export class DeriveModelListener implements AntimonyListener {
   }
 
   enterEvent(ctx: EventContext): void {
-    const assignments = new Map<string, FormulaContext>();
+    const assignments: Record<string, FormulaContext> = {};
     for (const assignment of ctx.eventAssignments().eventAssignment()) {
-      const variable = this.#getOrCreateVariable(
+      const variable = this.#getOrCreateObject(
         assignment.variable(),
         undefined,
       );
@@ -475,7 +534,7 @@ export class DeriveModelListener implements AntimonyListener {
         return;
       }
 
-      assignments.set(variable.name, assignment.formula());
+      assignments[variable.name] = assignment.formula();
     }
 
     const options: Record<string, FormulaContext> = {};
@@ -492,13 +551,10 @@ export class DeriveModelListener implements AntimonyListener {
       }
     }
 
-    const { name, compartment } = this.#getOrDefaultName(
-      ctx.nameLabel(),
-      this.#getActiveModel().events,
-      "_E",
-    );
+    const { name, compartment } = this.#getOrDefaultName(ctx.nameLabel(), "_E");
 
-    this.#getActiveModel().events.set(name, {
+    this.#getActiveModel().objects.set(name, {
+      kind: "event",
       name,
       compartment,
       assignments,
@@ -510,16 +566,14 @@ export class DeriveModelListener implements AntimonyListener {
 
   enterInStatement(ctx: InStatementContext): void {
     const compartment = this.#getOrCreateCompartment(ctx.inCompartment());
-    const variable = this.#getOrCreateVariable(
-      ctx.variable(),
-      ctx.inCompartment(),
-    );
-    if (!variable) {
+    const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
+
+    if (!object) {
       this.#reportError("Cannot set compartment of built-in.", ctx);
       return;
     }
 
-    variable.compartment = compartment;
+    object.compartment = compartment;
   }
 
   #getContentFromString(stringCtx: StringContext): string {
@@ -537,7 +591,9 @@ export class DeriveModelListener implements AntimonyListener {
     return "";
   }
 
-  enterAnnotation(ctx: AnnotationContext): void {
+  enterAnnotation(_ctx: AnnotationContext): void {
+    // TODO: re-implement annotations
+    /**
     const variableAnnotatation = ctx.variableAnnotation();
     if (variableAnnotatation) {
       const variableCtx = variableAnnotatation.variable();
@@ -566,5 +622,6 @@ export class DeriveModelListener implements AntimonyListener {
         variable.displayName = this.#getContentFromString(strings[0]);
       } // ignore everything else for now, maybe validate later
     }
+    */
   }
 }

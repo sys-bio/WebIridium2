@@ -4,49 +4,16 @@
  */
 
 export type TestModel = {
-  variables?: Record<string, any>;
-  reactions?: Record<string, any>;
-  events?: Record<string, any>;
+  objects: Record<string, any>;
 };
 
-export const model = ({
-  variables,
-  reactions,
-  events,
-}: TestModel): TestModel => {
-  if (variables) {
-    for (const [name, variable] of Object.entries(variables)) {
-      // eslint-disable-next-line
-      variable.name = name;
-    }
-  }
-
-  if (reactions) {
-    for (const [name, reaction] of Object.entries(reactions)) {
-      // eslint-disable-next-line
-      reaction.name = name;
-    }
-  }
-
-  if (events) {
-    for (const [name, event] of Object.entries(events)) {
-      // eslint-disable-next-line
-      event.name = name;
-    }
-  }
-
-  return { variables, reactions, events };
-};
-
-/** Convenience function for making test model that only consists of variables. */
-export const variables = (
-  variables: Exclude<TestModel["variables"], undefined>,
-): TestModel => {
-  for (const [name, variable] of Object.entries(variables)) {
+export const model = (objects: Record<string, any>): TestModel => {
+  for (const [name, object] of Object.entries(objects)) {
     // eslint-disable-next-line
-    variable.name = name;
+    object.name = name;
   }
-  return { variables };
+
+  return { objects };
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
@@ -93,7 +60,7 @@ const funcWithModifiers = <
 
 type VariableState = {
   const?: boolean;
-  assignmentType?: "set" | "rate" | "rule";
+  assignmentType?: "initial" | "rate" | "rule";
   substanceOnly?: boolean;
 };
 
@@ -137,7 +104,8 @@ const createVariableFunc = (kind: string) => {
       if (formulaOrRule) {
         // eslint-disable-next-line
         return Object.assign(Object.create(variableProto), {
-          kind,
+          kind: "variable",
+          variableKind: kind,
           isConst: this.const ?? false,
           hasSubstanceOnly: this.substanceOnly ?? false,
           assignment:
@@ -153,7 +121,7 @@ const createVariableFunc = (kind: string) => {
                     rate: { text: rate },
                   }
                 : {
-                    kind: "set",
+                    kind: "initial",
                     initial: { text: formulaOrRule },
                   },
         });
@@ -161,7 +129,8 @@ const createVariableFunc = (kind: string) => {
 
       // eslint-disable-next-line
       return Object.assign(Object.create(variableProto), {
-        kind,
+        kind: "variable",
+        variableKind: kind,
         isConst: this.const ?? false,
         hasSubstanceOnly: this.substanceOnly ?? false,
       });
@@ -182,6 +151,7 @@ export const reaction = (
   extra?: object,
 ) => {
   return {
+    kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
       name,
       stoichiometry,
@@ -220,6 +190,7 @@ export const event = (
     }
 
     return {
+      kind: "event",
       trigger: { text: trigger },
       delay: delay && { text: delay },
       assignments: newAssignments,
@@ -231,6 +202,7 @@ export const event = (
     }
 
     return {
+      kind: "event",
       trigger: { text: trigger },
       assignments: newAssignments,
       options: {},

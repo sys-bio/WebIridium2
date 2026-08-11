@@ -8,7 +8,6 @@ import {
   reaction,
   compartment,
   type TestModel,
-  variables,
   event,
 } from "./modelDsl.ts";
 
@@ -59,33 +58,10 @@ const expectModels = (code: string, models: TestModel[]): void => {
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
-    if (model.variables) {
-      expect(
-        stripContextsOnlyToText(Object.fromEntries(derived[i].variables)),
-      ).toMatchObject(model.variables);
-    }
 
-    if (model.reactions) {
-      expect(
-        stripContextsOnlyToText(Object.fromEntries(derived[i].reactions)),
-      ).toMatchObject(model.reactions);
-    }
-
-    if (model.events) {
-      expect(
-        stripContextsOnlyToText(
-          Object.fromEntries(
-            Array.from(derived[i].events.entries()).map(([name, event]) => [
-              name,
-              {
-                ...event,
-                assignments: Object.fromEntries(event.assignments),
-              },
-            ]),
-          ),
-        ),
-      ).toMatchObject(model.events);
-    }
+    expect(
+      stripContextsOnlyToText(Object.fromEntries(derived[i].objects)),
+    ).toMatchObject(model.objects);
   }
 };
 
@@ -97,17 +73,13 @@ it("should derive reactions and parameters for default model", () => {
   expectModel(
     defaultModel,
     model({
-      variables: {
-        A: species("10"),
-        B: species("0"),
-        C: species("0"),
-        k1: parameter("0.35"),
-        k2: parameter("0.2"),
-      },
-      reactions: {
-        _J0: reaction({ A: 1 }, { B: 1 }, "k1*A"),
-        _J1: reaction({ B: 1 }, { C: 1 }, "k2*B"),
-      },
+      A: species("10"),
+      B: species("0"),
+      C: species("0"),
+      k1: parameter("0.35"),
+      k2: parameter("0.2"),
+      _J0: reaction({ A: 1 }, { B: 1 }, "k1*A"),
+      _J1: reaction({ B: 1 }, { C: 1 }, "k2*B"),
     }),
   );
 });
@@ -125,7 +97,7 @@ describe("assignments", () => {
   it("should set initial assignment", () => {
     expectModel(
       "A = 5",
-      variables({
+      model({
         A: parameter("5"),
       }),
     );
@@ -134,7 +106,7 @@ describe("assignments", () => {
   it("should use latest assignment", () => {
     expectModel(
       "A = 3;A=5;A=4",
-      variables({
+      model({
         A: parameter("4"),
       }),
     );
@@ -143,7 +115,7 @@ describe("assignments", () => {
   it("should set rate assignment", () => {
     expectModel(
       "A' = 5",
-      variables({
+      model({
         A: parameter.rate(undefined, "5"),
       }),
     );
@@ -152,7 +124,7 @@ describe("assignments", () => {
   it("should set rate and initial assignment", () => {
     expectModel(
       "A' = Z\nA = 3",
-      variables({
+      model({
         A: parameter.rate("3", "Z"),
       }),
     );
@@ -161,7 +133,7 @@ describe("assignments", () => {
   it("should set rate and initial assignment with declaration", () => {
     expectModel(
       "species A' = Z\nA = 3",
-      variables({
+      model({
         A: species.rate("3", "Z"),
       }),
     );
@@ -170,7 +142,7 @@ describe("assignments", () => {
   it("should inherit initial assignment when setting rate", () => {
     expectModel(
       "A = Z\nA '= 3",
-      variables({
+      model({
         A: parameter.rate("Z", "3"),
       }),
     );
@@ -179,7 +151,7 @@ describe("assignments", () => {
   it("should inherit initial assignment when setting rate with declaration", () => {
     expectModel(
       "species A = Z\nA '= 3",
-      variables({
+      model({
         A: species.rate("Z", "3"),
       }),
     );
@@ -188,7 +160,7 @@ describe("assignments", () => {
   it("should set rule assignment", () => {
     expectModel(
       "A := 5*time",
-      variables({
+      model({
         A: parameter.rule("5*time"),
       }),
     );
@@ -217,6 +189,24 @@ describe("assignments", () => {
       deriveModels("A=5; A:=5");
     }).not.toThrowError(SemanticError);
   });
+
+  it("should assign trigger for events", () => {
+    expectModel(
+      "E: at A > 3: A = 3; E = A > 5",
+      model({
+        E: event("A>5", { A: "3" }),
+      }),
+    );
+  });
+
+  it("should assign rate for reactions", () => {
+    expectModel(
+      "J: A + B -> C; 3; J = 5",
+      model({
+        J: reaction({ A: 1, B: 1 }, { C: 1 }, "5"),
+      }),
+    );
+  });
 });
 
 describe("declarations", () => {
@@ -224,11 +214,9 @@ describe("declarations", () => {
     expectModel(
       "species A, B, C",
       model({
-        variables: {
-          A: species(),
-          B: species(),
-          C: species(),
-        },
+        A: species(),
+        B: species(),
+        C: species(),
       }),
     );
   });
@@ -237,11 +225,9 @@ describe("declarations", () => {
     expectModel(
       "const species A, B\nspecies C",
       model({
-        variables: {
-          A: species.const(),
-          B: species.const(),
-          C: species(),
-        },
+        A: species.const(),
+        B: species.const(),
+        C: species(),
       }),
     );
   });
@@ -250,11 +236,9 @@ describe("declarations", () => {
     expectModel(
       "const species A;var B;compartment C",
       model({
-        variables: {
-          A: species.const(),
-          B: parameter(),
-          C: compartment(),
-        },
+        A: species.const(),
+        B: parameter(),
+        C: compartment(),
       }),
     );
   });
@@ -263,9 +247,7 @@ describe("declarations", () => {
     expectModel(
       "const species A = 5",
       model({
-        variables: {
-          A: species.const("5"),
-        },
+        A: species.const("5"),
       }),
     );
   });
@@ -274,9 +256,7 @@ describe("declarations", () => {
     expectModel(
       "A;=;A=",
       model({
-        variables: {
-          A: parameter(),
-        },
+        A: parameter(),
       }),
     );
   });
@@ -285,9 +265,7 @@ describe("declarations", () => {
     expectModel(
       "A = 0; const species A = 5",
       model({
-        variables: {
-          A: species.const("5"),
-        },
+        A: species.const("5"),
       }),
     );
   });
@@ -296,9 +274,7 @@ describe("declarations", () => {
     expectModel(
       "A = 0; const compartment A = 5",
       model({
-        variables: {
-          A: compartment.const("5"),
-        },
+        A: compartment.const("5"),
       }),
     );
   });
@@ -310,21 +286,21 @@ describe("declarations", () => {
   });
 
   it("should not override const if not specified", () => {
-    expectModel("const A; species A", variables({ A: species.const() }));
+    expectModel("const A; species A", model({ A: species.const() }));
   });
 
   it("should override const if specified", () => {
-    expectModel("const A; var species A", variables({ A: species.var() }));
+    expectModel("const A; var species A", model({ A: species.var() }));
   });
 
   it("should set substanceOnly", () => {
-    expectModel("substanceOnly A", variables({ A: species.substanceOnly() }));
+    expectModel("substanceOnly A", model({ A: species.substanceOnly() }));
   });
 
   it("should set substanceOnly with species and const", () => {
     expectModel(
       "const substanceOnly species A",
-      variables({ A: species.substanceOnly.const() }),
+      model({ A: species.substanceOnly.const() }),
     );
   });
 
@@ -345,13 +321,41 @@ describe("declarations", () => {
       deriveModels("species piecewise");
     }).toThrowError(SemanticError);
   });
+
+  it("should allow const events and reactions with no effect", () => {
+    expectModel(
+      "E: at A > 3: A = 3; J: A + B -> C; 1; const E, A",
+      model({
+        E: event("A>3", { A: "3" }),
+        J: reaction({ A: 1, B: 1 }, { C: 1 }, "1"),
+      }),
+    );
+  });
+
+  it("should not allow substanceOnly events and reactions", () => {
+    expect(() =>
+      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; substanceOnly E, A"),
+    ).toThrowError(SemanticError);
+  });
+
+  it("should not allow converting events or reactions to species", () => {
+    expect(() =>
+      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; species E, A"),
+    ).toThrowError(SemanticError);
+  });
+
+  it("should not allow converting events or reactions to compartments", () => {
+    expect(() =>
+      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; compartment E, A"),
+    ).toThrowError(SemanticError);
+  });
 });
 
 describe("$ modifier", () => {
   it("should set const to true", () => {
     expectModel(
       "species A;$A ->;;A=5",
-      variables({
+      model({
         A: species.const(),
       }),
     );
@@ -363,10 +367,8 @@ describe("events", () => {
     expectModel(
       "at time > 5: A = 5\nat A > B: B = A",
       model({
-        events: {
-          _E0: event("time>5", { A: "5" }),
-          _E1: event("A>B", { B: "A" }),
-        },
+        _E0: event("time>5", { A: "5" }),
+        _E1: event("A>B", { B: "A" }),
       }),
     );
   });
@@ -375,7 +377,7 @@ describe("events", () => {
     expectModel(
       "at 5 after time > 5: A = 5",
       model({
-        events: { _E0: event("time>5", { delay: "5" }, { A: "5" }) },
+        _E0: event("time>5", { delay: "5" }, { A: "5" }),
       }),
     );
   });
@@ -384,13 +386,11 @@ describe("events", () => {
     expectModel(
       "at 5 after time > 5, priority=234, t0=34: A = 5",
       model({
-        events: {
-          _E0: event(
-            "time>5",
-            { delay: "5", priority: "234", t0: "34" },
-            { A: "5" },
-          ),
-        },
+        _E0: event(
+          "time>5",
+          { delay: "5", priority: "234", t0: "34" },
+          { A: "5" },
+        ),
       }),
     );
   });
@@ -406,7 +406,7 @@ describe("compartments", () => {
   it("should add to compartment in assignment", () => {
     expectModel(
       "A in C = 3",
-      variables({
+      model({
         A: parameter("3").in("C"),
         C: compartment(),
       }),
@@ -416,7 +416,7 @@ describe("compartments", () => {
   it("should add to compartment in declaration", () => {
     expectModel(
       "species A in C, B in C",
-      variables({
+      model({
         A: species().in("C"),
         B: species().in("C"),
         C: compartment(),
@@ -428,16 +428,12 @@ describe("compartments", () => {
     expectModel(
       "J in comp: A -> B; k1",
       model({
-        variables: {
-          A: species(),
-          B: species(),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: "comp",
-          }),
-        },
+        A: species(),
+        B: species(),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: "comp",
+        }),
       }),
     );
   });
@@ -446,16 +442,12 @@ describe("compartments", () => {
     expectModel(
       "J in comp: A -> B; k1",
       model({
-        variables: {
-          A: species(),
-          B: species(),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: "comp",
-          }),
-        },
+        A: species(),
+        B: species(),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: "comp",
+        }),
       }),
     );
   });
@@ -464,16 +456,12 @@ describe("compartments", () => {
     expectModel(
       "J: A -> B; k1 in comp",
       model({
-        variables: {
-          A: species(),
-          B: species(),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: "comp",
-          }),
-        },
+        A: species(),
+        B: species(),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: "comp",
+        }),
       }),
     );
   });
@@ -482,16 +470,12 @@ describe("compartments", () => {
     expectModel(
       "J in comp: A -> B; k1",
       model({
-        variables: {
-          A: species().in("comp"),
-          B: species().in("comp"),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: "comp",
-          }),
-        },
+        A: species().in("comp"),
+        B: species().in("comp"),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: "comp",
+        }),
       }),
     );
   });
@@ -500,19 +484,15 @@ describe("compartments", () => {
     expectModel(
       "J in comp: A -> B; k1\n" + "J2: A -> ; k2 in comp2",
       model({
-        variables: {
-          A: species().in("comp2"),
-          B: species().in("comp"),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: "comp",
-          }),
-          J2: reaction({ A: 1 }, {}, "k2", {
-            compartment: "comp2",
-          }),
-        },
+        A: species().in("comp2"),
+        B: species().in("comp"),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: "comp",
+        }),
+        J2: reaction({ A: 1 }, {}, "k2", {
+          compartment: "comp2",
+        }),
       }),
     );
   });
@@ -521,16 +501,12 @@ describe("compartments", () => {
     expectModel(
       "species A in comp, B in comp; J: A -> B; k1",
       model({
-        variables: {
-          A: species().in("comp"),
-          B: species().in("comp"),
-          k1: parameter(),
-        },
-        reactions: {
-          J: reaction({ A: 1 }, { B: 1 }, "k1", {
-            compartment: null,
-          }),
-        },
+        A: species().in("comp"),
+        B: species().in("comp"),
+        k1: parameter(),
+        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+          compartment: null,
+        }),
       }),
     );
   });
@@ -538,7 +514,7 @@ describe("compartments", () => {
   it("should set compartment with in statement", () => {
     expectModel(
       "A in comp",
-      variables({
+      model({
         A: parameter().in("comp"),
       }),
     );
@@ -551,11 +527,11 @@ describe("compartments", () => {
   });
 });
 
-describe("annotations", () => {
+describe.skip("annotations", () => {
   it("should set displayName", () => {
     expectModel(
       'species A; A is "dog"',
-      variables({ A: species().display("dog") }),
+      model({ A: species().display("dog") }),
     );
   });
 

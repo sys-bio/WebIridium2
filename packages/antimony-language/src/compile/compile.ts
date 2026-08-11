@@ -51,7 +51,9 @@ export const compileToIridium = (
 
   const reactions: IridiumReaction<Metadata>[] = [];
   const reactionInvolvedVariables = new Set<string>();
-  for (const [name, reaction] of mainModel.reactions) {
+  for (const [name, reaction] of mainModel.objects) {
+    if (reaction.kind !== "reaction") continue;
+
     let rate: IridiumExpression<Metadata>;
 
     if (reaction.rate) {
@@ -63,7 +65,9 @@ export const compileToIridium = (
     const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
-      if (mainModel.variables.get(reactant.name)?.isConst) continue;
+      const variable = mainModel.objects.get(reactant.name);
+      if (variable && variable.kind === "variable" && variable.isConst)
+        continue;
       reactionInvolvedVariables.add(reactant.name);
       reactants.push(reactant);
     }
@@ -71,7 +75,9 @@ export const compileToIridium = (
     const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
-      if (mainModel.variables.get(product.name)?.isConst) continue;
+      const variable = mainModel.objects.get(product.name);
+      if (variable && variable.kind === "variable" && variable.isConst)
+        continue;
       reactionInvolvedVariables.add(product.name);
       products.push(product);
     }
@@ -87,11 +93,13 @@ export const compileToIridium = (
   const variables: IridiumVariable<Metadata>[] = [];
   const compartments: Map<string, string[]> = new Map();
 
-  for (const [name, variable] of mainModel.variables) {
-    if (variable.kind === "species") {
+  for (const [name, variable] of mainModel.objects) {
+    if (variable.kind !== "variable") continue;
+
+    if (variable.variableKind === "species") {
       if (
         variable.assignment === undefined ||
-        variable.assignment?.kind === "set"
+        variable.assignment?.kind === "initial"
       ) {
         if (reactionInvolvedVariables.has(name)) {
           variables.push({
@@ -155,8 +163,8 @@ export const compileToIridium = (
         });
       }
     } else if (
-      variable.kind === "parameter" ||
-      variable.kind === "compartment"
+      variable.variableKind === "parameter" ||
+      variable.variableKind === "compartment"
     ) {
       let value: IridiumVariableValue<Metadata>;
 
@@ -165,10 +173,10 @@ export const compileToIridium = (
           kind: "initial",
           initial: {
             kind: "number",
-            value: variable.kind === "compartment" ? 1 : 0,
+            value: variable.variableKind === "compartment" ? 1 : 0,
           },
         };
-      } else if (variable.assignment.kind === "set") {
+      } else if (variable.assignment.kind === "initial") {
         value = {
           kind: "initial",
           initial: compileFormula(variable.assignment.initial),
@@ -208,11 +216,13 @@ export const compileToIridium = (
 
   const events: IridiumEvent<Metadata>[] = [];
 
-  for (const [name, event] of mainModel.events) {
+  for (const [name, event] of mainModel.objects) {
+    if (event.kind !== "event") continue;
+
     const iridiumEvent: IridiumEvent<Metadata> = {
       name,
       trigger: compileFormula(event.trigger),
-      assignments: Array.from(event.assignments.entries()).map(
+      assignments: Array.from(Object.entries(event.assignments)).map(
         ([name, value]) => ({
           name,
           value: compileFormula(value),
