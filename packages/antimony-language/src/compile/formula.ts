@@ -7,6 +7,7 @@ import {
   LogicalContext,
   NameContext,
   NotContext,
+  StoichiometryContext,
   SubvariableContext,
   SumContext,
   VariableContext,
@@ -19,10 +20,7 @@ import {
   type ProductContext,
   type VarContext,
 } from "../grammar";
-import type {
-  IridiumExpression,
-  IridiumExpressionBinary,
-} from "iridium-simulator";
+import type { IridiumExpression } from "iridium-simulator";
 import type { Metadata } from "./metadata";
 import { CompileInvariantError } from "../errors";
 
@@ -34,6 +32,25 @@ export const compileFormula = (
   return formulaListener.getResult();
 };
 
+export const compileStoichiometry = (
+  stoichiometry: StoichiometryContext,
+): IridiumExpression<Metadata> => {
+  const number = stoichiometry.NUMBER();
+  if (number !== undefined) {
+    return {
+      kind: "number",
+      value: Number(number),
+      metadata: { tree: stoichiometry },
+    };
+  } else {
+    return {
+      kind: "variable",
+      name: getVariableName(stoichiometry.variable()!),
+      metadata: { tree: stoichiometry },
+    };
+  }
+};
+
 const getVariableName = (ctx: VariableContext): string => {
   if (ctx instanceof NameContext) {
     return ctx.NAME().text;
@@ -43,20 +60,6 @@ const getVariableName = (ctx: VariableContext): string => {
     return getVariableName(ctx.variable());
   }
   throw new CompileInvariantError("Unknown variable.");
-};
-
-const isComparisonExpression = (
-  expr: IridiumExpression,
-): expr is IridiumExpressionBinary => {
-  return (
-    expr.kind === "binary" &&
-    (expr.op === "eq" ||
-      expr.op === "neq" ||
-      expr.op === "lt" ||
-      expr.op === "le" ||
-      expr.op === "gt" ||
-      expr.op == "ge")
-  );
 };
 
 const unreachable = (message: string): never => {

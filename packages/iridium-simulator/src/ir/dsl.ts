@@ -96,8 +96,8 @@ export const parameter = <T = unknown>(
 };
 
 export const reaction = <T = unknown>(
-  reactants: { [name: string]: number },
-  products: { [name: string]: number },
+  reactants: { [name: string]: number | IridiumExpression<T> },
+  products: { [name: string]: number | IridiumExpression<T> },
   rate: DslExpression,
   metadata?: T,
 ): DslReaction => {
@@ -105,11 +105,23 @@ export const reaction = <T = unknown>(
   const outProducts: IridiumReactionTerm<T>[] = [];
 
   for (const [name, stoichiometry] of Object.entries(reactants)) {
-    outReactants.push({ name, stoichiometry });
+    outReactants.push({
+      name,
+      stoichiometry:
+        typeof stoichiometry === "number"
+          ? { kind: "number", value: stoichiometry }
+          : stoichiometry,
+    });
   }
 
   for (const [name, stoichiometry] of Object.entries(products)) {
-    outProducts.push({ name, stoichiometry });
+    outProducts.push({
+      name,
+      stoichiometry:
+        typeof stoichiometry === "number"
+          ? { kind: "number", value: stoichiometry }
+          : stoichiometry,
+    });
   }
 
   return {

@@ -1,13 +1,14 @@
 import { ValType, OpCode } from "./codes";
 import Emitter from "./Emitter";
 import { FunctionTable, LocalsSymbolTable } from "./symbolTables.ts";
-import { getAssignmentOrder } from "./evaluate";
+import { getAssignmentOrder, tryEvaluateStoichiometry } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
 import type { Compilation } from "./Compilation.ts";
 import { Scope } from "./Scope.ts";
 import type { IridiumVariable, IridiumVariableValue } from "../ir/model.ts";
 import { emitExpression } from "./expression.ts";
+import type { IridiumExpression } from "../ir/ast.ts";
 
 const YDOT_PTR_PARAM = "ydot[]";
 
@@ -112,17 +113,42 @@ export const compileRhs = (
 
   // assign to ydot
 
-  const involvedReactions: Map<string, Map<string, number>> = new Map();
+  const involvedReactions: Map<
+    string,
+    Map<string, IridiumExpression>
+  > = new Map();
+
+  const mergeMapWithAdd = (
+    map: Map<string, IridiumExpression>,
+    name: string,
+    expr: IridiumExpression,
+  ) => {
+    if (map.has(name)) {
+      map.set(name, {
+        kind: "binary",
+        op: "add",
+        left: map.get(name)!,
+        right: expr,
+      });
+    } else {
+      map.set(name, expr);
+    }
+  };
 
   for (const reaction of reactions.values()) {
     for (const reactant of reaction.reactants) {
       const reactantMap = involvedReactions.get(reactant.name);
+      const stoichExpr: IridiumExpression = {
+        kind: "unary",
+        op: "neg",
+        expr: reactant.stoichiometry,
+      };
       if (reactantMap) {
-        reactantMap.set(reaction.name, -reactant.stoichiometry);
+        mergeMapWithAdd(reactantMap, reaction.name, stoichExpr);
       } else {
         involvedReactions.set(
           reactant.name,
-          new Map([[reaction.name, -reactant.stoichiometry]]),
+          new Map([[reaction.name, stoichExpr]]),
         );
       }
     }
@@ -130,10 +156,7 @@ export const compileRhs = (
     for (const product of reaction.products) {
       const productMap = involvedReactions.get(product.name);
       if (productMap) {
-        productMap.set(
-          reaction.name,
-          (productMap.get(reaction.name) ?? 0) + product.stoichiometry,
-        );
+        mergeMapWithAdd(productMap, reaction.name, product.stoichiometry);
       } else {
         involvedReactions.set(
           product.name,
@@ -151,18 +174,25 @@ export const compileRhs = (
 
     if (reactions) {
       let isFirst = true;
-      for (const [reaction, stoichiometry] of reactions) {
-        if (stoichiometry === 0) continue;
+      for (const [reaction, stoichExpr] of reactions) {
+        const constStoich = tryEvaluateStoichiometry(stoichExpr);
+        if (constStoich === 0) continue;
 
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getLocal(reaction));
 
-        if (stoichiometry === -1) {
-          emitter.emitByte(OpCode.f64neg);
-        } else if (stoichiometry !== 1) {
-          emitter.emitByte(OpCode.f64const);
-          emitter.emitFloat64(stoichiometry);
+        if (constStoich === null) {
+          // can't be evaluated at compile-time, manually evaluate at runtime
+          emitExpression(stoichExpr, emitter, compilation, scope);
           emitter.emitByte(OpCode.f64mul);
+        } else {
+          if (constStoich === -1) {
+            emitter.emitByte(OpCode.f64neg);
+          } else if (constStoich !== 1) {
+            emitter.emitByte(OpCode.f64const);
+            emitter.emitFloat64(constStoich);
+            emitter.emitByte(OpCode.f64mul);
+          }
         }
 
         if (isFirst) {

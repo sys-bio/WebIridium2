@@ -1,4 +1,7 @@
-import { FormulaContext } from "../generated/AntimonyParser";
+import {
+  FormulaContext,
+  StoichiometryContext,
+} from "../generated/AntimonyParser";
 
 export type AntimonyObjectBase<Kind extends string> = {
   kind: Kind;
@@ -48,7 +51,7 @@ export type AntimonyVariable = AntimonyObjectBase<"variable"> & {
 
 export type AntimonyReactionTerm = {
   name: string;
-  stoichiometry: number;
+  stoichiometry?: StoichiometryContext;
 };
 
 export type AntimonyEvent = AntimonyObjectBase<"event"> & {

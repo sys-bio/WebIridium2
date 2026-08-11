@@ -143,9 +143,9 @@ describe("ir", () => {
       );
     });
 
-    it("should compile equallity and inequality", () => {
+    it("should compile equality and inequality", () => {
       expectCompilesTo(
-        "A = 1 == 3 != 5",
+        "A = (1 == 3) != 5",
         variables({
           A: parameter(
             expr.neq(expr.eq(expr.num(1), expr.num(3)), expr.num(5)),
@@ -167,6 +167,26 @@ describe("ir", () => {
               expr.or(
                 expr.ge(expr.num(1), expr.num(3)),
                 expr.le(expr.num(2), expr.num(5)),
+              ),
+            ),
+          ),
+        }),
+      );
+    });
+
+    it("should compile chained operators", () => {
+      expectCompilesTo(
+        "A = 1 > 3 == 1 + 2 != func(B)",
+        variables({
+          A: parameter(
+            expr.and(
+              expr.and(
+                expr.gt(expr.num(1), expr.num(3)),
+                expr.eq(expr.num(3), expr.add(expr.num(1), expr.num(2))),
+              ),
+              expr.neq(
+                expr.add(expr.num(1), expr.num(2)),
+                expr.call("func", [expr.var("B")]),
               ),
             ),
           ),
@@ -282,6 +302,30 @@ describe("ir", () => {
             },
             reactions: {
               J: reaction({ A: 1 }, {}, expr.var("k1")),
+            },
+          }),
+        );
+      });
+
+      it("should compile variable stoichiometries", () => {
+        expectCompilesTo(
+          "J: X1 A + X2 B -> X3 C; k1",
+          model({
+            variables: {
+              X1: parameter(0),
+              X2: parameter(0),
+              X3: parameter(0),
+              k1: parameter(0),
+              A: species(0),
+              B: species(0),
+              C: species(0),
+            },
+            reactions: {
+              J: reaction(
+                { A: expr.var("X1"), B: expr.var("X2") },
+                { C: expr.var("X3") },
+                expr.var("k1"),
+              ),
             },
           }),
         );

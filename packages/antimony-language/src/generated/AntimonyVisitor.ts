@@ -48,6 +48,7 @@ import { ReactionContext } from "./AntimonyParser";
 import { ReactionFormulaContext } from "./AntimonyParser";
 import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
+import { StoichiometryContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationHeadContext } from "./AntimonyParser";
@@ -412,6 +413,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitReactant?: (ctx: ReactantContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.stoichiometry`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitStoichiometry?: (ctx: StoichiometryContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.assignment`.

@@ -10,7 +10,7 @@ import {
   type RuntimeModel,
 } from "iridium-simulator";
 import type { AntimonyModel } from "../semantic/model";
-import { compileFormula } from "./formula";
+import { compileFormula, compileStoichiometry } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
 import { NameContext, type FormulaContext } from "../grammar";
@@ -69,7 +69,12 @@ export const compileToIridium = (
       if (variable && variable.kind === "variable" && variable.isConst)
         continue;
       reactionInvolvedVariables.add(reactant.name);
-      reactants.push(reactant);
+      reactants.push({
+        name: reactant.name,
+        stoichiometry: reactant.stoichiometry
+          ? compileStoichiometry(reactant.stoichiometry)
+          : { kind: "number", value: 1 },
+      });
     }
 
     const products: IridiumReactionTerm<Metadata>[] = [];
@@ -79,7 +84,12 @@ export const compileToIridium = (
       if (variable && variable.kind === "variable" && variable.isConst)
         continue;
       reactionInvolvedVariables.add(product.name);
-      products.push(product);
+      products.push({
+        name: product.name,
+        stoichiometry: product.stoichiometry
+          ? compileStoichiometry(product.stoichiometry)
+          : { kind: "number", value: 1 },
+      });
     }
 
     reactions.push({

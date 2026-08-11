@@ -12,9 +12,11 @@ import {
 import { CompileModelError } from "./errors.ts";
 import { Compilation } from "./Compilation.ts";
 import {
+  visitExpression,
   walkExpression,
   type IridiumExpression,
   type IridiumExpressionListener,
+  type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
 import { compileFunctions, getReferencedFunctions } from "./compile.ts";
 import { Scope } from "./Scope.ts";
@@ -266,4 +268,63 @@ export const getAssignmentOrder = (
   }
 
   return order;
+};
+
+/**
+ * Will evaluate a stoichiometry expression, returning a number if it can be done
+ * at compile-time, or null if not.
+ */
+export const tryEvaluateStoichiometry = (
+  expr: IridiumExpression,
+): number | null => {
+  try {
+    const visitor: IridiumExpressionVisitor<number> = {
+      visitBinary({ op, left, right }) {
+        switch (op) {
+          case "add":
+            return (
+              visitExpression(left, visitor) + visitExpression(right, visitor)
+            );
+          case "sub":
+            return (
+              visitExpression(left, visitor) - visitExpression(right, visitor)
+            );
+          case "mul":
+            return (
+              visitExpression(left, visitor) * visitExpression(right, visitor)
+            );
+          case "div":
+            return (
+              visitExpression(left, visitor) / visitExpression(right, visitor)
+            );
+          case "mod":
+            // TODO: is this the correct behavior for negatives?
+            return (
+              visitExpression(left, visitor) % visitExpression(right, visitor)
+            );
+          case "pow":
+            return (
+              visitExpression(left, visitor) ^ visitExpression(right, visitor)
+            );
+          default:
+            throw new Error("Unsupported op:" + op);
+        }
+      },
+      visitNumber({ value }) {
+        return value;
+      },
+      visitUnary({ op, expr }) {
+        switch (op) {
+          case "neg":
+            return -visitExpression(expr, visitor);
+          default:
+            throw new Error("Unsupported op:" + op);
+        }
+      },
+    };
+
+    return visitExpression(expr, visitor);
+  } catch {
+    return null;
+  }
 };

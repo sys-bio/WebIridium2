@@ -58,7 +58,8 @@ reactionFormula : left=reactantList? ARROW right=reactantList
                 | left=reactantList ARROW right=reactantList?
                 ;
 reactantList : reactant ('+' reactant)*;
-reactant : NUMBER? variable;
+reactant : stoichiometry? variable;
+stoichiometry : NUMBER | variable;
 
 assignment : variable inCompartment? mod=('\'' | ':')? '=' formula?;
 

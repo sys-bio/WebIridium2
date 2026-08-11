@@ -32,7 +32,7 @@ export type IridiumCompartment = {
 
 export type IridiumReactionTerm<Metadata = unknown> = {
   name: string;
-  stoichiometry: number;
+  stoichiometry: IridiumExpression<Metadata>;
   metadata?: Metadata;
 };
 

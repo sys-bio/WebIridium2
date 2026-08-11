@@ -15,6 +15,7 @@ import {
   NameLabelContext,
   ReactantListContext,
   ReactionContext,
+  StoichiometryContext,
   StringContext,
   SubvariableContext,
   VarContext,
@@ -466,10 +467,23 @@ export class DeriveModelListener implements AntimonyListener {
 
       terms.push({
         name: object.name,
-        stoichiometry: Number(reactant.NUMBER()?.text ?? "1"),
+        stoichiometry: reactant.stoichiometry(),
       });
     }
     return terms;
+  }
+
+  enterStoichiometry(ctx: StoichiometryContext): void {
+    const variable = ctx.variable();
+    if (variable) {
+      const object = this.#getOrCreateObject(variable, undefined);
+      if (object && object.kind !== "variable") {
+        this.#reportError(
+          `${object.name} of type ${object.kind} cannot be used as a stoichiometry.`,
+          ctx,
+        );
+      }
+    }
   }
 
   enterReaction(ctx: ReactionContext): void {

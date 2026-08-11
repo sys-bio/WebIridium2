@@ -19,7 +19,7 @@ const UNSUPPORTED_TAGS = [
   "RandomEventExecution",
 ];
 const SKIP_CASES = new Set([
-  998, // This one doesn't work because Antimony doesn't distinguish between initialAmount and initialConcentration (it always assumes initialAmount)
+  998, // This one doesn't work because Antimony has a bug where it does not respect substanceOnly when considering initialAmount/initialConcentration (maybe???)
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
