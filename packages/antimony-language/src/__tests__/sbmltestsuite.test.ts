@@ -19,8 +19,8 @@ const UNSUPPORTED_TAGS = [
   "ConversionFactors",
   "HasOnlySubstanceUnits",
   "NoMathML",
-
-  // NOT YET IMPLEMENTED
+];
+const WIP_TAGS = [
   "CSymbolRateOf",
   "comp:ModelDefinition",
   "comp:Port",
@@ -36,7 +36,7 @@ const SKIP_CASES = new Set<number>([
   1820, 1821,
 
   // These ones are converted incorrectly since libantimony seems to not handle
-  // passing constants as paramters correctly to user-defined functions correctly (?)
+  // passing constants as parameters to user-defined functions correctly (?)
   1486, 1490, 1491,
 ]);
 
@@ -82,11 +82,12 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
   const tags = parseTags(code as string);
   if (
     UNSUPPORTED_TAGS.some((t) => tags.includes(t)) ||
+    WIP_TAGS.some((t) => tags.includes(t)) ||
     SKIP_CASES.has(modelNumber)
   ) {
     await appendResult({
       number: modelNumber,
-      pass: "skip",
+      pass: WIP_TAGS.some((t) => tags.includes(t)) ? "wip" : "skip",
       timestamp: new Date().toISOString(),
     });
     continue;

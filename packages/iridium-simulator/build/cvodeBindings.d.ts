@@ -18,21 +18,21 @@ export interface ClassHandle {
   clone(): this;
 }
 export interface Model extends ClassHandle {
-  ResetState(): void;
-  DumpStats(): void;
   num_variables(): number;
+  ResetState(): void;
   SetYValue(_0: number, _1: number): void;
   SetPValue(_0: number, _1: number): void;
   SetAbsoluteToleranceFactor(_0: number): void;
   SetRelativeTolerance(_0: number): void;
+  DumpStats(): void;
   SimulateTimeCourse(_0: number, _1: number, _2: number): Float64Array;
 }
 
 export interface DoubleVector extends ClassHandle, Iterable<number> {
-  size(): number;
-  get(_0: number): number | undefined;
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
+  size(): number;
+  get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
 }
 
@@ -42,14 +42,6 @@ export interface IntVector extends ClassHandle, Iterable<number> {
   size(): number;
   get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
-}
-
-export interface EventInfoVector extends ClassHandle, Iterable<EventInfo> {
-  size(): number;
-  get(_0: number): EventInfo | undefined;
-  push_back(_0: EventInfo): void;
-  resize(_0: number, _1: EventInfo): void;
-  set(_0: number, _1: EventInfo): boolean;
 }
 
 export type EventInfo = {
@@ -65,6 +57,14 @@ export type EventInfo = {
   get_assignments_fn: number,
   set_assignments_fn: number
 };
+
+export interface EventInfoVector extends ClassHandle, Iterable<EventInfo> {
+  push_back(_0: EventInfo): void;
+  resize(_0: number, _1: EventInfo): void;
+  size(): number;
+  get(_0: number): EventInfo | undefined;
+  set(_0: number, _1: EventInfo): boolean;
+}
 
 export type EventParams = {
   event_info: EventInfoVector,

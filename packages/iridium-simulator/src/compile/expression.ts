@@ -98,7 +98,7 @@ export const emitExpression = (
           break;
         case "mod":
           emitter.emitCallOp(scope.functionTable.get(MOD_RESERVED_NAME));
-          break
+          break;
         case "pow":
           emitter.emitCallOp(scope.functionTable.get(POW_RESERVED_NAME));
           break;

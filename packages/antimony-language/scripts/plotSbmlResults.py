@@ -44,6 +44,7 @@ def build_matrices(results):
         number = r.get("number")
         pass_arr[number - 1] = (1 if pass_status == "pass" else
                       -1 if pass_status == "fail" else
+                      2 if pass_status == "wip" else
                       0)
     return pass_arr, max_number
 
@@ -64,8 +65,8 @@ def plot_heatmap(pass_arr, max_number, figsize=(10, 10)):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(1, 1, 1)
 
-    cmap = ListedColormap(["#d73027", "#CCCCCC", "#1a9850"])  # red, grey, green
-    im = ax.imshow(pass_grid, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1, aspect='equal')
+    cmap = ListedColormap(["#d73027", "#CCCCCC", "#1a9850", "#fcba03"])  # red, grey, green, yellow
+    im = ax.imshow(pass_grid, interpolation='nearest', cmap=cmap, vmin=-1, vmax=2, aspect='equal')
 
     ax.set_xticks([])
     ax.set_yticks([])
@@ -86,7 +87,7 @@ def plot_heatmap(pass_arr, max_number, figsize=(10, 10)):
     from matplotlib.patches import Patch
 
     legend_elems = [Patch(facecolor="#1a9850", edgecolor='k', label='Pass'), Patch(facecolor="#d73027", edgecolor='k', label='Fail'),
-                    Patch(facecolor="#CCCCCC", edgecolor="k", label="Skip")]
+                    Patch(facecolor="#CCCCCC", edgecolor="k", label="Skip"), Patch(facecolor="#fcba03", edgecolor="k", label="Not Yet Implemented")]
     ax.legend(handles=legend_elems, loc='upper right', fontsize=8)
 
     plt.tight_layout(rect=[0, 0, 1, 0.96])
