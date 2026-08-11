@@ -20,6 +20,8 @@ import { CompileError } from "./errors";
 import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
 
+const FLAG_USE_EVENT_STATE_FOR_PIECEWISE = false;
+
 export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   if (op === "ge") {
     emitter.emitByte(OpCode.f64ge);
@@ -138,7 +140,7 @@ export const emitExpression = (
           return;
         }
 
-        if (handlePiecewiseWithEvents) {
+        if (handlePiecewiseWithEvents && FLAG_USE_EVENT_STATE_FOR_PIECEWISE) {
           let i = 0;
           for (; i + 2 < expr.args.length; i += 2) {
             const branch = expr.args[i];
@@ -255,6 +257,42 @@ export const emitExpression = (
           }
 
           emitter.emitByte(OpCode.f64convert_u_i32);
+        }
+      } else if (expr.name === "plus") {
+        if (expr.args.length === 0) {
+          emitter.emitF64ConstOp(0);
+        } else {
+          for (let i = 0; i < expr.args.length; i++) {
+            visitExpression(expr.args[i], visitor);
+            if (i > 0) {
+              emitter.emitByte(OpCode.f64add);
+            }
+          }
+        }
+      } else if (expr.name === "times") {
+        if (expr.args.length === 0) {
+          emitter.emitF64ConstOp(1);
+        } else {
+          for (let i = 0; i < expr.args.length; i++) {
+            visitExpression(expr.args[i], visitor);
+            if (i > 0) {
+              emitter.emitByte(OpCode.f64mul);
+            }
+          }
+        }
+      } else if (expr.name === "max") {
+        for (let i = 0; i < expr.args.length; i++) {
+          visitExpression(expr.args[i], visitor);
+          if (i > 0) {
+            emitter.emitByte(OpCode.f64max);
+          }
+        }
+      } else if (expr.name === "min") {
+        for (let i = 0; i < expr.args.length; i++) {
+          visitExpression(expr.args[i], visitor);
+          if (i > 0) {
+            emitter.emitByte(OpCode.f64min);
+          }
         }
       } else {
         for (const arg of expr.args) {

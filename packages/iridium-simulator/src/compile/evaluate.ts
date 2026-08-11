@@ -31,6 +31,7 @@ import { emitExpression } from "./expression.ts";
 import Emitter from "./Emitter.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants.ts";
 import { WASM_PAGE_SIZE } from "./wasm.ts";
+import type { IridiumReaction } from "../ir/model.ts";
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -44,6 +45,7 @@ export const evaluateInitialValues = async (
   compilation: Compilation,
 ): Promise<Map<string, number>> => {
   const assignments = new Map<string, IridiumExpression>();
+
   for (const variable of compilation.variables.values()) {
     if (
       variable.value.kind === "initial" ||
@@ -55,9 +57,41 @@ export const evaluateInitialValues = async (
       assignments.set(variable.name, variable.value.assignment);
     }
   }
-  const evalOrder = getAssignmentOrder(assignments);
 
-  return await evaluateFromOrdering(compilation, assignments, evalOrder);
+  // Reaction names refer to their reaction rate.
+  // If a reaction rate is referred to in any of the initial assignments
+  // we need to make sure it is evaluated (otherwise it's fine to ignore).
+  for (const expr of assignments.values()) {
+    for (const reaction of getReferencedReactions(compilation, expr)) {
+      assignments.set(reaction.name, reaction.rate);
+    }
+  }
+
+  return await evaluateFromOrdering(
+    compilation,
+    assignments,
+    getAssignmentOrder(assignments),
+  );
+};
+
+/**
+ * Returns any reaction names referred to in an expression
+ */
+const getReferencedReactions = (
+  compilation: Compilation,
+  expr: IridiumExpression,
+): IridiumReaction[] => {
+  const reactions: IridiumReaction[] = [];
+  const listener: IridiumExpressionListener = {
+    afterVariable({ name }) {
+      const reaction = compilation.reactions.get(name);
+      if (reaction) {
+        reactions.push(reaction);
+      }
+    },
+  };
+  walkExpression(expr, listener);
+  return reactions;
 };
 
 const EVALUATE_NAME = "evaluateInitialValues";

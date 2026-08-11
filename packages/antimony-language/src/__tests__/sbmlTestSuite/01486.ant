@@ -11,7 +11,7 @@ model *case01486()
   P5 := piecewise(2, 1 < 0.5, 3);
   P6 := piecewise(2, 1 <= 0.5, 3);
   P7 := piecewise(2, P1 == y, 3);
-  P8 := piecewise(2, P1!= y, 3);
+  P8 := piecewise(2, P1 != y, 3);
   P9 := factorial(4);
   P10 := piecewise(2, x && y, 3);
   P11 := piecewise(2, x || y, 3);

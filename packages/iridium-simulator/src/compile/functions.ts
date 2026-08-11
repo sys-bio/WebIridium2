@@ -147,32 +147,6 @@ const builtinFunctionDefinitions: {
     name: "abs",
     emit: (emitter) => emitter.emitByte(OpCode.f64abs),
   },
-  sqrt: {
-    kind: "inline",
-    name: "sqrt",
-    emit: (emitter) => emitter.emitByte(OpCode.f64sqrt),
-  },
-  ln: {
-    kind: "import",
-    name: "ln",
-    params: [ValType.f64],
-    results: [ValType.f64],
-    js: Math.log,
-  },
-  log10: {
-    kind: "import",
-    name: "log10",
-    params: [ValType.f64],
-    results: [ValType.f64],
-    js: Math.log10,
-  },
-  exp: {
-    kind: "import",
-    name: "exp",
-    params: [ValType.f64],
-    results: [ValType.f64],
-    js: Math.exp,
-  },
   ceil: {
     kind: "inline",
     name: "ceil",
@@ -180,12 +154,12 @@ const builtinFunctionDefinitions: {
       emitter.emitByte(OpCode.f64ceil);
     },
   },
-  floor: {
-    kind: "inline",
-    name: "floor",
-    emit: (emitter) => {
-      emitter.emitByte(OpCode.f64floor);
-    },
+  exp: {
+    kind: "import",
+    name: "exp",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.exp,
   },
   factorial: {
     kind: "compile",
@@ -246,6 +220,80 @@ const builtinFunctionDefinitions: {
 
       return emitter.getOutput();
     },
+  },
+  floor: {
+    kind: "inline",
+    name: "floor",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64floor);
+    },
+  },
+  ln: {
+    kind: "import",
+    name: "ln",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.log,
+  },
+  log10: {
+    kind: "import",
+    name: "log10",
+    params: [ValType.f64],
+    results: [ValType.f64],
+    js: Math.log10,
+  },
+  quotient: {
+    kind: "inline",
+    name: "quotient",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64div);
+      emitter.emitByte(OpCode.f64floor);
+    },
+  },
+  rem: {
+    kind: "compile",
+    name: "rem",
+    isExported: false,
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: (_functionTable) => {
+      const emitter = new Emitter();
+
+      emitter.emitListHeader(0);
+
+      const a = "a";
+      const b = "b";
+      const localsTable = new LocalsSymbolTable([a, b]);
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(a));
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(b));
+
+      emitter.emitByte(OpCode.f64div);
+      emitter.emitByte(OpCode.f64ceil);
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(a));
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(localsTable.getParam(b));
+
+      emitter.emitByte(OpCode.f64div);
+      emitter.emitByte(OpCode.f64floor);
+
+      emitter.emitByte(OpCode.f64sub);
+
+      emitter.emitByte(OpCode.end);
+
+      return emitter.getOutput();
+    },
+  },
+  sqrt: {
+    kind: "inline",
+    name: "sqrt",
+    emit: (emitter) => emitter.emitByte(OpCode.f64sqrt),
   },
   not: {
     kind: "inline",

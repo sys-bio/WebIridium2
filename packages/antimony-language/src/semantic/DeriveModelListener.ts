@@ -537,8 +537,12 @@ export class DeriveModelListener implements AntimonyListener {
   }
 
   enterEvent(ctx: EventContext): void {
+    // It's safe to ignore events with no assignments since they have no effect
+    const assignmentsCtx = ctx.eventAssignments();
+    if (!assignmentsCtx) return;
+
     const assignments: Record<string, FormulaContext> = {};
-    for (const assignment of ctx.eventAssignments().eventAssignment()) {
+    for (const assignment of assignmentsCtx.eventAssignment()) {
       const variable = this.#getOrCreateObject(
         assignment.variable(),
         undefined,

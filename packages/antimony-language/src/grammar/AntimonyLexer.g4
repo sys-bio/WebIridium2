@@ -21,7 +21,7 @@ DECL_WORD      : 'species'
 
 NAME : [a-zA-Z_]([a-zA-Z0-9_])*;
 
-NUMBER                   : [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?
+NUMBER                   : '-'? [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?
                          | NUMBER_FRACTION NUMBER_EXPONENT?
                          ;
 // It is allowed to just put something like '10.'
@@ -32,7 +32,7 @@ ARROW       : '->' | '=>';
 
 // These are pretty much arrows, but they also have some different semantics (not sure what exactly)
 // See this: https://tellurium.readthedocs.io/en/latest/antimony.html#interactions
-INTERACTION : '-|' | '-o' | '-(';
+INTERACTION : '-|' | '-o'; // | '-(' this last one doesn't work because it can get confused by -(a + b) where -( will be seen as its own token
 DASHES      : '--';
 COMPARE     : '>=' | '<=' | '>' | '<' | '==' | '!=';
 LOGICAL     : '&&' | '||';

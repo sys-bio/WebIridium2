@@ -9,17 +9,35 @@ import {
 import { promises as fs } from "fs";
 import path from "path";
 
-const CUTOFF = 2000;
 const UNSUPPORTED_TAGS = [
   "AlgebraicRule",
   "FastReaction",
-  "ConversionFactors",
-  "CSymbolRateOf",
   "CSymbolDelay",
   "RandomEventExecution",
+
+  // NEED TO TEST SEPARATELY (not fully converted by libantimony)
+  "ConversionFactors",
+  "HasOnlySubstanceUnits",
+  "NoMathML",
+
+  // NOT YET IMPLEMENTED
+  "CSymbolRateOf",
+  "comp:ModelDefinition",
+  "comp:Port",
+  "comp:ReplacedElement",
+  "comp:Submodel",
+  "comp:SubmodelOutput",
 ];
-const SKIP_CASES = new Set([
-  998, // This one doesn't work because Antimony has a bug where it does not respect substanceOnly when considering initialAmount/initialConcentration (maybe???)
+const SKIP_CASES = new Set<number>([
+  // These test case create variables with the same names as some constants.
+  // libantimony adds an underscore at the end. Expected output expects them
+  // without the underscore, so the test runner fails.
+  1761, 1762, 1763, 1810, 1811, 1812, 1813, 1814, 1815, 1816, 1817, 1818, 1819,
+  1820, 1821,
+
+  // These ones are converted incorrectly since libantimony seems to not handle
+  // passing constants as paramters correctly to user-defined functions correctly (?)
+  1486, 1490, 1491,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
@@ -62,9 +80,6 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
   const modelName = fileName.replace(".ant", "");
   const modelNumber = parseInt(modelName.match(/\d+/)?.[0]!)!;
   const tags = parseTags(code as string);
-  if (modelNumber > CUTOFF) {
-    continue;
-  }
   if (
     UNSUPPORTED_TAGS.some((t) => tags.includes(t)) ||
     SKIP_CASES.has(modelNumber)

@@ -61,6 +61,11 @@ def main(filter_str: str):
     header_exp, data_exp = read_csv(expected_csv)
     header_our, data_our = read_csv(our_csv)
 
+    if "Time" in header_exp:
+        header_exp[header_exp.index("Time")] = "time"
+    if "Time" in header_exp:
+        header_our[header_our.index("Time")] = "time"
+
     # Align columns by header intersection (only columns present in both files)
     common_cols = [h for h in header_exp if h in header_our]
     if len(common_cols) <= 1:
@@ -112,8 +117,8 @@ def main(filter_str: str):
         axes[1].plot(time_exp, our_vals, label=col_name, color=color)
         axes[2].plot(time_exp, diff, label=col_name, color=color, linestyle="--")
 
-    axes[0].set_title("RoadRunner")
-    axes[1].set_title("Iridium")
+    axes[0].set_title("Expected")
+    axes[1].set_title("Got")
     axes[2].set_title("Difference")
     try:
         fig.canvas.manager.set_window_title(f"Comparison for {model_name}")

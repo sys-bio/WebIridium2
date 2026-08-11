@@ -72,8 +72,20 @@ export const builtinFunctions = {
     description: "Returns the absolute value.",
     arity: 1,
   },
-  sqrt: {
-    description: "Returns the square root.",
+  ceil: {
+    description: "Round up to the next integer.",
+    arity: 1,
+  },
+  exp: {
+    description: "The exponential function.",
+    arity: 1,
+  },
+  factorial: {
+    description: "The factorial function.",
+    arity: 1,
+  },
+  floor: {
+    description: "Round down to the next integer.",
     arity: 1,
   },
   ln: {
@@ -84,21 +96,35 @@ export const builtinFunctions = {
     description: "The logarithm function with base 10",
     arity: 1,
   },
-  exp: {
-    description: "The exponential function.",
+  max: {
+    description: "Returns the argument with the maximum value.",
+    arity: { min: 1 },
+  },
+  min: {
+    description: "Returns the argument with the minimum value.",
+    arity: { min: 1 },
+  },
+  plus: {
+    description: "Returns sum of its arguments.",
+    arity: { min: 0 },
+  },
+  quotient: {
+    description:
+      "Returns the integer quotient of dividing the first operand by the second.",
+    arity: 2,
+  },
+  rem: {
+    description:
+      "Returns the remainder from dividing the first operand by the second.",
+    arity: 2,
+  },
+  sqrt: {
+    description: "Returns the square root.",
     arity: 1,
   },
-  ceil: {
-    description: "Round up to the next integer.",
-    arity: 1,
-  },
-  floor: {
-    description: "Round down to the next integer.",
-    arity: 1,
-  },
-  factorial: {
-    description: "The factorial function.",
-    arity: 1,
+  times: {
+    description: "Returns product of its arguments",
+    arity: { min: 0 },
   },
 
   // Logical

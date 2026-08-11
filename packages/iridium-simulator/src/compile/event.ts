@@ -27,7 +27,7 @@ import {
   type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
 import { emitComparisonOperator, emitExpression } from "./expression.ts";
-import type { IridiumEvent } from "../ir/model.ts";
+import type { IridiumEvent, IridiumEventAssignment } from "../ir/model.ts";
 import type { RuntimeEvent, RuntimePieceEvent } from "../runtime/model.ts";
 import { builtinConstants } from "antimony-language/semantic/builtins";
 
@@ -976,7 +976,24 @@ const compileSetAssignments = (
 
   emitter.emitListHeader(0);
 
-  for (const { name, metadata } of event.assignments) {
+  // We need to assign to variables with compartments since if we update the compartment before, it will not be "simultaneous" as required by the spec.
+  // (see test case 1779 in the sbmltestsuite)
+  const first: IridiumEventAssignment[] = [];
+  const second: IridiumEventAssignment[] = [];
+  for (const assignment of event.assignments) {
+    const variable = compilation.variables.get(assignment.name)!;
+    const compartment = compilation.compartments.get(assignment.name);
+    if (!variable.hasSubstanceOnly && compartment) {
+      first.push(assignment);
+    } else {
+      second.push(assignment);
+    }
+  }
+
+  for (let i = 0; i < first.length + second.length; i++) {
+    const { name, metadata } =
+      i < first.length ? first[i] : second[i - first.length];
+
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(localsTable.getParam(Y_PARAM));

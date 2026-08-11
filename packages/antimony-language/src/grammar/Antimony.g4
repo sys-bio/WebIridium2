@@ -54,9 +54,7 @@ nameLabel     : NAME inCompartment? ':';
 
 // e.g "J1 in compartment1: 2 A + 4 B -> C; k1*20"
 reaction        : nameLabel? reactionFormula ';' formula? inCompartment?;
-reactionFormula : left=reactantList? ARROW right=reactantList
-                | left=reactantList ARROW right=reactantList?
-                ;
+reactionFormula : left=reactantList? ARROW right=reactantList?;
 reactantList : reactant ('+' reactant)*;
 reactant : stoichiometry? variable;
 stoichiometry : NUMBER | variable;
@@ -73,8 +71,8 @@ declarationTerm : assignment #declarationAssignment
                 | variable inCompartment? #declarationName
                 ;
 
-event            : nameLabel? AT trigger=formula eventOptions? ':' eventAssignments
-                 | nameLabel? AT delay=formula AFTER trigger=formula eventOptions? ':' eventAssignments
+event            : nameLabel? AT trigger=formula eventOptions? ':' eventAssignments?
+                 | nameLabel? AT delay=formula AFTER trigger=formula eventOptions? ':' eventAssignments?
                  ;
 eventOptions     : (',' eventOption)+;
 eventOption      : NAME '=' formula;

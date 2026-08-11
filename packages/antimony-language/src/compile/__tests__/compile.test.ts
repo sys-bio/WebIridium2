@@ -330,6 +330,22 @@ describe("ir", () => {
           }),
         );
       });
+
+      it("should not think -( is its own token", () => {
+        expectCompilesTo(
+          "J: A -> B; -(C)",
+          model({
+            variables: {
+              A: species(0),
+              B: species(0),
+              C: parameter(0),
+            },
+            reactions: {
+              J: reaction({ A: 1 }, { B: 1 }, expr.neg(expr.var("C"))),
+            },
+          }),
+        );
+      });
     });
 
     describe("events", () => {
