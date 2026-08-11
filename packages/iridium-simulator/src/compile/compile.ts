@@ -22,6 +22,7 @@ import {
   AND_RESERVED_NAME,
   OR_RESERVED_NAME,
   PIECEWISE_NAME,
+  MOD_RESERVED_NAME,
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
 import { Compilation } from "./Compilation.ts";
@@ -198,6 +199,8 @@ export const getReferencedFunctions = (
         referenced.add(AND_RESERVED_NAME);
       } else if (op === "or") {
         referenced.add(OR_RESERVED_NAME);
+      } else if (op === "mod") {
+        referenced.add(MOD_RESERVED_NAME);
       }
     },
   };

@@ -24,7 +24,7 @@ const INVALID_BOOLEAN_MESSAGE =
  *
  * @throws if the formula is neither exactly `true` or `false`
  */
-export const evaluateBoolean = (formula: FormulaContext): boolean => {
+const evaluateBoolean = (formula: FormulaContext): boolean => {
   if (formula.childCount !== 1) {
     throw new CompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
   }

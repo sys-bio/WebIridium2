@@ -24,7 +24,7 @@ import {
   predefinedFuncDefs,
   type ImportedFunction,
 } from "../compile/functions.ts";
-import CvodeBindingsWasmUrl from "../build/cvodeBindings.wasm?url";
+import CvodeBindingsWasmUrl from "../../build/cvodeBindings.wasm?url";
 import { IndexSymbolTable } from "../compile/symbolTables.ts";
 import type { RuntimeModel } from "./model.ts";
 import { TimeCourseOutput } from "./output.ts";

@@ -1,0 +1,31 @@
+species calc_pi = 0
+
+// These are used so we don't trigger a cascade limit.
+const max_steps = 9999
+current_steps = 0
+
+const n = 10000000
+// These have to be species or roadrunner won't see the events for some reason
+species i = 0
+species flipper1 = 0
+species flipper2 = 0
+
+at time >= 0, t0=false: flipper1 = 1
+
+at flipper1 == 1 && i < n && current_steps < max_steps:
+    flipper1 = 0,
+    flipper2 = 1,
+    i = i + 1,
+    current_steps = current_steps + 1,
+    calc_pi = calc_pi + 4 * ((i % 2 - 0.5) * -2) / (2 * i + 1)
+
+at flipper2 == 1 && i < n && current_steps < max_steps:
+    flipper1 = 1,
+    flipper2 = 0,
+    i = i + 1,
+    current_steps = current_steps + 1,
+    calc_pi = calc_pi + 4 * ((i % 2 - 0.5) * -2) / (2 * i + 1)
+
+at 0.000001 after current_steps == max_steps:
+    current_steps = 0
+

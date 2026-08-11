@@ -34,7 +34,7 @@ const SLIDER_CATEGORY_ORDER: Category[] = [
   "ODEs",
   "Floating Species",
   "Boundary Species",
-  "Compartment",
+  "Compartments",
 ];
 
 export interface SlidersPanelProps {

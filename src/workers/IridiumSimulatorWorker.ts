@@ -1,15 +1,20 @@
 import {
-  createCvodeWrapper,
-  type ModelSpec,
-  type CvodeWrapper,
+  createCvodeSimulator,
+  type RuntimeModel,
+  type CvodeSimulator,
 } from "iridium-simulator";
+import { deriveModels, type AntimonyModel } from "antimony-language/semantic";
 import type { Action, ErrorResult, Result } from "@/features/taskPool";
 import type { SimulateTimeCourseOptions } from "@/features/simulation/Simulator";
+import { compileToIridium } from "antimony-language/compile";
 import { compile } from "iridium-simulator";
 import { errorToDisplayString } from "@/features/formatUtils";
 
 export type IridiumCompileAction = Action<"compile", string>;
-export type IridiumCompileResult = Result<ModelSpec>;
+export type IridiumCompileResult = Result<{
+  antimonyModel: AntimonyModel;
+  runtimeModel: RuntimeModel;
+}>;
 
 export type IridiumTimeCourseAction = Action<
   "timeCourse",
@@ -24,11 +29,11 @@ export type IridiumSimulatorResult =
   | IridiumCompileResult
   | IridiumTimeCourseResult;
 
-let wrapperPromise: Promise<CvodeWrapper> | undefined;
+let wrapperPromise: Promise<CvodeSimulator> | undefined;
 
-const ensureWrapper = (): Promise<CvodeWrapper> => {
+const ensureWrapper = (): Promise<CvodeSimulator> => {
   if (!wrapperPromise) {
-    wrapperPromise = createCvodeWrapper();
+    wrapperPromise = createCvodeSimulator();
     return wrapperPromise;
   } else {
     return wrapperPromise;
@@ -63,13 +68,13 @@ const simulateTimeCourse = async ({
 
   // TODO: implement resetInitialConditions
 
-  const array = wrapper.simulate(
+  const output = wrapper.simulate(
     parameters.startTime,
     parameters.endTime,
     parameters.numberOfPoints,
   );
 
-  return array;
+  return output.buffer;
 };
 
 const wrapResult = <T>(action: Action, data: T): Result<T> => ({
@@ -81,15 +86,22 @@ self.onmessage = async (e: MessageEvent<unknown>) => {
   try {
     const action = e.data as IridiumSimulatorAction;
     if (action.internalState) {
-      await (await ensureWrapper()).setModel(action.internalState as ModelSpec);
+      await (
+        await ensureWrapper()
+      ).setModel(action.internalState as RuntimeModel);
     }
 
     switch (action.type) {
       case "compile": {
-        const spec = await compile(action.payload);
-        if (!spec) throw new Error("Unable to compile model.");
+        const antimonyModel = deriveModels(action.payload);
+        const iridiumModel = compileToIridium(antimonyModel);
+        const runtimeModel = await compile(iridiumModel);
+        if (!runtimeModel) throw new Error("Unable to compile model.");
 
-        self.postMessage(wrapResult(action, spec));
+        // TODO: we should actually pick the main model, not the first one
+        self.postMessage(
+          wrapResult(action, { antimonyModel: antimonyModel[0], runtimeModel }),
+        );
 
         break;
       }

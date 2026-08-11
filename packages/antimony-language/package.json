@@ -18,6 +18,7 @@
     "./lint": "./src/lint.ts",
     "./grammar": "./src/grammar.ts",
     "./errors": "./src/errors.ts",
+    "./compile": "./src/compile/compile.ts",
     "./semantic": "./src/semantic/semantic.ts",
     "./semantic/builtins": "./src/semantic/builtins.ts"
   }

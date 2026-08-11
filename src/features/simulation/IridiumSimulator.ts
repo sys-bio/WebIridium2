@@ -9,20 +9,21 @@ import {
   type ComputeSteadyStateOptions,
   type SteadyStateResult,
 } from "./Simulator";
-import { TIME_NAME, type ModelSpec } from "iridium-simulator";
+import {
+  TIME_NAME,
+  TimeCourseOutput,
+  type RuntimeModel,
+} from "iridium-simulator";
+import {
+  type AntimonyModel,
+  type AntimonyVariable,
+} from "antimony-language/semantic";
 import type {
   IridiumCompileAction,
   IridiumCompileResult,
   IridiumTimeCourseAction,
   IridiumTimeCourseResult,
 } from "@/workers/IridiumSimulatorWorker";
-import type { VariableSpec } from "iridium-simulator/src/modelSpec";
-
-const categoryNamesFromVariableKind = {
-  floating: "Floating Species",
-  boundary: "Boundary Species",
-  compartment: "Compartment",
-} as const;
 
 /** Adapter for the custom packages/iridium-simulator. */
 export class IridiumSimulator extends Simulator {
@@ -35,7 +36,7 @@ export class IridiumSimulator extends Simulator {
   #compiledModel?: {
     code: string;
     promise: Promise<{
-      spec: ModelSpec;
+      runtimeModel: RuntimeModel;
       variables: Variable[];
     }>;
   };
@@ -49,8 +50,32 @@ export class IridiumSimulator extends Simulator {
     });
   }
 
-  getVariablesFromSpec(spec: ModelSpec): Variable[] {
+  getVariablesFromAntimonyModel(
+    model: AntimonyModel,
+    runtimeModel: RuntimeModel,
+  ): Variable[] {
+    console.log(model);
     const variables: Variable[] = [];
+
+    const getVariableCategory = (v: AntimonyVariable): string => {
+      if (v.variableKind === "compartment") {
+        return "Compartments";
+      } else if (v.variableKind === "parameter") {
+        if (v?.assignment?.kind === "rate") {
+          return "ODEs";
+        } else {
+          return "Parameters";
+        }
+      } else if (v.variableKind === "species") {
+        if (v.isConst) {
+          return "Boundary Species";
+        } else {
+          return "Floating Species";
+        }
+      } else {
+        return "Unknown";
+      }
+    };
 
     variables.push({
       type: "normal",
@@ -59,62 +84,34 @@ export class IridiumSimulator extends Simulator {
       category: "Time",
     });
 
-    const getVariableCategory = (
-      v: VariableSpec,
-      parameterName: string,
-    ): string => {
-      if (v.kind === "parameter") {
-        return parameterName;
-      } else {
-        return categoryNamesFromVariableKind[v.kind];
-      }
-    };
-
-    for (const yVar of spec.y) {
-      if (yVar.initialValue) {
-        variables.push({
-          type: "settable",
-          defaultDisplayName: yVar.displayName ?? yVar.name,
-          name: yVar.name,
-          category: getVariableCategory(yVar, "ODEs"),
-          setName: yVar.name,
-          defaultValue: yVar.initialValue,
-        });
-      } else {
-        variables.push({
-          type: "normal",
-          defaultDisplayName: yVar.displayName ?? yVar.name,
-          name: yVar.name,
-          category: getVariableCategory(yVar, "ODEs"),
-        });
+    for (const runtimeVariable of [...runtimeModel.y, ...runtimeModel.p]) {
+      const object = model.objects.get(runtimeVariable.name)!;
+      if (object.kind === "variable") {
+        if (object?.assignment?.kind !== "rule") {
+          variables.push({
+            type: "settable",
+            setName: object.name,
+            defaultValue: runtimeVariable.initialValue,
+            defaultDisplayName: object.name,
+            name: object.name,
+            category: getVariableCategory(object),
+          });
+        } else {
+          variables.push({
+            type: "normal",
+            defaultDisplayName: object.name,
+            name: object.name,
+            category: getVariableCategory(object),
+          });
+        }
       }
     }
 
-    for (const pVar of spec.p) {
-      if (pVar.initialValue) {
-        variables.push({
-          type: "settable",
-          defaultDisplayName: pVar.displayName ?? pVar.name,
-          name: pVar.name,
-          category: getVariableCategory(pVar, "Parameters"),
-          setName: pVar.name,
-          defaultValue: pVar.initialValue,
-        });
-      } else {
-        variables.push({
-          type: "normal",
-          defaultDisplayName: pVar.displayName ?? pVar.name,
-          name: pVar.name,
-          category: getVariableCategory(pVar, "Parameters"),
-        });
-      }
-    }
-
-    for (const reaction of spec.reactions) {
+    for (const reactionName of runtimeModel.reactions) {
       variables.push({
         type: "normal",
-        defaultDisplayName: reaction,
-        name: reaction,
+        defaultDisplayName: reactionName,
+        name: reactionName,
         category: "Reaction Rates",
       });
     }
@@ -125,20 +122,24 @@ export class IridiumSimulator extends Simulator {
   async #compile(
     code: string,
     abortSignal?: AbortSignal,
-  ): Promise<{ spec: ModelSpec; variables: Variable[] }> {
+  ): Promise<{ runtimeModel: RuntimeModel; variables: Variable[] }> {
+    console.log("WHYYYYY");
     if (this.#compiledModel?.code === code) {
       return await this.#compiledModel.promise;
     } else {
-      const specPromise = this.#workerPool.runTask<
+      const modelPromise = this.#workerPool.runTask<
         IridiumCompileAction,
         IridiumCompileResult
       >("compile", code, undefined, abortSignal);
 
       this.#compiledModel = {
         code: code,
-        promise: specPromise.then((spec) => ({
-          spec: spec,
-          variables: this.getVariablesFromSpec(spec),
+        promise: modelPromise.then(({ antimonyModel, runtimeModel }) => ({
+          runtimeModel,
+          variables: this.getVariablesFromAntimonyModel(
+            antimonyModel,
+            runtimeModel,
+          ),
         })),
       };
 
@@ -158,35 +159,28 @@ export class IridiumSimulator extends Simulator {
     options: SimulateTimeCourseOptions,
     abortSignal?: AbortSignal,
   ): Promise<TimeCourseResult> {
-    const { spec } = await this.#compile(antimonyCode);
+    const { runtimeModel } = await this.#compile(antimonyCode);
     const array = await this.#workerPool.runTask<
       IridiumTimeCourseAction,
       IridiumTimeCourseResult
-    >("timeCourse", options, spec, abortSignal);
+    >("timeCourse", options, runtimeModel, abortSignal);
 
     // NOTE: this transformation is temporary until we update all simulators to use Flat64Array
     const columns = [];
-    const rows = options.parameters.numberOfPoints;
-    let col = 0;
 
+    const output = new TimeCourseOutput(runtimeModel, array);
     const titles = [
-      ...spec.y.map((v) => v.name),
-      ...spec.p.map((v) => v.name),
-      ...spec.reactions,
+      ...runtimeModel.y.map((v) => v.name),
+      ...runtimeModel.p.map((v) => v.name),
+      ...runtimeModel.reactions,
       TIME_NAME,
     ];
 
     for (const title of titles) {
-      const values: number[] = [];
-      const column = { title, values };
-
-      for (let i = 0; i < rows; i++) {
-        column.values[i] = array[col + i * titles.length];
-      }
-
-      columns.push(column);
-
-      col += 1;
+      columns.push({
+        title,
+        values: output.sliceColumn(title),
+      });
     }
 
     return {

@@ -18,8 +18,8 @@ export default tseslint.config(
       "src/vendor",
       "src/features/editor/language-handler",
       "packages/antimony-language/src/generated",
+      "packages/antimony-language/scripts",
       "packages/iridium-simulator/build",
-      "packages/iridium-simulator/scripts",
     ],
   },
   {

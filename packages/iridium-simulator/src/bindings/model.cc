@@ -54,7 +54,7 @@ int delegating_roots(double t, N_Vector y, double *gout, Model *model) {
 
 static double const kEpsilon = std::numeric_limits<double>::epsilon();
 
-static int const kMaxInvocationsInOneStep = 2048;
+static int const kMaxInvocationsInOneStep = 16777216;
 
 Model::Model(
     std::vector<double> y,

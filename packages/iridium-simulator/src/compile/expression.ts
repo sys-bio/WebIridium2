@@ -9,6 +9,7 @@ import type Emitter from "./Emitter";
 import type { Scope } from "./Scope";
 import {
   AND_RESERVED_NAME,
+  MOD_RESERVED_NAME,
   OR_RESERVED_NAME,
   PIECEWISE_NAME,
   POW_RESERVED_NAME,
@@ -96,9 +97,8 @@ export const emitExpression = (
           emitter.emitByte(OpCode.f64div);
           break;
         case "mod":
-          // TODO: `rem` is not available for floats in WASM. We will have to convert to int first.
-          //       How does roadrunner evaluate it?
-          throw new Error("TODO");
+          emitter.emitCallOp(scope.functionTable.get(MOD_RESERVED_NAME));
+          break
         case "pow":
           emitter.emitCallOp(scope.functionTable.get(POW_RESERVED_NAME));
           break;

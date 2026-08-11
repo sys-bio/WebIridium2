@@ -38,6 +38,7 @@ export const PIECEWISE_NAME = "piecewise";
 export const AND_RESERVED_NAME = "$reserved_and";
 export const OR_RESERVED_NAME = "$reserved_or";
 export const POW_RESERVED_NAME = "$reserved_pow";
+export const MOD_RESERVED_NAME = "$reserved_mod";
 
 const createReciprocal = (functionName: string) => {
   return (functionsTable: FunctionTable): Uint8Array => {
@@ -567,6 +568,28 @@ const otherFunctionDefinitionsList: WasmFunction[] = [
     compileBody: createBooleanFunction((emitter) =>
       emitter.emitByte(OpCode.i32or),
     ),
+  },
+  {
+    kind: "compile",
+    isExported: false,
+    depends: ["rem"],
+    name: MOD_RESERVED_NAME,
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    compileBody: (functionTable) => {
+      const emitter = new Emitter();
+      emitter.emitListHeader(0);
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(0);
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(1);
+
+      emitter.emitCallOp(functionTable.get("rem"));
+
+      emitter.emitByte(OpCode.end);
+      return emitter.getOutput();
+    },
   },
 ];
 

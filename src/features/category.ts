@@ -11,7 +11,7 @@ export const CATEGORY_ORDER = [
   "Rate of Changes",
   "Parameters",
   "ODEs",
-  "Compartment",
+  "Compartments",
   "Reaction Rates",
 ];
 
