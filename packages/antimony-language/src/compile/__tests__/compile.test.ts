@@ -8,6 +8,7 @@ import {
   parameter,
   reaction,
   type DslVariable,
+  func,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
 import { deriveModels } from "../../semantic/semantic";
@@ -43,8 +44,8 @@ const deleteMetadataFromArray = (arr: Record<string, unknown>[]): void => {
 };
 
 const compileToIr = (source: string): IridiumModel => {
-  const antimony = deriveModels(source);
-  const iridium = compileToIridium(antimony);
+  const { models, functions } = deriveModels(source);
+  const iridium = compileToIridium(models, functions);
   return iridium;
 };
 
@@ -276,6 +277,21 @@ describe("ir", () => {
     });
 
     describe("reactions", () => {
+      it("should compile use 1 as default stoichiometry", () => {
+        expectCompilesTo(
+          "J: A -> B; k1",
+          model({
+            variables: {
+              A: species(0),
+              B: species(0),
+            },
+            reactions: {
+              J: reaction({ A: 1 }, { B: 1 }, expr.var("k1")),
+            },
+          }),
+        );
+      });
+
       it("should compile stoichiometries", () => {
         expectCompilesTo(
           "J: 100 A -> 200 B; k1",
@@ -392,11 +408,39 @@ describe("ir", () => {
       });
     });
   });
+
+  describe("function definitions", () => {
+    it("should compile no parameters", () => {
+      expectCompilesTo(
+        "function test() 5 end",
+        model({
+          functions: {
+            a: func([], expr.num(5)),
+          },
+        }),
+      );
+    });
+
+    it("should compile 3 parameters", () => {
+      expectCompilesTo(
+        "function test(a, b, c) a + b + c end",
+        model({
+          functions: {
+            a: func(
+              [],
+              expr.add(expr.add(expr.var("a"), expr.var("b")), expr.var("c")),
+            ),
+          },
+        }),
+      );
+    });
+  });
 });
 
 describe("wasm", () => {
   it("should compile valid WASM", () => {
-    const ir = compileToIridium(deriveModels(defaultModel));
+    const { models, functions } = deriveModels(defaultModel);
+    const ir = compileToIridium(models, functions);
     const { bytecode } = compileIntermediate(ir);
 
     if (WRITE_BASIC_MODEL) {

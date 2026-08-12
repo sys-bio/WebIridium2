@@ -8,8 +8,9 @@ import {
   type IridiumEvent,
   type IridiumReactionTerm,
   type RuntimeModel,
+  type IridiumFunction,
 } from "iridium-simulator";
-import type { AntimonyModel } from "../semantic/model";
+import type { AntimonyFunction, AntimonyModel } from "../semantic/model";
 import { compileFormula, compileStoichiometry } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
@@ -45,6 +46,7 @@ const evaluateBoolean = (formula: FormulaContext): boolean => {
 
 export const compileToIridium = (
   models: AntimonyModel[],
+  functions: AntimonyFunction[],
 ): IridiumModel<Metadata> => {
   // TODO: handle multiple models
   const mainModel = models[0];
@@ -258,10 +260,20 @@ export const compileToIridium = (
     events.push(iridiumEvent);
   }
 
+  const iridiumFunctions: IridiumFunction<Metadata>[] = [];
+  for (const func of functions) {
+    iridiumFunctions.push({
+      name: func.name,
+      parameters: func.parameters,
+      body: compileFormula(func.body),
+    });
+  }
+
   return {
     variables,
     reactions,
     events,
+    functions: iridiumFunctions,
     compartments: Array.from(compartments.entries()).map(
       ([containerVariable, containedVariables]) => ({
         containerVariable,
@@ -272,7 +284,7 @@ export const compileToIridium = (
 };
 
 export const compile = async (source: string): Promise<RuntimeModel> => {
-  const models = deriveModels(source);
-  const ir = compileToIridium(models);
+  const { models, functions } = deriveModels(source);
+  const ir = compileToIridium(models, functions);
   return await compileIridium(ir);
 };

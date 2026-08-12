@@ -4,19 +4,22 @@ import type {
   IridiumVariable,
   IridiumReaction,
   IridiumReactionTerm,
+  IridiumFunction,
 } from "./model";
 import type { IridiumExpression } from "./ast";
 
 export type DslVariable = Omit<IridiumVariable, "name">;
 export type DslReaction = Omit<IridiumReaction, "name">;
 export type DslEvent = Omit<IridiumEvent, "name">;
+export type DslFunction = Omit<IridiumFunction, "name">;
 export type DslExpression = IridiumExpression;
 
 export const model = (parts: {
-  variables: { [name: string]: DslVariable };
+  variables?: { [name: string]: DslVariable };
   compartments?: { [name: string]: string[] };
   reactions?: { [name: string]: DslReaction };
   events?: { [name: string]: DslEvent };
+  functions?: { [name: string]: DslFunction };
 }): IridiumModel => {
   const model = {
     variables: Object.entries(parts?.variables ?? {}).map(([name, data]) => ({
@@ -37,6 +40,11 @@ export const model = (parts: {
     })),
 
     events: Object.entries(parts?.events ?? {}).map(([name, data]) => ({
+      name,
+      ...data,
+    })),
+
+    functions: Object.entries(parts?.functions ?? {}).map(([name, data]) => ({
       name,
       ...data,
     })),
@@ -155,6 +163,13 @@ export const event = <T = unknown>(
     isFromTrigger: true,
     ...options,
   };
+};
+
+export const func = (
+  parameters: string[],
+  body: DslExpression,
+): DslFunction => {
+  return { parameters, body };
 };
 
 export const expr = {

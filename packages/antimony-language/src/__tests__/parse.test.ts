@@ -134,7 +134,8 @@ describe("assignment", () => {
 
 describe("reaction", () => {
   itShouldErrorForAll({
-    missingBothSides: "->;k1",
+    // libantimony doesn't accept this as input, but it does as output
+    // missingBothSides: "->;k1",
   });
 
   itShouldSucceedForAll({
@@ -147,7 +148,8 @@ describe("reaction", () => {
 describe("event", () => {
   itShouldErrorForAll({
     extraComma: "at time > 5: A = 3,",
-    noAssignment: "at time > 5:",
+    // libantimony doesn't accept this as input, but it does as output
+    // noAssignment: "at time > 5:",
     missingColon: "at time > 5 A = 3",
     missingEnd: "at time > 5",
     rateRule: "at time > 5: A' = 5",
@@ -156,7 +158,8 @@ describe("event", () => {
     incorrectFormula3: "at (time > 30: A = 3",
     assignmentRule: "at time > 5: A := 5",
     missingDelay: "at 5 after: A = 5",
-    delayNoAssignment: "at 5 after 3:",
+    // libantimony doesn't accept this as input, but it does as output
+    // delayNoAssignment: "at 5 after 3:",
     delayNoAssignment2: "at 5 after:",
     optionExtraComma: "at dog > 5,: dog = 6",
     optionNoEquals: "at dog > 5, cat: dog = 6",
@@ -267,5 +270,25 @@ describe("in statement", () => {
   itShouldSucceedForAll({
     simple: "A in B",
     nested: "A.V in B.C",
+  });
+});
+
+describe("function definition", () => {
+  itShouldSucceedForAll({
+    oneParam: "function a(b)b end",
+    whitespace: "function a(b)\n\n\n\t\t   b\t\t\n\n\ end",
+    noParam: "function a() 5 end",
+    semicolons: "function a(b);b;end",
+    threeParam: "function a(b,d,e) b+d+e end",
+  });
+
+  itShouldErrorForAll({
+    noBody: "function a(b)end",
+    extraComma: "function a(b,)end",
+    extraComma2: "function a(b,c,)end",
+    noEnd: "function a(b)b",
+    noParameters: "function a a end",
+    noName: "function(a) a end",
+    functionInsideModel: "model A\nfunction a() 5 end\nend",
   });
 });

@@ -5,6 +5,7 @@ export type IridiumModel<Metadata = unknown> = {
   compartments: IridiumCompartment[];
   reactions: IridiumReaction<Metadata>[];
   events: IridiumEvent<Metadata>[];
+  functions: IridiumFunction<Metadata>[];
 };
 
 export type IridiumVariableValue<Metadata = unknown> =
@@ -60,4 +61,10 @@ export type IridiumEvent<Metadata = unknown> = {
   isPersistent: boolean;
   isFromTrigger: boolean;
   metadata?: Metadata;
+};
+
+export type IridiumFunction<Metadata = unknown> = {
+  name: string;
+  parameters: string[];
+  body: IridiumExpression<Metadata>;
 };

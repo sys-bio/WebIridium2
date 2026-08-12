@@ -1,6 +1,7 @@
 lexer grammar AntimonyTokens;
 
 MODEL     : 'model' | 'module';
+FUNCTION  : 'function';
 END       : 'end';
 IN        : 'in';
 AT        : 'at';

@@ -52,15 +52,15 @@ const stripContextsOnlyToText = (
 };
 
 const expectModels = (code: string, models: TestModel[]): void => {
-  const derived = deriveModels(code);
+  const { models: gotModels } = deriveModels(code);
 
-  expect(derived).toHaveLength(models.length);
+  expect(gotModels).toHaveLength(models.length);
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
 
     expect(
-      stripContextsOnlyToText(Object.fromEntries(derived[i].objects)),
+      stripContextsOnlyToText(Object.fromEntries(gotModels[i].objects)),
     ).toMatchObject(model.objects);
   }
 };
@@ -78,8 +78,8 @@ it("should derive reactions and parameters for default model", () => {
       C: species("0"),
       k1: parameter("0.35"),
       k2: parameter("0.2"),
-      _J0: reaction({ A: 1 }, { B: 1 }, "k1*A"),
-      _J1: reaction({ B: 1 }, { C: 1 }, "k2*B"),
+      _J0: reaction({ A: null }, { B: null }, "k1*A"),
+      _J1: reaction({ B: null }, { C: null }, "k2*B"),
     }),
   );
 });
@@ -203,7 +203,7 @@ describe("assignments", () => {
     expectModel(
       "J: A + B -> C; 3; J = 5",
       model({
-        J: reaction({ A: 1, B: 1 }, { C: 1 }, "5"),
+        J: reaction({ A: null, B: null }, { C: null }, "5"),
       }),
     );
   });
@@ -327,7 +327,7 @@ describe("declarations", () => {
       "E: at A > 3: A = 3; J: A + B -> C; 1; const E, A",
       model({
         E: event("A>3", { A: "3" }),
-        J: reaction({ A: 1, B: 1 }, { C: 1 }, "1"),
+        J: reaction({ A: null, B: null }, { C: null }, "1"),
       }),
     );
   });
@@ -431,7 +431,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: "comp",
         }),
       }),
@@ -445,7 +445,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: "comp",
         }),
       }),
@@ -459,7 +459,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: "comp",
         }),
       }),
@@ -473,7 +473,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: "comp",
         }),
       }),
@@ -487,10 +487,10 @@ describe("compartments", () => {
         A: species().in("comp2"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: "comp",
         }),
-        J2: reaction({ A: 1 }, {}, "k2", {
+        J2: reaction({ A: null }, {}, "k2", {
           compartment: "comp2",
         }),
       }),
@@ -504,7 +504,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: 1 }, { B: 1 }, "k1", {
+        J: reaction({ A: null }, { B: null }, "k1", {
           compartment: null,
         }),
       }),

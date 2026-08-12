@@ -9,6 +9,7 @@ import {
   DeclarationNameContext,
   EventContext,
   FormulaContext,
+  FunctionDefinitionContext,
   InCompartmentContext,
   InStatementContext,
   NameContext,
@@ -28,6 +29,7 @@ import type {
   VariableKind,
   AntimonyObject,
   AntimonyModelObject,
+  AntimonyFunction,
 } from "./model";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -63,6 +65,7 @@ const getVariableName = (variableCtx: VariableContext): string[] => {
 export class DeriveModelListener implements AntimonyListener {
   #baseModel: AntimonyModel;
   #models: Map<string, AntimonyModel>;
+  #functions: Map<string, AntimonyFunction>;
   #currentModel: AntimonyModel | undefined;
   #currentDeclaration: DeclarationState | undefined;
 
@@ -70,6 +73,7 @@ export class DeriveModelListener implements AntimonyListener {
 
   constructor({ diagnostics }: { diagnostics?: Error[] } = {}) {
     this.#models = new Map();
+    this.#functions = new Map();
     this.#baseModel = {
       kind: "model",
       name: DEFAULT_MODEL_NAME,
@@ -82,6 +86,10 @@ export class DeriveModelListener implements AntimonyListener {
 
   getModels(): AntimonyModel[] {
     return Array.from(this.#models.values());
+  }
+
+  getFunctions(): AntimonyFunction[] {
+    return Array.from(this.#functions.values());
   }
 
   #reportError(message: string, tree: ParserRuleContext): void {
@@ -592,6 +600,32 @@ export class DeriveModelListener implements AntimonyListener {
     }
 
     object.compartment = compartment;
+  }
+
+  enterFunctionDefinition(ctx: FunctionDefinitionContext) {
+    const name = ctx.NAME().text;
+    const parameterNames: string[] = [];
+    for (const parameterName of ctx.parameterList().NAME()) {
+      if (parameterNames.includes(parameterName.text)) {
+        this.#reportError(
+          `Parameter name '${parameterName.text}' is included multiple times.`,
+          ctx.parameterList(),
+        );
+        return;
+      }
+    }
+
+    if (this.#functions.has(name)) {
+      this.#reportError(`Function ${name} is defined twice.`, ctx);
+      return;
+    }
+
+    this.#functions.set(name, {
+      kind: "function",
+      name: name,
+      parameters: parameterNames,
+      body: ctx.formula(),
+    });
   }
 
   #getContentFromString(stringCtx: StringContext): string {

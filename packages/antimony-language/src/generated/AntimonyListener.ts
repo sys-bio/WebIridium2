@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Generated from ./src/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 
@@ -38,6 +37,8 @@ import { StatementListContext } from "./AntimonyParser";
 import { StatementContext } from "./AntimonyParser";
 import { ModelContext } from "./AntimonyParser";
 import { ExportListContext } from "./AntimonyParser";
+import { FunctionDefinitionContext } from "./AntimonyParser";
+import { ParameterListContext } from "./AntimonyParser";
 import { FormulaContext } from "./AntimonyParser";
 import { FunctionCallContext } from "./AntimonyParser";
 import { ArgumentListContext } from "./AntimonyParser";
@@ -503,6 +504,28 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitExportList?: (ctx: ExportListContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.functionDefinition`.
+	 * @param ctx the parse tree
+	 */
+	enterFunctionDefinition?: (ctx: FunctionDefinitionContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.functionDefinition`.
+	 * @param ctx the parse tree
+	 */
+	exitFunctionDefinition?: (ctx: FunctionDefinitionContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.parameterList`.
+	 * @param ctx the parse tree
+	 */
+	enterParameterList?: (ctx: ParameterListContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.parameterList`.
+	 * @param ctx the parse tree
+	 */
+	exitParameterList?: (ctx: ParameterListContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.formula`.

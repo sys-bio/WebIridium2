@@ -12,13 +12,17 @@ export type AntimonyObject =
   | AntimonyModel
   | AntimonyVariable
   | AntimonyEvent
-  | AntimonyReaction;
+  | AntimonyReaction
+  | AntimonyFunction;
 
 /** Objects that can be contained within models. */
-export type AntimonyModelObject = Exclude<AntimonyObject, { kind: "model" }>;
+export type AntimonyModelObject = Exclude<
+  AntimonyObject,
+  { kind: "model" | "function" }
+>;
 
 export type AntimonyModel = AntimonyObjectBase<"model"> & {
-  objects: Map<string, Exclude<AntimonyObject, { kind: "model" }>>;
+  objects: Map<string, AntimonyModelObject>;
 };
 
 export type AntimonyInitialAssignment = {

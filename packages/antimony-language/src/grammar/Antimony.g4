@@ -3,7 +3,7 @@ import AntimonyLexer;
 
 root : topLevelStatement? (statementSeparator topLevelStatement?)* EOF;
 statementSeparator : ';' | NEWLINE;
-topLevelStatement : model | statement;
+topLevelStatement : model | functionDefinition | statement;
 
 statementList : (statement? statementSeparator)+;
 statement : reaction
@@ -22,6 +22,9 @@ statement : reaction
 // end
 model : MODEL '*'? NAME exportList? statementList END;
 exportList : '(' (variable (',' variable)* )? ')';
+
+functionDefinition : FUNCTION NAME parameterList statementSeparator* formula statementSeparator* END;
+parameterList : '(' (NAME (',' NAME)*)? ')';
 
 formula : '(' formula ')' #group
         | NUMBER #number

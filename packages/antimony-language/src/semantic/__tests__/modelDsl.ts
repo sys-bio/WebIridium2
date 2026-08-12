@@ -145,8 +145,8 @@ export const parameter = createVariableFunc("parameter");
 export const compartment = createVariableFunc("compartment");
 
 export const reaction = (
-  reactants: Record<string, number>,
-  products: Record<string, number>,
+  reactants: Record<string, number | null>,
+  products: Record<string, number | null>,
   rate: string,
   extra?: object,
 ) => {
@@ -154,11 +154,11 @@ export const reaction = (
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
       name,
-      stoichiometry,
+      stoichiometry: stoichiometry === null ? undefined : stoichiometry,
     })),
     products: Object.entries(products).map(([name, stoichiometry]) => ({
       name,
-      stoichiometry,
+      stoichiometry: stoichiometry === null ? undefined : stoichiometry,
     })),
     rate: {
       text: rate,
