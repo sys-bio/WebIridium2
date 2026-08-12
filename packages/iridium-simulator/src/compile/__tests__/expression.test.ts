@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { IridiumExpression } from "../../ir/ast";
 import Emitter from "../Emitter";
 import { Compilation } from "../Compilation";
-import { Scope } from "../Scope";
+import { GlobalScope } from "../Scope";
 import { FunctionTable, LocalsSymbolTable } from "../symbolTables";
 import { emitExpression } from "../expression";
 import { OpCode, ValType } from "../codes";
@@ -15,14 +15,16 @@ const expectCompile = (
 ) => {
   const compilation = new Compilation({
     events: [],
-    parameters: [
+    variables: [
       {
         name: "test",
         value: { kind: "initial", initial: expression },
+        hasSubstanceOnly: false,
       },
     ],
     reactions: [],
-    species: [],
+    compartments: [],
+    functions: [],
   });
 
   const expected = new Emitter();
@@ -32,8 +34,7 @@ const expectCompile = (
   emitExpression(
     expression,
     got,
-    compilation,
-    new Scope(
+    new GlobalScope(
       compilation,
       new LocalsSymbolTable([T_PARAM, Y_PARAM, P_PARAM, EVENTS_PARAM]),
       new FunctionTable(),

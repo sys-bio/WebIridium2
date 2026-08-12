@@ -54,7 +54,6 @@ export class IridiumSimulator extends Simulator {
     model: AntimonyModel,
     runtimeModel: RuntimeModel,
   ): Variable[] {
-    console.log(model);
     const variables: Variable[] = [];
 
     const getVariableCategory = (v: AntimonyVariable): string => {
@@ -123,7 +122,6 @@ export class IridiumSimulator extends Simulator {
     code: string,
     abortSignal?: AbortSignal,
   ): Promise<{ runtimeModel: RuntimeModel; variables: Variable[] }> {
-    console.log("WHYYYYY");
     if (this.#compiledModel?.code === code) {
       return await this.#compiledModel.promise;
     } else {

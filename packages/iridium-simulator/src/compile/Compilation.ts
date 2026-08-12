@@ -1,5 +1,6 @@
 import type {
   IridiumEvent,
+  IridiumFunction,
   IridiumModel,
   IridiumReaction,
   IridiumVariable,
@@ -17,6 +18,7 @@ export class Compilation {
   compartments: Map<string, IridiumVariable>;
   reactions: Map<string, IridiumReaction>;
   events: Map<string, IridiumEvent>;
+  functions: Map<string, IridiumFunction>;
 
   yVars: string[];
   pVars: string[];
@@ -40,6 +42,7 @@ export class Compilation {
     this.compartments = new Map();
     this.reactions = new Map(model.reactions.map((r) => [r.name, r]));
     this.events = new Map(model.events.map((e) => [e.name, e]));
+    this.functions = new Map(model.functions.map((e) => [e.name, e]));
 
     this.piecewisePieces = new Map();
 
@@ -108,39 +111,45 @@ export class Compilation {
     return piece.index;
   }
 
-  forAllExpressions(callback: (expr: IridiumExpression) => void): void {
+  forAllExpressions(
+    callback: (expr: IridiumExpression, context: string) => void,
+  ): void {
     for (const variable of this.variables.values()) {
       if (
         variable.value.kind === "initial" ||
         variable.value.kind === "reaction"
       ) {
-        callback(variable.value.initial);
+        callback(variable.value.initial, "variables");
       } else if (variable.value.kind === "rate") {
         callback(variable.value.initial);
-        callback(variable.value.rate);
+        callback(variable.value.rate, "variables");
       } else if (variable.value.kind === "assignment") {
-        callback(variable.value.assignment);
+        callback(variable.value.assignment, "variables");
       }
     }
 
     for (const event of this.events.values()) {
-      callback(event.trigger);
+      callback(event.trigger, "events");
 
       if (event.delay) {
-        callback(event.delay);
+        callback(event.delay, "events");
       }
 
       if (event.priority) {
-        callback(event.priority);
+        callback(event.priority, "events");
       }
 
       for (const assignment of event.assignments) {
-        callback(assignment.value);
+        callback(assignment.value, "events");
       }
     }
 
     for (const reaction of this.reactions.values()) {
-      callback(reaction.rate);
+      callback(reaction.rate, "reactions");
+    }
+
+    for (const func of this.functions.values()) {
+      callback(func.body, "functions");
     }
   }
 }

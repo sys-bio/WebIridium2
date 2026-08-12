@@ -8,7 +8,12 @@ import { builtinConstants } from "antimony-language/semantic/builtins";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import type { IridiumExpressionVariable } from "../ir/ast";
 
-export class Scope {
+export interface Scope {
+  emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void;
+  emitCallOp(emitter: Emitter, name: string): void;
+}
+
+export class GlobalScope implements Scope {
   #compilation: Compilation;
   localsTable: LocalsSymbolTable;
   functionTable: FunctionTable;
@@ -84,6 +89,10 @@ export class Scope {
     }
   }
 
+  emitCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.functionTable.get(name));
+  }
+
   emitConvertToConcentration(emitter: Emitter, compartment: string): void {
     this.emitLoadVariableFromName(emitter, compartment);
     emitter.emitUint(OpCode.f64div);
@@ -92,5 +101,28 @@ export class Scope {
   emitConvertToAmount(emitter: Emitter, compartment: string): void {
     this.emitLoadVariableFromName(emitter, compartment);
     emitter.emitUint(OpCode.f64mul);
+  }
+}
+
+export class FunctionScope implements Scope {
+  #localsTable: LocalsSymbolTable;
+  #functionTable: FunctionTable;
+
+  constructor(localsTable: LocalsSymbolTable, functionTable: FunctionTable) {
+    this.#localsTable = localsTable;
+    this.#functionTable = functionTable;
+  }
+
+  emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
+    if (this.#localsTable.hasParam(expr.name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.#localsTable.getParam(expr.name));
+    } else {
+      throw new CompileError(`Unbound name: ${expr.name}.`, expr.metadata);
+    }
+  }
+
+  emitCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.#functionTable.get(name));
   }
 }

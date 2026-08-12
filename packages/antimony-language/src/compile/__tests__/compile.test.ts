@@ -427,7 +427,7 @@ describe("ir", () => {
         model({
           functions: {
             a: func(
-              [],
+              ["a", "b", "c"],
               expr.add(expr.add(expr.var("a"), expr.var("b")), expr.var("c")),
             ),
           },

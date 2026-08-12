@@ -5,7 +5,7 @@ import { getAssignmentOrder, tryEvaluateStoichiometry } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
 import type { Compilation } from "./Compilation.ts";
-import { Scope } from "./Scope.ts";
+import { GlobalScope } from "./Scope.ts";
 import type { IridiumVariable, IridiumVariableValue } from "../ir/model.ts";
 import { emitExpression } from "./expression.ts";
 import type { IridiumExpression } from "../ir/ast.ts";
@@ -70,7 +70,7 @@ export const compileRhs = (
     localsTable.addLocal(reaction.name);
   }
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   // we only have one type of local: f64
   emitter.emitListHeader(1);
@@ -89,7 +89,7 @@ export const compileRhs = (
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(P_PARAM));
 
-    emitExpression(variable.value.assignment, emitter, compilation, scope);
+    emitExpression(variable.value.assignment, emitter, scope, { compilation });
 
     const compartment = compartments.get(variable.name);
     if (!variable.hasSubstanceOnly && compartment) {
@@ -105,7 +105,7 @@ export const compileRhs = (
   // calculate all the reaction rates
 
   for (const reaction of reactions.values()) {
-    emitExpression(reaction.rate, emitter, compilation, scope);
+    emitExpression(reaction.rate, emitter, scope, { compilation });
 
     emitter.emitByte(OpCode.localset);
     emitter.emitUint(localsTable.getLocal(reaction.name));
@@ -183,7 +183,7 @@ export const compileRhs = (
 
         if (constStoich === null) {
           // can't be evaluated at compile-time, manually evaluate at runtime
-          emitExpression(stoichExpr, emitter, compilation, scope);
+          emitExpression(stoichExpr, emitter, scope, { compilation });
           emitter.emitByte(OpCode.f64mul);
         } else {
           if (constStoich === -1) {
@@ -225,7 +225,7 @@ export const compileRhs = (
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
 
-    emitExpression(variable.value.rate, emitter, compilation, scope);
+    emitExpression(variable.value.rate, emitter, scope, { compilation });
 
     const compartment = compartments.get(variable.name);
     if (!variable.hasSubstanceOnly && compartment) {
@@ -238,7 +238,7 @@ export const compileRhs = (
       if (compartment.value.kind === "rate") {
         // product rule second term
         scope.emitLoadVariableFromName(emitter, variable.name);
-        emitExpression(compartment.value.rate, emitter, compilation, scope);
+        emitExpression(compartment.value.rate, emitter, scope, { compilation });
         emitter.emitByte(OpCode.f64mul);
         emitter.emitByte(OpCode.f64add);
       }

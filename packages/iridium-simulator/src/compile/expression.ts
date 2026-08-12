@@ -4,9 +4,8 @@ import {
   type IridiumExpressionVisitor,
 } from "../ir/ast";
 import { OpCode, ValType } from "./codes";
-import type { Compilation } from "./Compilation";
 import type Emitter from "./Emitter";
-import type { Scope } from "./Scope";
+import type { GlobalScope, Scope } from "./Scope";
 import {
   AND_RESERVED_NAME,
   MOD_RESERVED_NAME,
@@ -20,6 +19,8 @@ import {
 import { CompileError } from "./errors";
 import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
+import { CompileInvariantError } from "antimony-language/errors";
+import type { Compilation } from "./Compilation";
 
 const FLAG_USE_EVENT_STATE_FOR_PIECEWISE = false;
 
@@ -55,9 +56,14 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
 export const emitExpression = (
   expression: IridiumExpression,
   emitter: Emitter,
-  compilation: Compilation,
   scope: Scope,
-  handlePiecewiseWithEvents: boolean = true,
+  {
+    handlePiecewiseWithEvents = false,
+    compilation,
+  }: {
+    handlePiecewiseWithEvents?: boolean;
+    compilation?: Compilation;
+  } = {},
 ): void => {
   const visitor: IridiumExpressionVisitor<void> = {
     visitNumber: ({ value }) => {
@@ -97,16 +103,16 @@ export const emitExpression = (
           emitter.emitByte(OpCode.f64div);
           break;
         case "mod":
-          emitter.emitCallOp(scope.functionTable.get(MOD_RESERVED_NAME));
+          scope.emitCallOp(emitter, MOD_RESERVED_NAME);
           break;
         case "pow":
-          emitter.emitCallOp(scope.functionTable.get(POW_RESERVED_NAME));
+          scope.emitCallOp(emitter, POW_RESERVED_NAME);
           break;
         case "and":
-          emitter.emitCallOp(scope.functionTable.get(AND_RESERVED_NAME));
+          scope.emitCallOp(emitter, AND_RESERVED_NAME);
           break;
         case "or":
-          emitter.emitCallOp(scope.functionTable.get(OR_RESERVED_NAME));
+          scope.emitCallOp(emitter, OR_RESERVED_NAME);
           break;
         case "eq":
         case "neq":
@@ -141,6 +147,17 @@ export const emitExpression = (
         }
 
         if (handlePiecewiseWithEvents && FLAG_USE_EVENT_STATE_FOR_PIECEWISE) {
+          if (!("localsTable" in scope)) {
+            throw new CompileInvariantError(
+              "Cannot use event-handled piecewise outside global scope.",
+            );
+          }
+          if (!compilation) {
+            throw new CompileInvariantError(
+              "Cannot use event-handled piecewise without passing in compilation.",
+            );
+          }
+
           let i = 0;
           for (; i + 2 < expr.args.length; i += 2) {
             const branch = expr.args[i];
@@ -148,7 +165,9 @@ export const emitExpression = (
             const eventIndex = compilation.getPiecewisePieceIndex(condition);
 
             emitter.emitByte(OpCode.localget);
-            emitter.emitUint(scope.localsTable.getParam(EVENTS_PARAM));
+            emitter.emitUint(
+              (scope as GlobalScope).localsTable.getParam(EVENTS_PARAM),
+            );
 
             emitter.emitByte(OpCode.i32load);
             emitter.emitUint(MEM_ALIGNMENT);
@@ -302,7 +321,7 @@ export const emitExpression = (
         if (inlineFunctions.has(expr.name)) {
           (predefinedFuncDefs[expr.name] as InlineFunction).emit(emitter);
         } else {
-          emitter.emitCallOp(scope.functionTable.get(expr.name));
+          scope.emitCallOp(emitter, expr.name);
         }
       }
     },

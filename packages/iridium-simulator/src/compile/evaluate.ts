@@ -19,7 +19,7 @@ import {
   type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
 import { compileFunctions, getReferencedFunctions } from "./compile.ts";
-import { Scope } from "./Scope.ts";
+import { GlobalScope } from "./Scope.ts";
 import {
   predefinedFuncDefs,
   type ImportedFunction,
@@ -32,6 +32,7 @@ import Emitter from "./Emitter.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants.ts";
 import { WASM_PAGE_SIZE } from "./wasm.ts";
 import type { IridiumReaction } from "../ir/model.ts";
+import { compileAllUserDefinedFunctions } from "./userDefinedFunction.ts";
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default
@@ -122,6 +123,9 @@ const evaluateFromOrdering = async (
           order,
         ),
     },
+    ...compileAllUserDefinedFunctions(
+      Array.from(compilation.functions.values()),
+    ),
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {
         return predefinedFuncDefs[name];
@@ -197,7 +201,7 @@ const compileEvaluateFromOrdering = (
     P_PARAM,
     EVENTS_PARAM,
   ]);
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   const emitter = new Emitter();
 
@@ -215,7 +219,9 @@ const compileEvaluateFromOrdering = (
       emitter.emitUint(localsTable.getParam(P_PARAM));
     }
 
-    emitExpression(initial, emitter, compilation, scope, false);
+    emitExpression(initial, emitter, scope, {
+      handlePiecewiseWithEvents: false,
+    });
 
     if (compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.f64store);

@@ -613,6 +613,8 @@ export class DeriveModelListener implements AntimonyListener {
         );
         return;
       }
+
+      parameterNames.push(parameterName.text);
     }
 
     if (this.#functions.has(name)) {

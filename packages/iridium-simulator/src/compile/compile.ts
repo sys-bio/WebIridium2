@@ -42,6 +42,7 @@ import type {
   RuntimeModel,
   RuntimePieceEvent,
 } from "../runtime/model.ts";
+import { compileAllUserDefinedFunctions } from "./userDefinedFunction.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -102,6 +103,7 @@ export const compileIntermediate = (
         throw new CompileModelError(`Unbound function: ${name}`);
       }
     }),
+    ...compileAllUserDefinedFunctions(ir.functions),
   ];
 
   let runtimeEvents: (RuntimePieceEvent | RuntimeEvent)[] = [];
@@ -145,12 +147,13 @@ export const getReferencedFunctions = (
   compilation: Compilation,
   { shouldTrackPiecewise }: { shouldTrackPiecewise: boolean },
 ): Set<string> => {
+  let isWalkingFunction = false;
   const referenced = new Set<string>();
   const listener: IridiumExpressionListener = {
     beforeCall(expr) {
       const { name } = expr;
       if (name === PIECEWISE_NAME) {
-        if (shouldTrackPiecewise) {
+        if (shouldTrackPiecewise && !isWalkingFunction) {
           const cases = [];
           for (let i = 0; i + 2 < expr.args.length; i += 2) {
             cases.push({ branch: expr.args[i], condition: expr.args[i + 1] });
@@ -205,7 +208,10 @@ export const getReferencedFunctions = (
     },
   };
 
-  compilation.forAllExpressions((expr) => walkExpression(expr, listener));
+  compilation.forAllExpressions((expr, ctx) => {
+    isWalkingFunction = ctx === "functions";
+    walkExpression(expr, listener);
+  });
 
   const result = new Set<string>();
 

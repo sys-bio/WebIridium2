@@ -20,7 +20,7 @@ import {
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import type { WasmFunction } from "./functions";
 import type { Compilation } from "./Compilation.ts";
-import { Scope } from "./Scope.ts";
+import { GlobalScope } from "./Scope.ts";
 import {
   visitExpression,
   type IridiumExpression,
@@ -132,7 +132,7 @@ const emitConditionAsRoot = (
   condition: Condition,
   emitter: Emitter,
   compilation: Compilation,
-  scope: Scope,
+  scope: GlobalScope,
 ): void => {
   if ("op" in condition) {
     // It's a simple condition, compile it as a signed distance function unless it is gt or lt.
@@ -143,8 +143,8 @@ const emitConditionAsRoot = (
       // root function so that it flips between -1 and 1 if the condition is true.
       // This way the boundary is treated correctly, at the cost of CVODE having
       // less information.
-      emitExpression(condition.left, emitter, compilation, scope);
-      emitExpression(condition.right, emitter, compilation, scope);
+      emitExpression(condition.left, emitter, scope, { compilation });
+      emitExpression(condition.right, emitter, scope, { compilation });
       emitComparisonOperator(emitter, condition.op);
 
       emitter.emitI32ConstOp(0);
@@ -160,13 +160,13 @@ const emitConditionAsRoot = (
         },
       );
     } else {
-      emitExpression(condition.left, emitter, compilation, scope);
-      emitExpression(condition.right, emitter, compilation, scope);
+      emitExpression(condition.left, emitter, scope, { compilation });
+      emitExpression(condition.right, emitter, scope, { compilation });
       emitter.emitByte(OpCode.f64sub);
     }
   } else {
     // It's complex condition, compile it as a discrete -1, 1 flipper
-    emitExpression(condition.expression, emitter, compilation, scope);
+    emitExpression(condition.expression, emitter, scope, { compilation });
 
     emitter.emitF64ConstOp(0);
     emitter.emitByte(OpCode.f64ne);
@@ -555,7 +555,7 @@ const compileRoots = (
   // no locals
   emitter.emitListHeader(0);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
 
@@ -638,7 +638,7 @@ const compileCheckRoots = (
     EVENTS_PARAM,
   ]);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
   let currentEventIndex = 0;
@@ -695,8 +695,8 @@ const compileCheckRoots = (
             emitter.emitByte(OpCode.localget);
             emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
-            emitExpression(condition.left, emitter, compilation, scope);
-            emitExpression(condition.right, emitter, compilation, scope);
+            emitExpression(condition.left, emitter, scope, { compilation });
+            emitExpression(condition.right, emitter, scope, { compilation });
             emitComparisonOperator(emitter, condition.op);
 
             emitter.emitByte(OpCode.i32store);
@@ -808,7 +808,7 @@ const compileUpdateConditions = (
   localsTable.addLocal(RIGHT_LOCAL);
   localsTable.addLocal(SHOULD_SKIP_EVENT_LOCAL);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   let currentRootIndex = 0;
   let currentEventIndex = 0;
@@ -822,12 +822,12 @@ const compileUpdateConditions = (
       emitter.emitUint(localsTable.getParam(CONDITIONS_PARAM));
 
       if ("expression" in condition) {
-        emitExpression(condition.expression, emitter, compilation, scope);
+        emitExpression(condition.expression, emitter, scope, { compilation });
         emitter.emitF64ConstOp(0);
         emitter.emitByte(OpCode.f64ne);
       } else {
-        emitExpression(condition.left, emitter, compilation, scope);
-        emitExpression(condition.right, emitter, compilation, scope);
+        emitExpression(condition.left, emitter, scope, { compilation });
+        emitExpression(condition.right, emitter, scope, { compilation });
         emitComparisonOperator(emitter, condition.op);
       }
 
@@ -888,8 +888,8 @@ const compileGetOption = (
 
   emitter.emitListHeader(0);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
-  emitExpression(expression, emitter, compilation, scope);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
+  emitExpression(expression, emitter, scope, { compilation });
 
   emitter.emitByte(OpCode.end);
 
@@ -919,7 +919,7 @@ const compileGetAssignments = (
 
   emitter.emitListHeader(0);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   for (const { name, value, metadata } of event.assignments) {
     if (yIndices.has(name)) {
@@ -934,7 +934,7 @@ const compileGetAssignments = (
       throw new CompileError("Unexpected assignment.", metadata);
     }
 
-    emitExpression(value, emitter, compilation, scope);
+    emitExpression(value, emitter, scope, { compilation });
 
     if (yIndices.has(name)) {
       emitter.emitByte(OpCode.f64store);
@@ -972,7 +972,7 @@ const compileSetAssignments = (
     EVENTS_PARAM,
   ]);
 
-  const scope = new Scope(compilation, localsTable, functionTable);
+  const scope = new GlobalScope(compilation, localsTable, functionTable);
 
   emitter.emitListHeader(0);
 
