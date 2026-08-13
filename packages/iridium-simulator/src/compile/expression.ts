@@ -49,7 +49,7 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
  * @param scope - scope expression is evaluated in
  * @param handlePiecewiseWithEvents - Whether or not to mark piecewise functions with events.
  *                                    Want this when doing anything in the RHS where we need to restart
- *                                    at discontinuities. Default: true.
+ *                                    at discontinuities. Default: false.
  */
 export const emitExpression = (
   expression: IridiumExpression,

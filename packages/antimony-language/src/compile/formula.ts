@@ -39,7 +39,7 @@ export const compileStoichiometry = (
   if (number !== undefined) {
     return {
       kind: "number",
-      value: Number(number),
+      value: Number(stoichiometry.text), // we do the whole thing since there might be an additional '-' before the NUMBER token
       metadata: { tree: stoichiometry },
     };
   } else {

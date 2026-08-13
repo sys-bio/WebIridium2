@@ -22,7 +22,7 @@ DECL_WORD      : 'species'
 
 NAME : [a-zA-Z_]([a-zA-Z0-9_])*;
 
-NUMBER                   : '-'? [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?
+NUMBER                   : [0-9]+ NUMBER_FRACTION? NUMBER_EXPONENT?
                          | NUMBER_FRACTION NUMBER_EXPONENT?
                          ;
 // It is allowed to just put something like '10.'

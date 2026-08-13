@@ -60,7 +60,8 @@ reaction        : nameLabel? reactionFormula ';' formula? inCompartment?;
 reactionFormula : left=reactantList? ARROW right=reactantList?;
 reactantList : reactant ('+' reactant)*;
 reactant : stoichiometry? variable;
-stoichiometry : NUMBER | variable;
+stoichiometry : '-'? NUMBER
+              | variable;
 
 assignment : variable inCompartment? mod=('\'' | ':')? '=' formula?;
 
