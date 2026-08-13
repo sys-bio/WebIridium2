@@ -20,7 +20,7 @@ import {
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
 import type { WasmFunction } from "./functions";
 import type { Compilation } from "./Compilation.ts";
-import { GlobalScope } from "./Scope.ts";
+import { GlobalScope } from "./scope.ts";
 import {
   visitExpression,
   type IridiumExpression,

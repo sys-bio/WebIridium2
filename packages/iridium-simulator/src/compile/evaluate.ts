@@ -19,7 +19,7 @@ import {
   type IridiumExpressionVisitor,
 } from "../ir/ast.ts";
 import { compileFunctions, getReferencedFunctions } from "./compile.ts";
-import { GlobalScope } from "./Scope.ts";
+import { GlobalScope } from "./scope.ts";
 import {
   predefinedFuncDefs,
   type ImportedFunction,

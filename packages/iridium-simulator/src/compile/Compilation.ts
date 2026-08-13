@@ -112,7 +112,10 @@ export class Compilation {
   }
 
   forAllExpressions(
-    callback: (expr: IridiumExpression, context: string) => void,
+    callback: (
+      expr: IridiumExpression,
+      context: "variables" | "events" | "reactions" | "functions",
+    ) => void,
   ): void {
     for (const variable of this.variables.values()) {
       if (
@@ -121,7 +124,7 @@ export class Compilation {
       ) {
         callback(variable.value.initial, "variables");
       } else if (variable.value.kind === "rate") {
-        callback(variable.value.initial);
+        callback(variable.value.initial, "variables");
         callback(variable.value.rate, "variables");
       } else if (variable.value.kind === "assignment") {
         callback(variable.value.assignment, "variables");

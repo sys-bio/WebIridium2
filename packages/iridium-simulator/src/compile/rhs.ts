@@ -5,7 +5,7 @@ import { getAssignmentOrder, tryEvaluateStoichiometry } from "./evaluate";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
 import type { Compilation } from "./Compilation.ts";
-import { GlobalScope } from "./Scope.ts";
+import { GlobalScope } from "./scope.ts";
 import type { IridiumVariable, IridiumVariableValue } from "../ir/model.ts";
 import { emitExpression } from "./expression.ts";
 import type { IridiumExpression } from "../ir/ast.ts";

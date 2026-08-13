@@ -3,7 +3,7 @@ import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
 import { emitExpression } from "./expression";
 import type { WasmFunction } from "./functions";
-import { FunctionScope } from "./Scope";
+import { FunctionScope } from "./scope";
 import { LocalsSymbolTable, type FunctionTable } from "./symbolTables";
 
 export const compileAllUserDefinedFunctions = (

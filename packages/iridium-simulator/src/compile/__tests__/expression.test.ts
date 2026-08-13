@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { IridiumExpression } from "../../ir/ast";
 import Emitter from "../Emitter";
 import { Compilation } from "../Compilation";
-import { GlobalScope } from "../Scope";
+import { GlobalScope } from "../scope";
 import { FunctionTable, LocalsSymbolTable } from "../symbolTables";
 import { emitExpression } from "../expression";
 import { OpCode, ValType } from "../codes";

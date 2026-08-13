@@ -5,7 +5,7 @@ import {
 } from "../ir/ast";
 import { OpCode, ValType } from "./codes";
 import type Emitter from "./Emitter";
-import type { GlobalScope, Scope } from "./Scope";
+import type { GlobalScope, Scope } from "./scope";
 import {
   AND_RESERVED_NAME,
   MOD_RESERVED_NAME,
