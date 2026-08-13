@@ -22,8 +22,6 @@ import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
 import { CompileInvariantError } from "antimony-language/errors";
 import type { Compilation } from "./Compilation";
 
-const FLAG_USE_EVENT_STATE_FOR_PIECEWISE = false;
-
 export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   if (op === "ge") {
     emitter.emitByte(OpCode.f64ge);
@@ -146,7 +144,7 @@ export const emitExpression = (
           return;
         }
 
-        if (handlePiecewiseWithEvents && FLAG_USE_EVENT_STATE_FOR_PIECEWISE) {
+        if (handlePiecewiseWithEvents) {
           if (!("localsTable" in scope)) {
             throw new CompileInvariantError(
               "Cannot use event-handled piecewise outside global scope.",

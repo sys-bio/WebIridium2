@@ -42,7 +42,10 @@ import type {
   RuntimeModel,
   RuntimePieceEvent,
 } from "../runtime/model.ts";
-import { compileAllUserDefinedFunctions } from "./userDefinedFunction.ts";
+import {
+  checkNoRecursiveCalls,
+  compileAllUserDefinedFunctions,
+} from "./userDefinedFunction.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -53,6 +56,8 @@ export const compileIntermediate = (
   runtimeEvents: (RuntimePieceEvent | RuntimeEvent)[];
   bytecode: Uint8Array;
 } => {
+  checkNoRecursiveCalls(ir.functions);
+
   const compilation = new Compilation(ir);
 
   const referencedFunctions = Array.from(

@@ -166,7 +166,10 @@ const emitConditionAsRoot = (
     }
   } else {
     // It's complex condition, compile it as a discrete -1, 1 flipper
-    emitExpression(condition.expression, emitter, scope, { compilation });
+    emitExpression(condition.expression, emitter, scope, {
+      compilation,
+      handlePiecewiseWithEvents: false,
+    });
 
     emitter.emitF64ConstOp(0);
     emitter.emitByte(OpCode.f64ne);

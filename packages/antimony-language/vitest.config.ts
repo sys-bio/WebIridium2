@@ -9,6 +9,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["packages/antimony-language/**/*.test.{ts,js}"],
+    include: [
+      "packages/antimony-language/**/*.test.{ts,js}",
+      "packages/iridium-simulator/**/*.test.{ts,js}",
+    ],
   },
 });

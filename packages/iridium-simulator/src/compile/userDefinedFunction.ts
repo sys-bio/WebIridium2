@@ -1,3 +1,5 @@
+import { CompileInvariantError } from "antimony-language/errors";
+import { walkExpression } from "../ir/ast";
 import type { IridiumFunction } from "../ir/model";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
@@ -45,4 +47,51 @@ export const compileUserDefinedFunction = (
   emitter.emitByte(OpCode.end);
 
   return emitter;
+};
+
+export const checkNoRecursiveCalls = (functions: IridiumFunction[]): void => {
+  const unvisited = new Set(functions.map((f) => f.name));
+  const graph = new Map<string, Set<string>>();
+
+  for (const func of functions) {
+    const vertices = new Set<string>();
+
+    walkExpression(func.body, {
+      afterCall({ name }) {
+        // unvisited right now is just all the user-defined function names
+        if (unvisited.has(name)) {
+          vertices.add(name);
+        }
+      },
+    });
+
+    graph.set(func.name, vertices);
+  }
+
+  while (unvisited.size > 0) {
+    const got = unvisited.keys().next().value!;
+    unvisited.delete(got);
+
+    const searching = Array.from(graph.get(got)!);
+
+    const visited = new Set<string>([got]);
+    while (searching.length > 0) {
+      const neighbor = searching.pop()!;
+
+      if (visited.has(neighbor)) {
+        // TODO: better error message
+        throw new CompileInvariantError("Recursive function call detected.");
+      }
+
+      if (!unvisited.has(neighbor)) continue;
+
+      unvisited.delete(neighbor);
+
+      visited.add(neighbor);
+
+      for (const next of graph.get(neighbor)!) {
+        searching.push(next);
+      }
+    }
+  }
 };
