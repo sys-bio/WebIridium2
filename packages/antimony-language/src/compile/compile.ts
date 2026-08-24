@@ -10,12 +10,25 @@ import {
   type RuntimeModel,
   type IridiumFunction,
 } from "iridium-simulator";
-import type { AntimonyFunction, AntimonyModel } from "../semantic/model";
+import type {
+  AntimonyDocument,
+  AntimonyEvent,
+  AntimonyModel,
+  AntimonyModelObject,
+  AntimonyObject,
+  AntimonyReaction,
+  AntimonyVariable,
+} from "../semantic/model";
 import { compileFormula, compileStoichiometry } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
-import { NameContext, type FormulaContext } from "../grammar";
-import { deriveModels } from "../semantic/semantic";
+import { NameContext, VariableContext, type FormulaContext } from "../grammar";
+import { buildAntimonyDocument } from "../semantic/semantic";
+import {
+  getReferenceFromVariable,
+  resolveReference,
+} from "../semantic/BuildAntimonyListener";
+import { isBuiltinName } from "../semantic/builtins";
 
 const INVALID_BOOLEAN_MESSAGE =
   "You can only use the values `true` or `false` here.";
@@ -44,22 +57,199 @@ const evaluateBoolean = (formula: FormulaContext): boolean => {
   }
 };
 
-export const compileToIridium = (
-  models: AntimonyModel[],
-  functions: AntimonyFunction[],
-): IridiumModel<Metadata> => {
-  // TODO: handle multiple models
-  const mainModel = models[0];
+type IridiumNameable =
+  | IridiumVariable
+  | IridiumReaction
+  | IridiumEvent
+  | IridiumFunction;
 
-  const reactions: IridiumReaction<Metadata>[] = [];
-  const reactionInvolvedVariables = new Set<string>();
-  for (const [name, reaction] of mainModel.objects) {
-    if (reaction.kind !== "reaction") continue;
+/**
+ * Helper for building the IridiumModel. Manages name collisions and keeps track of
+ * names. Has a "prefix stack" which allows you to prepend a prefix to each added object.
+ *
+ * NOTICE: make sure to add all functions before anything else. This prevents name collisions with them.
+ * Name collisions with functions will result an error, but it should not happen if they are added first.
+ */
+class IrBuilder {
+  #ir: IridiumModel<Metadata>;
+  #names: Set<string>;
+  #sources: Map<AntimonyObject, string>;
+  #prefixes: string[];
 
+  constructor() {
+    this.#ir = {
+      variables: [],
+      compartments: [],
+      reactions: [],
+      events: [],
+      functions: [],
+    };
+    this.#names = new Set();
+    this.#sources = new Map();
+    this.#prefixes = [];
+  }
+
+  #getAvailableName(name: string): string {
+    if (this.#prefixes) {
+      name = this.#prefixes.join() + name;
+    }
+
+    let newName = name;
+    let counter = 0;
+    while (this.#names.has(newName)) {
+      newName = name + "_" + counter++;
+    }
+
+    return newName;
+  }
+
+  #setName(
+    object: Omit<IridiumNameable, "name">,
+    name: string,
+  ): asserts object is IridiumNameable {
+    // eslint-disable-next-line
+    (object as any).name = name;
+  }
+
+  build(): IridiumModel<Metadata> {
+    return this.#ir;
+  }
+
+  /**
+   * Push a prefix to the prefix stack. Every added object
+   * will have the prefixes in he prefix stack prepended to its name.
+   */
+  pushPrefix(prefix: string): void {
+    this.#prefixes.push(prefix);
+  }
+
+  /**
+   * Pop a prefix from the prefix stack.
+   */
+  popPrefix(): void {
+    this.#prefixes.pop();
+  }
+
+  addSource(source: AntimonyObject): void {
+    const name = this.#getAvailableName(source.name);
+    this.#sources.set(source, name);
+    this.#names.add(name);
+  }
+
+  addVariable(
+    source: AntimonyObject,
+    variable: Omit<IridiumVariable<Metadata>, "name">,
+  ): void {
+    this.#setName(variable, this.getNameOf(source));
+    this.#ir.variables.push(variable);
+    this.#names.add(variable.name);
+    this.#sources.set(source, variable.name);
+  }
+
+  addReaction(
+    source: AntimonyObject,
+    reaction: Omit<IridiumReaction<Metadata>, "name">,
+  ): void {
+    this.#setName(reaction, this.getNameOf(source));
+    this.#ir.reactions.push(reaction);
+    this.#names.add(reaction.name);
+    this.#sources.set(source, reaction.name);
+  }
+
+  addEvent(
+    source: AntimonyObject,
+    event: Omit<IridiumEvent<Metadata>, "name">,
+  ): void {
+    this.#setName(event, this.getNameOf(source));
+    this.#ir.events.push(event);
+    this.#names.add(event.name);
+    this.#sources.set(source, event.name);
+  }
+
+  addCompartment(container: AntimonyObject, contained: AntimonyObject[]): void {
+    this.#ir.compartments.push({
+      containerVariable: this.getNameOf(container),
+      containedVariables: contained.map((variable) => this.getNameOf(variable)),
+    });
+  }
+
+  addFunction(source: AntimonyObject, func: IridiumFunction<Metadata>): void {
+    if (this.#names.has(func.name)) {
+      throw new CompileInvariantError(
+        `Name collision with function name '${func.name}'.`,
+      );
+    }
+
+    this.#ir.functions.push(func);
+    this.#names.add(func.name);
+    this.#sources.set(source, func.name);
+  }
+
+  getNameOf(source: AntimonyObject): string {
+    const got = this.#sources.get(source);
+    if (!got) {
+      throw new CompileInvariantError("Object missing name.");
+    }
+    return got;
+  }
+}
+
+const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
+  const submodels: AntimonyModel[] = [];
+  const variables: AntimonyVariable[] = [];
+  const reactions: AntimonyReaction[] = [];
+  const events: AntimonyEvent[] = [];
+
+  const resolveVariable = (variable: VariableContext): string => {
+    const reference = getReferenceFromVariable(variable);
+    if (reference.length === 1 && isBuiltinName(reference[0])) {
+      return reference[0];
+    }
+
+    return builder.getNameOf(resolveReference(model, reference));
+  };
+
+  for (const object of model.objects.values()) {
+    switch (object.kind) {
+      case "variable":
+        variables.push(object);
+        builder.addSource(object);
+        break;
+      case "reaction":
+        reactions.push(object);
+        builder.addSource(object);
+        break;
+      case "event":
+        events.push(object);
+        builder.addSource(object);
+        break;
+      case "model":
+        submodels.push(object);
+        break;
+      default:
+        throw new CompileInvariantError(
+          `Unknown object kind: ${(object as AntimonyObject).kind}.`,
+        );
+    }
+  }
+
+  for (const unnamedSubmodel of model.unnamedImports) {
+    builder.addSource(unnamedSubmodel);
+    submodels.push(unnamedSubmodel);
+  }
+
+  for (const submodel of submodels) {
+    builder.pushPrefix(submodel.name + "__");
+    compileModel(submodel, builder);
+    builder.popPrefix();
+  }
+
+  const reactionInvolvedVariables = new Set<AntimonyModelObject>();
+  for (const reaction of reactions) {
     let rate: IridiumExpression<Metadata>;
 
     if (reaction.rate) {
-      rate = compileFormula(reaction.rate);
+      rate = compileFormula(reaction.rate, resolveVariable);
     } else {
       rate = { kind: "number", value: 0 };
     }
@@ -67,14 +257,13 @@ export const compileToIridium = (
     const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = mainModel.objects.get(reactant.name);
-      if (variable && variable.kind === "variable" && variable.isConst)
-        continue;
-      reactionInvolvedVariables.add(reactant.name);
+      const variable = resolveReference(model, reactant.reference);
+      if (variable.kind === "variable" && variable.isConst) continue;
+      reactionInvolvedVariables.add(variable);
       reactants.push({
-        name: reactant.name,
+        name: builder.getNameOf(variable),
         stoichiometry: reactant.stoichiometry
-          ? compileStoichiometry(reactant.stoichiometry)
+          ? compileStoichiometry(reactant.stoichiometry, resolveVariable)
           : { kind: "number", value: 1 },
       });
     }
@@ -82,62 +271,55 @@ export const compileToIridium = (
     const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = mainModel.objects.get(product.name);
-      if (variable && variable.kind === "variable" && variable.isConst)
-        continue;
-      reactionInvolvedVariables.add(product.name);
+      const variable = resolveReference(model, product.reference);
+      if (variable.kind === "variable" && variable.isConst) continue;
+      reactionInvolvedVariables.add(variable);
       products.push({
-        name: product.name,
+        name: builder.getNameOf(variable),
         stoichiometry: product.stoichiometry
-          ? compileStoichiometry(product.stoichiometry)
+          ? compileStoichiometry(product.stoichiometry, resolveVariable)
           : { kind: "number", value: 1 },
       });
     }
 
-    reactions.push({
-      name,
+    builder.addReaction(reaction, {
       reactants,
       products,
       rate,
     });
   }
 
-  const variables: IridiumVariable<Metadata>[] = [];
-  const compartments: Map<string, string[]> = new Map();
+  const compartments: Map<AntimonyObject, AntimonyObject[]> = new Map();
 
-  for (const [name, variable] of mainModel.objects) {
-    if (variable.kind !== "variable") continue;
-
+  for (const variable of variables) {
     if (variable.variableKind === "species") {
       if (
         variable.assignment === undefined ||
         variable.assignment?.kind === "initial"
       ) {
-        if (reactionInvolvedVariables.has(name)) {
-          variables.push({
-            name,
+        if (reactionInvolvedVariables.has(variable)) {
+          builder.addVariable(variable, {
             hasSubstanceOnly: variable.hasSubstanceOnly,
             value: {
               kind: "reaction",
               initial: variable.assignment
-                ? compileFormula(variable.assignment.initial)
+                ? compileFormula(variable.assignment.initial, resolveVariable)
                 : { kind: "number", value: 0 },
             },
           });
         } else {
-          variables.push({
-            name,
+          builder.addVariable(variable, {
             hasSubstanceOnly: variable.hasSubstanceOnly,
             value: {
               kind: "initial",
               initial: variable.assignment
-                ? compileFormula(variable.assignment.initial)
+                ? compileFormula(variable.assignment.initial, resolveVariable)
                 : { kind: "number", value: 0 },
             },
           });
         }
       } else {
-        if (reactionInvolvedVariables.has(name)) {
+        if (reactionInvolvedVariables.has(variable)) {
           throw new CompileError(
             `Species cannot be simultaneously involved in a reaction and determined by a rate/assignment rule`,
             {
@@ -154,22 +336,24 @@ export const compileToIridium = (
         if (variable.assignment.kind === "rule") {
           value = {
             kind: "assignment",
-            assignment: compileFormula(variable.assignment.rule),
+            assignment: compileFormula(
+              variable.assignment.rule,
+              resolveVariable,
+            ),
           };
         } else if (variable.assignment.kind === "rate") {
           value = {
             kind: "rate",
             initial: variable.assignment.initial
-              ? compileFormula(variable.assignment.initial)
+              ? compileFormula(variable.assignment.initial, resolveVariable)
               : { kind: "number", value: 0 },
-            rate: compileFormula(variable.assignment.rate),
+            rate: compileFormula(variable.assignment.rate, resolveVariable),
           };
         } else {
           throw new CompileInvariantError("Unknown variable assignment kind.");
         }
 
-        variables.push({
-          name,
+        builder.addVariable(variable, {
           value,
           hasSubstanceOnly: variable.hasSubstanceOnly,
         });
@@ -191,53 +375,48 @@ export const compileToIridium = (
       } else if (variable.assignment.kind === "initial") {
         value = {
           kind: "initial",
-          initial: compileFormula(variable.assignment.initial),
+          initial: compileFormula(variable.assignment.initial, resolveVariable),
         };
       } else if (variable.assignment.kind === "rule") {
         value = {
           kind: "assignment",
-          assignment: compileFormula(variable.assignment.rule),
+          assignment: compileFormula(variable.assignment.rule, resolveVariable),
         };
       } else if (variable.assignment.kind === "rate") {
         value = {
           kind: "rate",
           initial: variable.assignment.initial
-            ? compileFormula(variable.assignment.initial)
+            ? compileFormula(variable.assignment.initial, resolveVariable)
             : { kind: "number", value: 0 },
-          rate: compileFormula(variable.assignment.rate),
+          rate: compileFormula(variable.assignment.rate, resolveVariable),
         };
       } else {
         throw new CompileInvariantError("Unknown variable assignment kind.");
       }
 
-      variables.push({
-        name,
+      builder.addVariable(variable, {
         value,
         hasSubstanceOnly: variable.hasSubstanceOnly,
       });
     }
 
     if (variable.compartment) {
-      if (!compartments.has(variable.compartment)) {
-        compartments.set(variable.compartment, [variable.name]);
+      const compartment = resolveReference(model, variable.compartment);
+      if (!compartments.has(compartment)) {
+        compartments.set(compartment, [variable]);
       } else {
-        compartments.get(variable.compartment)!.push(variable.name);
+        compartments.get(compartment)!.push(variable);
       }
     }
   }
 
-  const events: IridiumEvent<Metadata>[] = [];
-
-  for (const [name, event] of mainModel.objects) {
-    if (event.kind !== "event") continue;
-
-    const iridiumEvent: IridiumEvent<Metadata> = {
-      name,
-      trigger: compileFormula(event.trigger),
+  for (const event of events) {
+    const iridiumEvent: Omit<IridiumEvent<Metadata>, "name"> = {
+      trigger: compileFormula(event.trigger, resolveVariable),
       assignments: Array.from(Object.entries(event.assignments)).map(
         ([name, value]) => ({
           name,
-          value: compileFormula(value),
+          value: compileFormula(value, resolveVariable),
         }),
       ),
       isPersistent: event.options.persistent
@@ -250,41 +429,55 @@ export const compileToIridium = (
     };
 
     if (event.delay) {
-      iridiumEvent.delay = compileFormula(event.delay);
+      iridiumEvent.delay = compileFormula(event.delay, resolveVariable);
     }
 
     if (event.options.priority) {
-      iridiumEvent.priority = compileFormula(event.options.priority);
+      iridiumEvent.priority = compileFormula(
+        event.options.priority,
+        resolveVariable,
+      );
     }
 
-    events.push(iridiumEvent);
+    builder.addEvent(event, iridiumEvent);
   }
 
-  const iridiumFunctions: IridiumFunction<Metadata>[] = [];
-  for (const func of functions) {
-    iridiumFunctions.push({
+  for (const [container, contained] of compartments) {
+    builder.addCompartment(container, contained);
+  }
+};
+
+const resolveFunctionScopeVariable = (variable: VariableContext): string => {
+  if (!(variable instanceof NameContext)) {
+    throw new CompileError(
+      "cannot use subvariables or constants inside a function.",
+      { tree: variable },
+    );
+  }
+  return variable.NAME().text;
+};
+
+export const compileToIridium = (
+  document: AntimonyDocument,
+): IridiumModel<Metadata> => {
+  const builder = new IrBuilder();
+
+  for (const func of document.functions.values()) {
+    builder.addFunction(func, {
       name: func.name,
       parameters: func.parameters,
-      body: compileFormula(func.body),
+      body: compileFormula(func.body, resolveFunctionScopeVariable),
     });
   }
 
-  return {
-    variables,
-    reactions,
-    events,
-    functions: iridiumFunctions,
-    compartments: Array.from(compartments.entries()).map(
-      ([containerVariable, containedVariables]) => ({
-        containerVariable,
-        containedVariables,
-      }),
-    ),
-  };
+  const exportedModel = document.models.get(document.exportedModel)!;
+  compileModel(exportedModel, builder);
+
+  return builder.build();
 };
 
 export const compile = async (source: string): Promise<RuntimeModel> => {
-  const { models, functions } = deriveModels(source);
-  const ir = compileToIridium(models, functions);
+  const document = buildAntimonyDocument(source);
+  const ir = compileToIridium(document);
   return await compileIridium(ir);
 };

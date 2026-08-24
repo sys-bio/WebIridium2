@@ -12,6 +12,8 @@ import {
   FunctionDefinitionContext,
   InCompartmentContext,
   InStatementContext,
+  ModelContext,
+  ModelImportContext,
   NameContext,
   NameLabelContext,
   ReactantListContext,
@@ -22,14 +24,15 @@ import {
   VarContext,
   VariableContext,
 } from "../generated/AntimonyParser";
-import type {
-  AntimonyVariable,
-  AntimonyModel,
-  AntimonyReactionTerm,
-  VariableKind,
-  AntimonyObject,
-  AntimonyModelObject,
-  AntimonyFunction,
+import {
+  type AntimonyVariable,
+  type AntimonyModel,
+  type AntimonyReactionTerm,
+  type VariableKind,
+  type AntimonyObject,
+  type AntimonyModelObject,
+  type AntimonyFunction,
+  type AntimonyReference,
 } from "./model";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -43,31 +46,95 @@ const ALLOWED_DECLARATIONS = new Set<VariableKind>(["species", "compartment"]);
 
 export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
 export const DEFAULT_MODEL_NAME = "__main";
+export const DEFAULT_IMPORT_PREFIX = "_sys";
 
-const getVariableName = (variableCtx: VariableContext): string[] => {
-  if (variableCtx instanceof NameContext) {
-    return [variableCtx.NAME().text];
-  } else if (variableCtx instanceof SubvariableContext) {
-    return [
-      ...getVariableName(variableCtx.variable()),
-      variableCtx.NAME().text,
-    ];
-  } else if (variableCtx instanceof ConstantContext) {
-    return getVariableName(variableCtx.variable());
-  } else {
-    throw new Error(`unknown variable type: ${variableCtx.text}`);
+const copyAntimonyObject = (
+  object: AntimonyModelObject,
+): AntimonyModelObject => {
+  switch (object.kind) {
+    case "model":
+      return {
+        ...object,
+        objects: new Map(
+          Array.from(object.objects.entries()).map(([name, object]) => [
+            name,
+            copyAntimonyObject(object),
+          ]),
+        ),
+        unnamedImports: object.unnamedImports.map(
+          copyAntimonyObject,
+        ) as AntimonyModel[],
+      };
+    case "variable":
+      const copy: AntimonyVariable = { ...object };
+      if (object.assignment) {
+        copy.assignment = { ...object.assignment };
+      }
+      return copy;
+    case "reaction":
+    case "event":
+      return { ...object };
   }
 };
 
+export const getReferenceFromVariable = (
+  variable: VariableContext,
+): AntimonyReference => {
+  const reference = [];
+  let current = variable;
+
+  while (true) {
+    if (current instanceof NameContext) {
+      reference.push(current.NAME().text);
+      break;
+    } else if (current instanceof SubvariableContext) {
+      reference.push(current.NAME().text);
+      current = current.variable();
+    } else if (current instanceof ConstantContext) {
+      current = current.variable();
+    } else {
+      throw new Error(`Unknown variable type: ${variable}.`);
+    }
+  }
+
+  reference.reverse();
+
+  return reference;
+};
+
+export const resolveReference = (
+  model: AntimonyModel,
+  reference: AntimonyReference,
+): AntimonyModelObject => {
+  let current: AntimonyModelObject = model;
+
+  for (const name of reference) {
+    if (current.kind !== "model") {
+      throw new Error(`Can only reference models: ${reference.join(".")}.`);
+    }
+
+    const got = current.objects.get(name);
+
+    if (!got) {
+      throw new Error(`Missing ${name} in ${reference.join(".")}.`);
+    }
+
+    current = got;
+  }
+
+  return current;
+};
+
 /**
- * Derives an array of AntimonyModel.
+ * Builds Antimony models from a parse tree.
  */
-export class DeriveModelListener implements AntimonyListener {
+export class BuildAntimonyListener implements AntimonyListener {
   #baseModel: AntimonyModel;
   #models: Map<string, AntimonyModel>;
   #functions: Map<string, AntimonyFunction>;
   #currentModel: AntimonyModel | undefined;
   #currentDeclaration: DeclarationState | undefined;
+  #exportedModel: string;
 
   #diagnostics?: Error[];
 
@@ -78,18 +145,24 @@ export class DeriveModelListener implements AntimonyListener {
       kind: "model",
       name: DEFAULT_MODEL_NAME,
       objects: new Map(),
+      unnamedImports: [],
     };
     this.#models.set(this.#baseModel.name, this.#baseModel);
+    this.#exportedModel = DEFAULT_MODEL_NAME;
 
     this.#diagnostics = diagnostics;
   }
 
-  getModels(): AntimonyModel[] {
-    return Array.from(this.#models.values());
+  getModels(): Map<string, AntimonyModel> {
+    return this.#models;
   }
 
-  getFunctions(): AntimonyFunction[] {
-    return Array.from(this.#functions.values());
+  getFunctions(): Map<string, AntimonyFunction> {
+    return this.#functions;
+  }
+
+  getExportedModel(): string {
+    return this.#exportedModel;
   }
 
   #reportError(message: string, tree: ParserRuleContext): void {
@@ -132,7 +205,7 @@ export class DeriveModelListener implements AntimonyListener {
 
   #getOrCreateCompartment(
     compartmentCtx: InCompartmentContext | undefined,
-  ): string | null {
+  ): AntimonyReference | null {
     if (!compartmentCtx) {
       return null;
     } else {
@@ -160,42 +233,76 @@ export class DeriveModelListener implements AntimonyListener {
 
       this.#setVariableKind(compartmentCtx, compartmentObject, "compartment");
 
-      return compartmentObject.name;
+      return getReferenceFromVariable(compartmentCtx.variable());
+    }
+  }
+
+  #resolveObject(
+    model: AntimonyModel,
+    variableCtx: VariableContext,
+  ): [
+    model: AntimonyModel,
+    name: string,
+    object: AntimonyModelObject | undefined,
+  ] {
+    if (variableCtx instanceof NameContext) {
+      return [
+        model,
+        variableCtx.NAME().text,
+        model.objects.get(variableCtx.NAME().text),
+      ];
+    } else if (variableCtx instanceof SubvariableContext) {
+      const [_model, _name, head] = this.#resolveObject(
+        model,
+        variableCtx.variable(),
+      );
+      if (!head) {
+        return [model, variableCtx.NAME().text, undefined];
+      }
+
+      if (head.kind !== "model") {
+        this.#reportError(
+          `Cannot access object of type ${head.kind}`,
+          variableCtx,
+        );
+        return [model, variableCtx.NAME().text, undefined];
+      }
+
+      const got = head.objects.get(variableCtx.NAME().text);
+      if (!got) {
+        this.#reportError(
+          `'${variableCtx.NAME().text}' is not a subvariable of '${variableCtx.variable().text}'.`,
+          variableCtx,
+        );
+        return [head, variableCtx.NAME().text, undefined];
+      }
+
+      return [head, variableCtx.NAME().text, got];
+    } else if (variableCtx instanceof ConstantContext) {
+      return this.#resolveObject(model, variableCtx.variable());
+    } else {
+      throw new Error(`unknown variable type: ${variableCtx.text}`);
     }
   }
 
   /**
    * Get or create a variable and return it.
    * If the variable has the name of a built-in, does not create
-   * the varaible, instead returns undefined.
+   * the variable, instead returns undefined.
    */
   #getOrCreateObject(
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
     defaultVariableKind?: VariableKind,
   ): AntimonyModelObject | undefined {
-    const model = this.#getActiveModel();
-    const fullName = getVariableName(variableCtx);
-
-    if (fullName.length > 1) {
-      // TODO: actually do this properly instead of making fake throwaway variable
-      return {
-        kind: "variable",
-        variableKind: "parameter",
-        compartment: this.#getOrCreateCompartment(compartmentCtx),
-        isConst: false,
-        hasSubstanceOnly: false,
-        name: fullName.slice(1).join("."),
-      };
-    }
-
-    const name = fullName[0];
+    let [model, name, object] = this.#resolveObject(
+      this.#getActiveModel(),
+      variableCtx,
+    );
 
     if (isBuiltinName(name)) {
       return undefined;
     }
-
-    let object = model.objects.get(name);
 
     if (!object) {
       object = {
@@ -209,6 +316,7 @@ export class DeriveModelListener implements AntimonyListener {
           (this.#currentDeclaration?.isConst ?? false),
         hasSubstanceOnly: false,
       };
+
       model.objects.set(object.name, object);
     } else if (compartmentCtx) {
       object.compartment = this.#getOrCreateCompartment(compartmentCtx);
@@ -224,7 +332,7 @@ export class DeriveModelListener implements AntimonyListener {
   #getOrDefaultName(
     nameLabelCtx: NameLabelContext | undefined,
     prefix: string,
-  ): { name: string; compartment: string | null } {
+  ): { name: string; compartment: AntimonyReference | null } {
     if (nameLabelCtx) {
       return {
         name: nameLabelCtx.NAME().text,
@@ -275,6 +383,33 @@ export class DeriveModelListener implements AntimonyListener {
         }
       }
     }
+  }
+
+  enterModel(ctx: ModelContext): void {
+    const name = ctx.NAME().text;
+    const isExported = Boolean(ctx._star);
+    // TODO: we need to stop adding any objects to this model, since the listener will continue anyways
+    if (this.#models.has(name)) {
+      this.#reportError(`Model '${name}' is already defined.`, ctx);
+      return;
+    }
+
+    const model: AntimonyModel = {
+      kind: "model",
+      name,
+      objects: new Map(),
+      unnamedImports: [],
+    };
+
+    this.#models.set(name, model);
+    this.#currentModel = model;
+    if (isExported) {
+      this.#exportedModel = name;
+    }
+  }
+
+  exitModel(): void {
+    this.#currentModel = undefined;
   }
 
   enterDeclaration(ctx: DeclarationContext): void {
@@ -474,7 +609,7 @@ export class DeriveModelListener implements AntimonyListener {
       this.#setVariableKind(reactant, object, "species");
 
       terms.push({
-        name: object.name,
+        reference: getReferenceFromVariable(reactant.variable()),
         stoichiometry: reactant.stoichiometry(),
       });
     }
@@ -515,7 +650,10 @@ export class DeriveModelListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of reactants) {
-          const reactant = model.objects.get(term.name) as AntimonyVariable;
+          const reactant = resolveReference(
+            model,
+            term.reference,
+          ) as AntimonyVariable;
           reactant.compartment = compartment;
         }
       }
@@ -526,7 +664,10 @@ export class DeriveModelListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of products) {
-          const product = model.objects.get(term.name) as AntimonyVariable;
+          const product = resolveReference(
+            model,
+            term.reference,
+          ) as AntimonyVariable;
           product.compartment = compartment;
         }
       }
@@ -602,7 +743,7 @@ export class DeriveModelListener implements AntimonyListener {
     object.compartment = compartment;
   }
 
-  enterFunctionDefinition(ctx: FunctionDefinitionContext) {
+  enterFunctionDefinition(ctx: FunctionDefinitionContext): void {
     const name = ctx.NAME().text;
     const parameterNames: string[] = [];
     for (const parameterName of ctx.parameterList().NAME()) {
@@ -628,6 +769,35 @@ export class DeriveModelListener implements AntimonyListener {
       parameters: parameterNames,
       body: ctx.formula(),
     });
+  }
+
+  enterModelImport(ctx: ModelImportContext): void {
+    const name = ctx.NAME().text;
+    const callingModel = this.#models.get(name);
+    const currentModel = this.#getActiveModel();
+    if (callingModel === currentModel) {
+      this.#reportError(`Cannot import '${name}' into itself.`, ctx);
+      return;
+    }
+    if (!callingModel) {
+      this.#reportError(`No model with the name of '${name}'.`, ctx);
+      return;
+    }
+
+    let importName: string | undefined;
+    const nameLabelCtx = ctx.nameLabel();
+    if (nameLabelCtx) {
+      importName = nameLabelCtx.NAME().text;
+    }
+
+    const copiedModel = copyAntimonyObject(callingModel) as AntimonyModel;
+    if (importName === undefined) {
+      copiedModel.name = `${DEFAULT_IMPORT_PREFIX}${currentModel.unnamedImports.length}`;
+      currentModel.unnamedImports.push(copiedModel);
+    } else {
+      copiedModel.name = importName;
+      currentModel.objects.set(importName, copiedModel);
+    }
   }
 
   #getContentFromString(stringCtx: StringContext): string {

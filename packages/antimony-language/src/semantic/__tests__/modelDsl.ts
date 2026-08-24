@@ -5,15 +5,19 @@
 
 export type TestModel = {
   objects: Record<string, any>;
+  unnamedImports: any[];
 };
 
-export const model = (objects: Record<string, any>): TestModel => {
+export const model = (
+  objects: Record<string, any>,
+  unnamedImports?: any[],
+): TestModel => {
   for (const [name, object] of Object.entries(objects)) {
     // eslint-disable-next-line
     object.name = name;
   }
 
-  return { objects };
+  return { objects, unnamedImports: unnamedImports ?? [] };
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
@@ -83,7 +87,7 @@ const variableModifiers = {
 
 const variableProto = {
   in(this: Record<string, unknown>, compartment: string) {
-    this.compartment = compartment;
+    this.compartment = compartment.split(".");
     return this;
   },
   display(this: Record<string, unknown>, displayName: string) {
@@ -147,23 +151,31 @@ export const compartment = createVariableFunc("compartment");
 export const reaction = (
   reactants: Record<string, number | null>,
   products: Record<string, number | null>,
-  rate: string,
-  extra?: object,
+  rate?: string,
+  extra?: { in?: string },
 ) => {
+  let compartment = null;
+  if (extra && extra.in) {
+    compartment = extra.in.split(".");
+  }
+
   return {
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
-      name,
+      reference: name.split("."),
       stoichiometry: stoichiometry === null ? undefined : stoichiometry,
     })),
     products: Object.entries(products).map(([name, stoichiometry]) => ({
-      name,
+      reference: name.split("."),
       stoichiometry: stoichiometry === null ? undefined : stoichiometry,
     })),
-    rate: {
-      text: rate,
-    },
-    ...extra,
+    rate:
+      rate !== undefined
+        ? {
+            text: rate,
+          }
+        : undefined,
+    compartment,
   };
 };
 

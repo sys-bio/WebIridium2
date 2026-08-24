@@ -110,6 +110,12 @@ describe("bad models", () => {
   itShouldErrorForAll(badModels);
 });
 
+describe("model", () => {
+  itShouldErrorForAll({
+    nesting: "model A; model B; end; end",
+  });
+});
+
 describe("assignment", () => {
   itShouldErrorForAll({
     space: "A B = 5",
@@ -290,5 +296,25 @@ describe("function definition", () => {
     noParameters: "function a a end",
     noName: "function(a) a end",
     functionInsideModel: "model A\nfunction a() 5 end\nend",
+  });
+});
+
+describe("model import", () => {
+  itShouldSucceedForAll({
+    simple: "A()",
+    simpleWithList: "A(C,D)",
+    simpleWithSingularList: "A(C)",
+    dot: "A(B.D)",
+    dotAndNoDot: "A(B.D, E, F, G.H.I)",
+    named: "M: A()",
+    namedDot: "M: A(B.D)",
+    compartment: "M in C: A()",
+  });
+
+  itShouldErrorForAll({
+    missingParenthesis: "A(",
+    extraComma: "A(B,)",
+    extraComma2: "A(B.C,)",
+    dotMissing: "A(B.)",
   });
 });

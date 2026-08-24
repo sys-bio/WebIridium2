@@ -9,7 +9,7 @@ statementList : (statement? statementSeparator)+;
 statement : reaction
           | assignment
           | declaration
-          | modelCall
+          | modelImport
           | event
           | annotation
           | unitDeclaration
@@ -20,7 +20,7 @@ statement : reaction
 // model Test(A, B)
 //    
 // end
-model : MODEL '*'? NAME exportList? statementList END;
+model : MODEL star='*'? NAME exportList? statementList END;
 exportList : '(' (variable (',' variable)* )? ')';
 
 functionDefinition : FUNCTION NAME parameterList statementSeparator* formula statementSeparator* END;
@@ -109,4 +109,4 @@ unitFormula        : '(' unitFormula ')' #unitGroup
 
 inStatement : variable inCompartment;
 
-modelCall : nameLabel NAME exportList;
+modelImport : nameLabel? NAME exportList;

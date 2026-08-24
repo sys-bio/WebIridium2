@@ -2,13 +2,10 @@ import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import {
   CompareContext,
-  ConstantContext,
   FormulaContext,
   LogicalContext,
-  NameContext,
   NotContext,
   StoichiometryContext,
-  SubvariableContext,
   SumContext,
   VariableContext,
   type AntimonyListener,
@@ -22,18 +19,21 @@ import {
 } from "../grammar";
 import type { IridiumExpression } from "iridium-simulator";
 import type { Metadata } from "./metadata";
-import { CompileInvariantError } from "../errors";
+
+export type ResolveVariableFn = (variable: VariableContext) => string;
 
 export const compileFormula = (
   formula: FormulaContext,
+  resolveVariable: ResolveVariableFn,
 ): IridiumExpression<Metadata> => {
-  const formulaListener = new FormulaCompilerListener();
+  const formulaListener = new FormulaCompilerListener(resolveVariable);
   ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
   return formulaListener.getResult();
 };
 
 export const compileStoichiometry = (
   stoichiometry: StoichiometryContext,
+  resolveVariable: ResolveVariableFn,
 ): IridiumExpression<Metadata> => {
   const number = stoichiometry.NUMBER();
   if (number !== undefined) {
@@ -45,21 +45,10 @@ export const compileStoichiometry = (
   } else {
     return {
       kind: "variable",
-      name: getVariableName(stoichiometry.variable()!),
+      name: resolveVariable(stoichiometry.variable()!),
       metadata: { tree: stoichiometry },
     };
   }
-};
-
-const getVariableName = (ctx: VariableContext): string => {
-  if (ctx instanceof NameContext) {
-    return ctx.NAME().text;
-  } else if (ctx instanceof SubvariableContext) {
-    throw new CompileInvariantError("Not yet supported.");
-  } else if (ctx instanceof ConstantContext) {
-    return getVariableName(ctx.variable());
-  }
-  throw new CompileInvariantError("Unknown variable.");
 };
 
 const unreachable = (message: string): never => {
@@ -68,9 +57,11 @@ const unreachable = (message: string): never => {
 
 class FormulaCompilerListener implements AntimonyListener {
   #stack: IridiumExpression<Metadata>[];
+  #resolveVariable: ResolveVariableFn;
 
-  constructor() {
+  constructor(resolveVariable: ResolveVariableFn) {
     this.#stack = [];
+    this.#resolveVariable = resolveVariable;
   }
 
   getResult(): IridiumExpression<Metadata> {
@@ -106,7 +97,7 @@ class FormulaCompilerListener implements AntimonyListener {
   exitVar(ctx: VarContext): void {
     this.#stack.push({
       kind: "variable",
-      name: getVariableName(ctx.variable()),
+      name: this.#resolveVariable(ctx.variable()),
       metadata: { tree: ctx },
     });
   }
@@ -195,7 +186,7 @@ class FormulaCompilerListener implements AntimonyListener {
         right: {
           kind: "binary",
           op: op,
-          left: compileFormula(leftCtx.formula(1)),
+          left: compileFormula(leftCtx.formula(1), this.#resolveVariable),
           right: right,
           metadata: { tree: leftCtx },
         },

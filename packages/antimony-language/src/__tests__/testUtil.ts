@@ -1,7 +1,7 @@
 import { createCvodeSimulator, type TimeCourseOutput } from "iridium-simulator";
 import { compileToIridium } from "../compile/compile";
 import { compile } from "iridium-simulator";
-import { deriveModels } from "../semantic/semantic";
+import { buildAntimonyDocument } from "../semantic/semantic";
 
 export type TestParams = {
   startTime: number;
@@ -85,8 +85,8 @@ export const simulateOnce = async (
   amounts?: string[],
 ): Promise<TimeCourseOutput> => {
   const simulator = await createCvodeSimulator();
-  const { models, functions } = deriveModels(model);
-  const ir = compileToIridium(models, functions);
+  const document = buildAntimonyDocument(model);
+  const ir = compileToIridium(document);
   const runtimeModel = await compile(ir);
 
   await simulator.setModel(runtimeModel);

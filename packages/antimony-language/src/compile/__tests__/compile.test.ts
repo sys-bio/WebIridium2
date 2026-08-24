@@ -11,7 +11,7 @@ import {
   func,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
-import { deriveModels } from "../../semantic/semantic";
+import { buildAntimonyDocument } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
 import defaultModel from "@/assets/default.ant?raw";
 import { writeFileSync } from "node:fs";
@@ -44,8 +44,8 @@ const deleteMetadataFromArray = (arr: Record<string, unknown>[]): void => {
 };
 
 const compileToIr = (source: string): IridiumModel => {
-  const { models, functions } = deriveModels(source);
-  const iridium = compileToIridium(models, functions);
+  const document = buildAntimonyDocument(source);
+  const iridium = compileToIridium(document);
   return iridium;
 };
 
@@ -362,6 +362,22 @@ describe("ir", () => {
           }),
         );
       });
+
+      it("should use 0 as the default reaction rate", () => {
+        expectCompilesTo(
+          "A + B -> C",
+          model({
+            variables: {
+              A: species(0),
+              B: species(0),
+              C: species(0),
+            },
+            reactions: {
+              _J0: reaction({ A: 1, B: 1 }, { C: 1 }, expr.num(0)),
+            },
+          }),
+        );
+      });
     });
 
     describe("events", () => {
@@ -435,12 +451,147 @@ describe("ir", () => {
       );
     });
   });
+
+  describe("model imports", () => {
+    it("should flatten named imports", () => {
+      expectCompilesTo(
+        "model example; A + B -> C; k1; end; A: example(); B: example()",
+        model({
+          variables: {
+            A__A: species(0),
+            A__B: species(0),
+            A__C: species(0),
+            A__k1: parameter(0),
+            B__A: species(0),
+            B__B: species(0),
+            B__C: species(0),
+            B__k1: parameter(0),
+          },
+          reactions: {
+            A___J0: reaction(
+              { A__A: 1, A__B: 1 },
+              { A__C: 1 },
+              expr.var("A__k1"),
+            ),
+            B___J0: reaction(
+              { B__A: 1, B__B: 1 },
+              { B__C: 1 },
+              expr.var("B__k1"),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should not duplicate when an import is of the same name", () => {
+      expectCompilesTo(
+        "model example; A + B -> C; k1; end; A: example(); A: example()",
+        model({
+          variables: {
+            A__A: species(0),
+            A__B: species(0),
+            A__C: species(0),
+            A__k1: parameter(0),
+          },
+          reactions: {
+            A___J0: reaction(
+              { A__A: 1, A__B: 1 },
+              { A__C: 1 },
+              expr.var("A__k1"),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should resolve name collisions", () => {
+      expectCompilesTo(
+        "A__A = 10; model example; A + B -> C; k1; end; A: example(); B: example()",
+        model({
+          variables: {
+            A__A: parameter(10),
+            A__A_0: species(0),
+            A__B: species(0),
+            A__C: species(0),
+            A__k1: parameter(0),
+            B__A: species(0),
+            B__B: species(0),
+            B__C: species(0),
+            B__k1: parameter(0),
+          },
+          reactions: {
+            A___J0: reaction(
+              { A__A_0: 1, A__B: 1 },
+              { A__C: 1 },
+              expr.var("A__k1"),
+            ),
+            B___J0: reaction(
+              { B__A: 1, B__B: 1 },
+              { B__C: 1 },
+              expr.var("B__k1"),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should not duplicate when an import is of the same name", () => {
+      expectCompilesTo(
+        "model example; A + B -> C; k1; end; A: example(); A: example()",
+        model({
+          variables: {
+            A__A: species(0),
+            A__B: species(0),
+            A__C: species(0),
+            A__k1: parameter(0),
+          },
+          reactions: {
+            A___J0: reaction(
+              { A__A: 1, A__B: 1 },
+              { A__C: 1 },
+              expr.var("A__k1"),
+            ),
+          },
+        }),
+      );
+    });
+  });
+
+  describe("name collisions", () => {
+    // This is a divergence from libantimony which will error in this case.
+    it.only("should resolve function name collisions", () => {
+      expectCompilesTo(
+        `function test_b(a, b)
+  a + b
+end
+
+model a()
+  b = 3
+end
+
+test: a()
+
+C = test_b
+test_b = 5`,
+        model({
+          variables: {
+            test_b_0: parameter(5),
+            test__b: parameter(3),
+            C: parameter(expr.var("test_b_0")),
+          },
+          functions: {
+            test_b: func(["a", "b"], expr.add(expr.var("a"), expr.var("b"))),
+          },
+        }),
+      );
+    });
+  });
 });
 
 describe("wasm", () => {
   it("should compile valid WASM", () => {
-    const { models, functions } = deriveModels(defaultModel);
-    const ir = compileToIridium(models, functions);
+    const document = buildAntimonyDocument(defaultModel);
+    const ir = compileToIridium(document);
     const { bytecode } = compileIntermediate(ir);
 
     if (WRITE_BASIC_MODEL) {

@@ -1,5 +1,8 @@
 import { it, expect, describe } from "vitest";
-import { deriveModels } from "../../semantic/semantic";
+import {
+  buildAntimonyDocument,
+  type AntimonyModel,
+} from "../../semantic/semantic";
 
 import {
   model,
@@ -14,6 +17,7 @@ import {
 import defaultModel from "@/assets/default.ant?raw";
 import { ParserRuleContext } from "antlr4ts";
 import { SemanticError } from "../../errors.ts";
+import { DEFAULT_MODEL_NAME } from "../BuildAntimonyListener.ts";
 
 /**
  * Strip parse contexts only to their text value. Otherwise
@@ -51,22 +55,50 @@ const stripContextsOnlyToText = (
   return obj;
 };
 
-const expectModels = (code: string, models: TestModel[]): void => {
-  const { models: gotModels } = deriveModels(code);
+const convertModelMapsToObjects = (model: AntimonyModel): void => {
+  for (const object of [...model.objects.values(), ...model.unnamedImports]) {
+    if (object.kind === "model") {
+      convertModelMapsToObjects(object);
+    }
+  }
+  // eslint-disable-next-line
+  (model as any).objects = Object.fromEntries(model.objects);
+};
 
-  expect(gotModels).toHaveLength(models.length);
+const expectDocument = (
+  code: string,
+  expectedDocument: {
+    models: Record<string, TestModel>;
+    exportedModel: string;
+  },
+): void => {
+  const gotDocument = buildAntimonyDocument(code);
 
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
+  expect(gotDocument.exportedModel).toBe(expectedDocument.exportedModel);
+
+  // check the root model
+  for (const [name, expectedModel] of Object.entries(expectedDocument.models)) {
+    const gotModel = gotDocument.models.get(name);
+
+    expect(gotModel).not.toBeUndefined();
+
+    convertModelMapsToObjects(gotModel!);
 
     expect(
-      stripContextsOnlyToText(Object.fromEntries(gotModels[i].objects)),
-    ).toMatchObject(model.objects);
+      // eslint-disable-next-line
+      stripContextsOnlyToText(gotModel!.objects as any),
+    ).toMatchObject(expectedModel.objects);
+    expect(stripContextsOnlyToText(gotModel!.unnamedImports)).toMatchObject(
+      expectedModel.unnamedImports,
+    );
   }
 };
 
 const expectModel = (code: string, model: TestModel): void => {
-  expectModels(code, [model]);
+  expectDocument(code, {
+    models: { [DEFAULT_MODEL_NAME]: model },
+    exportedModel: DEFAULT_MODEL_NAME,
+  });
 };
 
 it("should derive reactions and parameters for default model", () => {
@@ -88,7 +120,7 @@ describe("diagnostics mode", () => {
   it("should collect diagnostics", () => {
     const diagnostics: Error[] = [];
     expect(diagnostics).toHaveLength(0);
-    deriveModels("A := 3; A = 3", { diagnostics });
+    buildAntimonyDocument("A := 3; A = 3", { diagnostics });
     expect(diagnostics).toHaveLength(1);
   });
 });
@@ -168,25 +200,25 @@ describe("assignments", () => {
 
   it("should error when trying to set rate then rule", () => {
     expect(() => {
-      deriveModels("A'=5; A:=5");
+      buildAntimonyDocument("A'=5; A:=5");
     }).toThrowError(SemanticError);
   });
 
   it("should error when trying to set rule then rate", () => {
     expect(() => {
-      deriveModels("A:=5; A'=5");
+      buildAntimonyDocument("A:=5; A'=5");
     }).toThrowError(SemanticError);
   });
 
   it("should error when trying to set rule then initial", () => {
     expect(() => {
-      deriveModels("A:=5; A=5");
+      buildAntimonyDocument("A:=5; A=5");
     }).toThrowError(SemanticError);
   });
 
   it("should not error when trying to set initial then rule", () => {
     expect(() => {
-      deriveModels("A=5; A:=5");
+      buildAntimonyDocument("A=5; A:=5");
     }).not.toThrowError(SemanticError);
   });
 
@@ -206,6 +238,12 @@ describe("assignments", () => {
         J: reaction({ A: null, B: null }, { C: null }, "5"),
       }),
     );
+  });
+
+  it("should error when trying assign to a function", () => {
+    expect(() => {
+      buildAntimonyDocument("function a(b); b; end; a = 3");
+    }).toThrowError(SemanticError);
   });
 });
 
@@ -281,7 +319,7 @@ describe("declarations", () => {
 
   it("should not let you update species to compartment", () => {
     expect(() => {
-      deriveModels("species A = 0; const compartment A = 5");
+      buildAntimonyDocument("species A = 0; const compartment A = 5");
     }).toThrow();
   });
 
@@ -306,19 +344,19 @@ describe("declarations", () => {
 
   it("should not allow substanceOnly on compartment", () => {
     expect(() => {
-      deriveModels("substanceOnly compartment A");
+      buildAntimonyDocument("substanceOnly compartment A");
     }).toThrow(SemanticError);
   });
 
   it("should forbid declaring built-in constant", () => {
     expect(() => {
-      deriveModels("species true");
+      buildAntimonyDocument("species true");
     }).toThrowError(SemanticError);
   });
 
   it("should forbid declaring built-in function", () => {
     expect(() => {
-      deriveModels("species piecewise");
+      buildAntimonyDocument("species piecewise");
     }).toThrowError(SemanticError);
   });
 
@@ -334,19 +372,25 @@ describe("declarations", () => {
 
   it("should not allow substanceOnly events and reactions", () => {
     expect(() =>
-      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; substanceOnly E, A"),
+      buildAntimonyDocument(
+        "E: at A > 3: A = 3; J: A + B -> C; 1; substanceOnly E, A",
+      ),
     ).toThrowError(SemanticError);
   });
 
   it("should not allow converting events or reactions to species", () => {
     expect(() =>
-      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; species E, A"),
+      buildAntimonyDocument(
+        "E: at A > 3: A = 3; J: A + B -> C; 1; species E, A",
+      ),
     ).toThrowError(SemanticError);
   });
 
   it("should not allow converting events or reactions to compartments", () => {
     expect(() =>
-      deriveModels("E: at A > 3: A = 3; J: A + B -> C; 1; compartment E, A"),
+      buildAntimonyDocument(
+        "E: at A > 3: A = 3; J: A + B -> C; 1; compartment E, A",
+      ),
     ).toThrowError(SemanticError);
   });
 });
@@ -397,7 +441,7 @@ describe("events", () => {
 
   it("should error for invalid option", () => {
     expect(() => {
-      deriveModels("at 5, t = false: A = 0");
+      buildAntimonyDocument("at 5, t = false: A = 0");
     }).toThrow();
   });
 });
@@ -431,9 +475,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: "comp",
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
       }),
     );
   });
@@ -445,9 +487,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: "comp",
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
       }),
     );
   });
@@ -459,9 +499,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: "comp",
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
       }),
     );
   });
@@ -473,9 +511,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: "comp",
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
       }),
     );
   });
@@ -487,12 +523,8 @@ describe("compartments", () => {
         A: species().in("comp2"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: "comp",
-        }),
-        J2: reaction({ A: null }, {}, "k2", {
-          compartment: "comp2",
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
+        J2: reaction({ A: null }, {}, "k2", { in: "comp2" }),
       }),
     );
   });
@@ -504,9 +536,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", {
-          compartment: null,
-        }),
+        J: reaction({ A: null }, { B: null }, "k1", { in: null }),
       }),
     );
   });
@@ -522,7 +552,138 @@ describe("compartments", () => {
 
   it("should not let you set built-in compartment", () => {
     expect(() => {
-      deriveModels("true in comp");
+      buildAntimonyDocument("true in comp");
+    }).toThrowError(SemanticError);
+  });
+});
+
+describe("model imports", () => {
+  const exampleModelString = "model example(); S + E -> ES;; end";
+  const exampleModel = (merge?: Record<string, unknown>) =>
+    model({
+      S: species(),
+      E: species(),
+      ES: species(),
+      _J0: reaction({ S: null, E: null }, { ES: null }),
+      ...merge,
+    });
+
+  it("should import simple model", () => {
+    expectDocument(`${exampleModelString}; example();`, {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}, [exampleModel()]),
+        example: exampleModel(),
+      },
+      exportedModel: DEFAULT_MODEL_NAME,
+    });
+  });
+
+  it("should import multiple models", () => {
+    expectDocument(`${exampleModelString}; example(); example(); example();`, {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}, [
+          exampleModel(),
+          exampleModel(),
+          exampleModel(),
+        ]),
+        example: exampleModel(),
+      },
+      exportedModel: DEFAULT_MODEL_NAME,
+    });
+  });
+
+  it("should import named models", () => {
+    expectDocument(`${exampleModelString}; A: example(); B: example()`, {
+      models: {
+        [DEFAULT_MODEL_NAME]: model(
+          { A: exampleModel(), B: exampleModel() },
+          [],
+        ),
+        example: exampleModel(),
+      },
+      exportedModel: DEFAULT_MODEL_NAME,
+    });
+  });
+
+  it("should import named and unnamed models", () => {
+    expectDocument(
+      `${exampleModelString}; A: example(); B: example(); example()`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model(
+            { A: exampleModel(), B: exampleModel() },
+            [exampleModel()],
+          ),
+          example: exampleModel(),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should allow reactions between imported models", () => {
+    expectDocument(
+      `${exampleModelString}; A: example(); B: example(); A.E -> B.E;`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({
+            A: exampleModel(),
+            B: exampleModel(),
+            _J0: reaction({ "A.E": null }, { "B.E": null }),
+          }),
+          example: exampleModel(),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should allow reactions between imported models 2", () => {
+    expectDocument(
+      `${exampleModelString}; A: example(); B: example(); A.E + B.E -> C;`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({
+            A: exampleModel(),
+            B: exampleModel(),
+            _J0: reaction({ "A.E": null, "B.E": null }, { C: null }),
+          }),
+          example: exampleModel(),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should allow re-assigning in imported models", () => {
+    expectDocument(`${exampleModelString}; A: example(); A.E = 3`, {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({
+          A: exampleModel({
+            E: species("3"),
+          }),
+        }),
+        example: exampleModel(),
+      },
+      exportedModel: DEFAULT_MODEL_NAME,
+    });
+  });
+
+  it("should not allow adding to imported models", () => {
+    expect(() => {
+      buildAntimonyDocument(`${exampleModelString}; A: example(); A.D = 3`);
+    }).toThrowError(SemanticError);
+  });
+
+  it("should not allow adding to imported models", () => {
+    expect(() => {
+      buildAntimonyDocument(`${exampleModelString}; A: example(); A.D = 3`);
+    }).toThrowError(SemanticError);
+  });
+
+  it("should not allow using imported models inside reactions", () => {
+    expect(() => {
+      buildAntimonyDocument(`${exampleModelString}; A: example(); A + B -> C;`);
     }).toThrowError(SemanticError);
   });
 });
@@ -537,7 +698,7 @@ describe.skip("annotations", () => {
 
   it("should not allow multiple strings in `is`", () => {
     expect(() => {
-      deriveModels('species A; A is "dog", "cat"');
+      buildAntimonyDocument('species A; A is "dog", "cat"');
     }).toThrowError(SemanticError);
   });
 });

@@ -71,7 +71,7 @@ import { StringContext } from "./AntimonyParser";
 import { UnitDeclarationContext } from "./AntimonyParser";
 import { UnitFormulaContext } from "./AntimonyParser";
 import { InStatementContext } from "./AntimonyParser";
-import { ModelCallContext } from "./AntimonyParser";
+import { ModelImportContext } from "./AntimonyParser";
 
 
 /**
@@ -572,10 +572,10 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitInStatement?: (ctx: InStatementContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `AntimonyParser.modelCall`.
+	 * Visit a parse tree produced by `AntimonyParser.modelImport`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitModelCall?: (ctx: ModelCallContext) => Result;
+	visitModelImport?: (ctx: ModelImportContext) => Result;
 }
 

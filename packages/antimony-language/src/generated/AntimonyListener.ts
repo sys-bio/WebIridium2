@@ -71,7 +71,7 @@ import { StringContext } from "./AntimonyParser";
 import { UnitDeclarationContext } from "./AntimonyParser";
 import { UnitFormulaContext } from "./AntimonyParser";
 import { InStatementContext } from "./AntimonyParser";
-import { ModelCallContext } from "./AntimonyParser";
+import { ModelImportContext } from "./AntimonyParser";
 
 
 /**
@@ -860,14 +860,14 @@ export interface AntimonyListener extends ParseTreeListener {
 	exitInStatement?: (ctx: InStatementContext) => void;
 
 	/**
-	 * Enter a parse tree produced by `AntimonyParser.modelCall`.
+	 * Enter a parse tree produced by `AntimonyParser.modelImport`.
 	 * @param ctx the parse tree
 	 */
-	enterModelCall?: (ctx: ModelCallContext) => void;
+	enterModelImport?: (ctx: ModelImportContext) => void;
 	/**
-	 * Exit a parse tree produced by `AntimonyParser.modelCall`.
+	 * Exit a parse tree produced by `AntimonyParser.modelImport`.
 	 * @param ctx the parse tree
 	 */
-	exitModelCall?: (ctx: ModelCallContext) => void;
+	exitModelImport?: (ctx: ModelImportContext) => void;
 }
 
