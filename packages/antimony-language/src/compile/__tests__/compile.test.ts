@@ -365,7 +365,7 @@ describe("ir", () => {
 
       it("should use 0 as the default reaction rate", () => {
         expectCompilesTo(
-          "A + B -> C",
+          "A + B -> C; ",
           model({
             variables: {
               A: species(0),
@@ -555,11 +555,23 @@ describe("ir", () => {
         }),
       );
     });
+
+    it("should error when using imported model name inside formula", () => {
+      expect(() => {
+        compileToIr("model test; A = 3; end; t: test(); C = 5 + t");
+      }).toThrowError(CompileError);
+    });
+
+    it("should error when using imported model variable inside formula", () => {
+      expect(() => {
+        compileToIr("model test; A = 3; end; t: test(); C = 5 + t.A");
+      }).toThrowError(CompileError);
+    });
   });
 
   describe("name collisions", () => {
     // This is a divergence from libantimony which will error in this case.
-    it.only("should resolve function name collisions", () => {
+    it("should resolve function name collisions", () => {
       expectCompilesTo(
         `function test_b(a, b)
   a + b

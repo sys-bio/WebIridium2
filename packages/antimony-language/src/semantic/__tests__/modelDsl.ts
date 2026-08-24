@@ -4,6 +4,7 @@
  */
 
 export type TestModel = {
+  kind: "model";
   objects: Record<string, any>;
   unnamedImports: any[];
 };
@@ -17,7 +18,7 @@ export const model = (
     object.name = name;
   }
 
-  return { objects, unnamedImports: unnamedImports ?? [] };
+  return { kind: "model", objects, unnamedImports: unnamedImports ?? [] };
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */

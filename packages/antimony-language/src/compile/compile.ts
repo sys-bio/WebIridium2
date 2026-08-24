@@ -202,11 +202,27 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
 
   const resolveVariable = (variable: VariableContext): string => {
     const reference = getReferenceFromVariable(variable);
-    if (reference.length === 1 && isBuiltinName(reference[0])) {
+    if (reference.length > 1) {
+      throw new CompileError(
+        "You cannot refer to subvariables within a math expression.",
+        { tree: variable },
+      );
+    }
+
+    if (isBuiltinName(reference[0])) {
       return reference[0];
     }
 
-    return builder.getNameOf(resolveReference(model, reference));
+    const object = resolveReference(model, reference);
+
+    if (object.kind === "event" || object.kind === "model") {
+      throw new CompileError(
+        `${object.name} is a ${object.kind} and cannot be used in a math expression.`,
+        { tree: variable },
+      );
+    }
+
+    return builder.getNameOf(object);
   };
 
   for (const object of model.objects.values()) {

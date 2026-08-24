@@ -536,7 +536,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: null }),
+        J: reaction({ A: null }, { B: null }, "k1"),
       }),
     );
   });
@@ -559,14 +559,20 @@ describe("compartments", () => {
 
 describe("model imports", () => {
   const exampleModelString = "model example(); S + E -> ES;; end";
-  const exampleModel = (merge?: Record<string, unknown>) =>
-    model({
-      S: species(),
-      E: species(),
-      ES: species(),
-      _J0: reaction({ S: null, E: null }, { ES: null }),
-      ...merge,
-    });
+  const exampleModel = (
+    merge?: Record<string, unknown>,
+    unnamedImports?: unknown[],
+  ) =>
+    model(
+      {
+        S: species(),
+        E: species(),
+        ES: species(),
+        _J0: reaction({ S: null, E: null }, { ES: null }),
+        ...merge,
+      },
+      unnamedImports,
+    );
 
   it("should import simple model", () => {
     expectDocument(`${exampleModelString}; example();`, {
@@ -615,6 +621,40 @@ describe("model imports", () => {
             [exampleModel()],
           ),
           example: exampleModel(),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should import unnamed nested models", () => {
+    expectDocument(
+      `${exampleModelString}; model example2(); example(); end; example2(); example()`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({}, [
+            model({}, [exampleModel()]),
+            exampleModel(),
+          ]),
+          example: exampleModel(),
+          example2: model({}, [exampleModel()]),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should import named nested models", () => {
+    expectDocument(
+      `${exampleModelString}; model example2(); A: example(); end; A: example2(); B: example()`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({
+            A: model({ A: exampleModel() }),
+            B: exampleModel(),
+          }),
+          example: exampleModel(),
+          example2: model({ A: exampleModel() }),
         },
         exportedModel: DEFAULT_MODEL_NAME,
       },

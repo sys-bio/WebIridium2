@@ -73,7 +73,6 @@ describe("simulation results", () => {
       }
 
       for (const [name, column] of Object.entries(expectedColumns)) {
-        console.log(name);
         for (let i = 0; i < column.length; i++) {
           const got = gotColumns[name][i];
           const expected = column[i];
