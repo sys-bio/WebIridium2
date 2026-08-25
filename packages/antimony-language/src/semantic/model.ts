@@ -12,6 +12,7 @@ export type AntimonyDocument = {
 export type AntimonyObjectBase<Kind extends string> = {
   kind: Kind;
   name: string;
+  displayName?: string;
 };
 
 export type AntimonyObject =

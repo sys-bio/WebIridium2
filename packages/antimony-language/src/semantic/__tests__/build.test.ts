@@ -776,7 +776,7 @@ describe("model imports", () => {
   });
 });
 
-describe.skip("annotations", () => {
+describe("annotations", () => {
   it("should set displayName", () => {
     expectModel(
       'species A; A is "dog"',

@@ -22,6 +22,7 @@ import {
   StringContext,
   SubvariableContext,
   VarContext,
+  VariableAnnotationContext,
   VariableContext,
 } from "../generated/AntimonyParser";
 import {
@@ -828,37 +829,28 @@ export class BuildAntimonyListener implements AntimonyListener {
     return "";
   }
 
-  enterAnnotation(_ctx: AnnotationContext): void {
-    // TODO: re-implement annotations
-    /**
-    const variableAnnotatation = ctx.variableAnnotation();
-    if (variableAnnotatation) {
-      const variableCtx = variableAnnotatation.variable();
-      const body = variableAnnotatation.annotationBody();
-      const item = body.annotationItem();
-      const strings = body.string();
+  enterVariableAnnotation(ctx: VariableAnnotationContext): void {
+    const variableCtx = ctx.variable();
+    const body = ctx.annotationBody();
+    const item = body.annotationItem();
+    const strings = body.string();
 
-      if (item.text === "is") {
-        if (strings.length > 1) {
-          // TODO: this error sucks
-          this.#reportError(
-            "is annotation can only be used with one string.",
-            ctx,
-          );
-          // we don't want to early return, just use the best name available
-        }
-
-        const variable = this.#getActiveModel().variables.get(
-          getVariableName(variableCtx)[0],
+    if (item.text === "is") {
+      if (strings.length > 1) {
+        // TODO: this error sucks
+        this.#reportError(
+          "is annotation can only be used with one string.",
+          ctx,
         );
-        if (!variable) {
-          // TODO: fix variable annotations and unify namespaces
-          return;
-        }
+        // we don't want to early return, just use the best name available
+      }
 
-        variable.displayName = this.#getContentFromString(strings[0]);
-      } // ignore everything else for now, maybe validate later
-    }
-    */
+      const object = this.#getOrCreateObject(variableCtx, undefined);
+      if (!object) {
+        return;
+      }
+
+      object.displayName = this.#getContentFromString(strings[0]);
+    } // ignore everything else for now, maybe validate later
   }
 }
