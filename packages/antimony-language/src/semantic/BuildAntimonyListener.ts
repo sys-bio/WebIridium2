@@ -31,8 +31,8 @@ import {
   type VariableKind,
   type AntimonyObject,
   type AntimonyModelObject,
-  type AntimonyFunction,
   type AntimonyReference,
+  type AntimonyDocument,
 } from "./model";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -103,12 +103,19 @@ export const getReferenceFromVariable = (
 };
 
 export const resolveReference = (
+  document: AntimonyDocument,
   model: AntimonyModel,
   reference: AntimonyReference,
-): AntimonyModelObject => {
-  let current: AntimonyModelObject = model;
+): AntimonyObject => {
+  let current: AntimonyObject = model;
 
-  for (const name of reference) {
+  for (let i = 0; i < reference.length; i++) {
+    const name = reference[i];
+    if (i == 0 && document.functions.has(name)) {
+      current = document.functions.get(name)!;
+      continue;
+    }
+
     if (current.kind !== "model") {
       throw new Error(`Can only reference models: ${reference.join(".")}.`);
     }
@@ -130,39 +137,32 @@ export const resolveReference = (
  */
 export class BuildAntimonyListener implements AntimonyListener {
   #baseModel: AntimonyModel;
-  #models: Map<string, AntimonyModel>;
-  #functions: Map<string, AntimonyFunction>;
+  #document: AntimonyDocument;
   #currentModel: AntimonyModel | undefined;
   #currentDeclaration: DeclarationState | undefined;
-  #exportedModel: string;
 
   #diagnostics?: Error[];
 
   constructor({ diagnostics }: { diagnostics?: Error[] } = {}) {
-    this.#models = new Map();
-    this.#functions = new Map();
+    this.#document = {
+      models: new Map(),
+      exportedModel: DEFAULT_MODEL_NAME,
+      functions: new Map(),
+    };
     this.#baseModel = {
       kind: "model",
       name: DEFAULT_MODEL_NAME,
       objects: new Map(),
       unnamedImports: [],
     };
-    this.#models.set(this.#baseModel.name, this.#baseModel);
-    this.#exportedModel = DEFAULT_MODEL_NAME;
+    this.#document.models.set(DEFAULT_MODEL_NAME, this.#baseModel);
+    this.#document.exportedModel = DEFAULT_MODEL_NAME;
 
     this.#diagnostics = diagnostics;
   }
 
-  getModels(): Map<string, AntimonyModel> {
-    return this.#models;
-  }
-
-  getFunctions(): Map<string, AntimonyFunction> {
-    return this.#functions;
-  }
-
-  getExportedModel(): string {
-    return this.#exportedModel;
+  getDocument(): AntimonyDocument {
+    return this.#document;
   }
 
   #reportError(message: string, tree: ParserRuleContext): void {
@@ -237,14 +237,10 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
-  #resolveObject(
+  #getOrCreateObjectAux(
     model: AntimonyModel,
     variableCtx: VariableContext,
-  ): [
-    model: AntimonyModel,
-    name: string,
-    object: AntimonyModelObject | undefined,
-  ] {
+  ): [model: AntimonyModel, name: string, object: AntimonyObject | undefined] {
     if (variableCtx instanceof NameContext) {
       return [
         model,
@@ -252,7 +248,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         model.objects.get(variableCtx.NAME().text),
       ];
     } else if (variableCtx instanceof SubvariableContext) {
-      const [_model, _name, head] = this.#resolveObject(
+      const [_model, _name, head] = this.#getOrCreateObjectAux(
         model,
         variableCtx.variable(),
       );
@@ -279,7 +275,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       return [head, variableCtx.NAME().text, got];
     } else if (variableCtx instanceof ConstantContext) {
-      return this.#resolveObject(model, variableCtx.variable());
+      return this.#getOrCreateObjectAux(model, variableCtx.variable());
     } else {
       throw new Error(`unknown variable type: ${variableCtx.text}`);
     }
@@ -294,8 +290,14 @@ export class BuildAntimonyListener implements AntimonyListener {
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
     defaultVariableKind?: VariableKind,
-  ): AntimonyModelObject | undefined {
-    let [model, name, object] = this.#resolveObject(
+  ): AntimonyObject | undefined {
+    if (variableCtx instanceof NameContext) {
+      if (this.#document.functions.has(variableCtx.NAME().text)) {
+        return this.#document.functions.get(variableCtx.NAME().text);
+      }
+    }
+
+    let [model, name, object] = this.#getOrCreateObjectAux(
       this.#getActiveModel(),
       variableCtx,
     );
@@ -389,7 +391,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     const name = ctx.NAME().text;
     const isExported = Boolean(ctx._star);
     // TODO: we need to stop adding any objects to this model, since the listener will continue anyways
-    if (this.#models.has(name)) {
+    if (this.#document.models.has(name)) {
       this.#reportError(`Model '${name}' is already defined.`, ctx);
       return;
     }
@@ -401,10 +403,10 @@ export class BuildAntimonyListener implements AntimonyListener {
       unnamedImports: [],
     };
 
-    this.#models.set(name, model);
+    this.#document.models.set(name, model);
     this.#currentModel = model;
     if (isExported) {
-      this.#exportedModel = name;
+      this.#document.exportedModel = name;
     }
   }
 
@@ -651,6 +653,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of reactants) {
           const reactant = resolveReference(
+            this.#document,
             model,
             term.reference,
           ) as AntimonyVariable;
@@ -665,6 +668,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of products) {
           const product = resolveReference(
+            this.#document,
             model,
             term.reference,
           ) as AntimonyVariable;
@@ -758,12 +762,12 @@ export class BuildAntimonyListener implements AntimonyListener {
       parameterNames.push(parameterName.text);
     }
 
-    if (this.#functions.has(name)) {
+    if (this.#document.functions.has(name)) {
       this.#reportError(`Function ${name} is defined twice.`, ctx);
       return;
     }
 
-    this.#functions.set(name, {
+    this.#document.functions.set(name, {
       kind: "function",
       name: name,
       parameters: parameterNames,
@@ -773,7 +777,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
   enterModelImport(ctx: ModelImportContext): void {
     const name = ctx.NAME().text;
-    const callingModel = this.#models.get(name);
+    const callingModel = this.#document.models.get(name);
     const currentModel = this.#getActiveModel();
     if (callingModel === currentModel) {
       this.#reportError(`Cannot import '${name}' into itself.`, ctx);
@@ -795,6 +799,15 @@ export class BuildAntimonyListener implements AntimonyListener {
       copiedModel.name = `${DEFAULT_IMPORT_PREFIX}${currentModel.unnamedImports.length}`;
       currentModel.unnamedImports.push(copiedModel);
     } else {
+      const prevObject = currentModel.objects.get(importName);
+      if (prevObject && prevObject.kind !== "model") {
+        this.#reportError(
+          `Cannot import to ${importName} as it is already a ${prevObject.kind}.`,
+          ctx,
+        );
+        return;
+      }
+
       copiedModel.name = importName;
       currentModel.objects.set(importName, copiedModel);
     }

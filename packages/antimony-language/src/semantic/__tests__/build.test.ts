@@ -393,6 +393,24 @@ describe("declarations", () => {
       ),
     ).toThrowError(SemanticError);
   });
+
+  it("should not allow rate assignments on reactions", () => {
+    expect(() =>
+      buildAntimonyDocument("J: A + B -> C; k1; J' = 3"),
+    ).toThrowError(SemanticError);
+  });
+
+  it("should not allow rate assignments on events", () => {
+    expect(() =>
+      buildAntimonyDocument("E: at time > 3: A = 3; E' = 3"),
+    ).toThrowError(SemanticError);
+  });
+
+  it("should not allow assignment rules on reactions", () => {
+    expect(() =>
+      buildAntimonyDocument("J: A + B -> C; k1; J := 3"),
+    ).toThrowError(SemanticError);
+  });
 });
 
 describe("$ modifier", () => {
@@ -659,6 +677,36 @@ describe("model imports", () => {
         exportedModel: DEFAULT_MODEL_NAME,
       },
     );
+  });
+
+  it("should override imports", () => {
+    expectDocument(
+      `${exampleModelString}; model example2(); A: example(); end; A: example2(); A: example()`,
+      {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({
+            A: exampleModel(),
+          }),
+          example: exampleModel(),
+          example2: model({ A: exampleModel() }),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      },
+    );
+  });
+
+  it("should error when trying to import with a name already owned by a variable", () => {
+    expect(() => {
+      buildAntimonyDocument(`${exampleModelString}; A = 3; A: example()`);
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to import with a name already owned by an event", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        `${exampleModelString}; A: at time > 3: B = 0; A: example()`,
+      );
+    }).toThrowError(SemanticError);
   });
 
   it("should allow reactions between imported models", () => {

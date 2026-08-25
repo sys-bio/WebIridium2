@@ -425,7 +425,7 @@ describe("ir", () => {
     });
   });
 
-  describe("function definitions", () => {
+  describe("function", () => {
     it("should compile no parameters", () => {
       expectCompilesTo(
         "function test() 5 end",
@@ -449,6 +449,12 @@ describe("ir", () => {
           },
         }),
       );
+    });
+
+    it("should error when using a function name without calling it", () => {
+      expect(() => {
+        compileToIr("function test(a); a + a; end; C = 3 + test");
+      }).toThrowError(CompileError);
     });
   });
 
@@ -566,36 +572,6 @@ describe("ir", () => {
       expect(() => {
         compileToIr("model test; A = 3; end; t: test(); C = 5 + t.A");
       }).toThrowError(CompileError);
-    });
-  });
-
-  describe("name collisions", () => {
-    // This is a divergence from libantimony which will error in this case.
-    it("should resolve function name collisions", () => {
-      expectCompilesTo(
-        `function test_b(a, b)
-  a + b
-end
-
-model a()
-  b = 3
-end
-
-test: a()
-
-C = test_b
-test_b = 5`,
-        model({
-          variables: {
-            test_b_0: parameter(5),
-            test__b: parameter(3),
-            C: parameter(expr.var("test_b_0")),
-          },
-          functions: {
-            test_b: func(["a", "b"], expr.add(expr.var("a"), expr.var("b"))),
-          },
-        }),
-      );
     });
   });
 });

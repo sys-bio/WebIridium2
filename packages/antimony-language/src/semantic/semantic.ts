@@ -25,9 +25,5 @@ export const buildAntimonyFromParseTree = (
 ): AntimonyDocument => {
   const buildListener = new BuildAntimonyListener({ diagnostics });
   ParseTreeWalker.DEFAULT.walk(buildListener as ParseTreeListener, root);
-  return {
-    models: buildListener.getModels(),
-    functions: buildListener.getFunctions(),
-    exportedModel: buildListener.getExportedModel(),
-  };
+  return buildListener.getDocument();
 };

@@ -14,7 +14,6 @@ import type {
   AntimonyDocument,
   AntimonyEvent,
   AntimonyModel,
-  AntimonyModelObject,
   AntimonyObject,
   AntimonyReaction,
   AntimonyVariable,
@@ -194,7 +193,11 @@ class IrBuilder {
   }
 }
 
-const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
+const compileModel = (
+  model: AntimonyModel,
+  builder: IrBuilder,
+  document: AntimonyDocument,
+): void => {
   const submodels: AntimonyModel[] = [];
   const variables: AntimonyVariable[] = [];
   const reactions: AntimonyReaction[] = [];
@@ -213,9 +216,9 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
       return reference[0];
     }
 
-    const object = resolveReference(model, reference);
+    const object = resolveReference(document, model, reference);
 
-    if (object.kind === "event" || object.kind === "model") {
+    if (object.kind !== "variable" && object.kind !== "reaction") {
       throw new CompileError(
         `${object.name} is a ${object.kind} and cannot be used in a math expression.`,
         { tree: variable },
@@ -256,11 +259,11 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
 
   for (const submodel of submodels) {
     builder.pushPrefix(submodel.name + "__");
-    compileModel(submodel, builder);
+    compileModel(submodel, builder, document);
     builder.popPrefix();
   }
 
-  const reactionInvolvedVariables = new Set<AntimonyModelObject>();
+  const reactionInvolvedVariables = new Set<AntimonyObject>();
   for (const reaction of reactions) {
     let rate: IridiumExpression<Metadata>;
 
@@ -273,7 +276,7 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
     const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(model, reactant.reference);
+      const variable = resolveReference(document, model, reactant.reference);
       if (variable.kind === "variable" && variable.isConst) continue;
       reactionInvolvedVariables.add(variable);
       reactants.push({
@@ -287,7 +290,7 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
     const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(model, product.reference);
+      const variable = resolveReference(document, model, product.reference);
       if (variable.kind === "variable" && variable.isConst) continue;
       reactionInvolvedVariables.add(variable);
       products.push({
@@ -417,7 +420,11 @@ const compileModel = (model: AntimonyModel, builder: IrBuilder): void => {
     }
 
     if (variable.compartment) {
-      const compartment = resolveReference(model, variable.compartment);
+      const compartment = resolveReference(
+        document,
+        model,
+        variable.compartment,
+      );
       if (!compartments.has(compartment)) {
         compartments.set(compartment, [variable]);
       } else {
@@ -487,7 +494,7 @@ export const compileToIridium = (
   }
 
   const exportedModel = document.models.get(document.exportedModel)!;
-  compileModel(exportedModel, builder);
+  compileModel(exportedModel, builder, document);
 
   return builder.build();
 };
