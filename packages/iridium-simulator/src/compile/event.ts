@@ -1031,7 +1031,7 @@ const compileSetAssignments = (
     const compartment = compilation.compartments.get(name);
     if (!variable.hasSubstanceOnly && compartment) {
       scope.emitLoadVariableFromName(emitter, compartment.name);
-      emitter.emitUint(OpCode.f64mul);
+      emitter.emitByte(OpCode.f64mul);
     }
 
     if (yIndices.has(name)) {

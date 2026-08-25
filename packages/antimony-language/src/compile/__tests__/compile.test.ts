@@ -13,12 +13,12 @@ import {
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
-import defaultModel from "@/assets/default.ant?raw";
+import defaultModel from "../../__tests__/results/example_firczuk_large.ant?raw";
 import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
 // useful to use with WABT to analyze the WebAssembly output.
-const WRITE_BASIC_MODEL = false;
+const WRITE_BASIC_MODEL = true;
 
 const variables = (variables: {
   [name: string]: DslVariable;

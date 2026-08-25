@@ -94,7 +94,7 @@ export const compileRhs = (
     const compartment = compartments.get(variable.name);
     if (!variable.hasSubstanceOnly && compartment) {
       scope.emitLoadVariableFromName(emitter, compartment.name);
-      emitter.emitUint(OpCode.f64mul);
+      emitter.emitByte(OpCode.f64mul);
     }
 
     emitter.emitByte(OpCode.f64store);

@@ -95,12 +95,12 @@ export class GlobalScope implements Scope {
 
   emitConvertToConcentration(emitter: Emitter, compartment: string): void {
     this.emitLoadVariableFromName(emitter, compartment);
-    emitter.emitUint(OpCode.f64div);
+    emitter.emitByte(OpCode.f64div);
   }
 
   emitConvertToAmount(emitter: Emitter, compartment: string): void {
     this.emitLoadVariableFromName(emitter, compartment);
-    emitter.emitUint(OpCode.f64mul);
+    emitter.emitByte(OpCode.f64mul);
   }
 }
 
