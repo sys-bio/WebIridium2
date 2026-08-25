@@ -575,6 +575,52 @@ describe("compartments", () => {
   });
 });
 
+describe("model", () => {
+  it("should export the last one if the top-level model is empty", () => {
+    expectDocument("model a(); A = 3; end; model test(); A = 3; end", {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}),
+        a: model({ A: parameter("3") }),
+        test: model({ A: parameter("3") }),
+      },
+      exportedModel: "test",
+    });
+  });
+
+  it("should export the top-level if none are specified and it is not empty", () => {
+    expectDocument("model a(); A = 3; end; model test(); A = 3; end; A = 3", {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}),
+        a: model({ A: parameter("3") }),
+        test: model({ A: parameter("3") }),
+      },
+      exportedModel: DEFAULT_MODEL_NAME,
+    });
+  });
+
+  it("should export whichever is specified", () => {
+    expectDocument("model *a(); A = 3; end; model test(); A = 3; end; A = 3", {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}),
+        a: model({ A: parameter("3") }),
+        test: model({ A: parameter("3") }),
+      },
+      exportedModel: "a",
+    });
+  });
+
+  it("should export the last specified", () => {
+    expectDocument("model *a(); A = 3; end; model *test(); A = 3; end; A = 3", {
+      models: {
+        [DEFAULT_MODEL_NAME]: model({}),
+        a: model({ A: parameter("3") }),
+        test: model({ A: parameter("3") }),
+      },
+      exportedModel: "test",
+    });
+  });
+});
+
 describe("model imports", () => {
   const exampleModelString = "model example(); S + E -> ES;; end";
   const exampleModel = (

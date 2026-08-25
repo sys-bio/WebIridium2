@@ -2,7 +2,6 @@ import { SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import { ParserRuleContext } from "antlr4ts";
 import {
-  AnnotationContext,
   AssignmentContext,
   ConstantContext,
   DeclarationContext,
@@ -163,7 +162,24 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   getDocument(): AntimonyDocument {
-    return this.#document;
+    let exported = this.#document.exportedModel;
+    if (exported === DEFAULT_MODEL_NAME) {
+      const defaultModel = this.#document.models.get(DEFAULT_MODEL_NAME)!;
+      // if the top-level model is empty then try to pick the last model instead
+      if (
+        defaultModel.objects.size === 0 &&
+        defaultModel.unnamedImports.length === 0 &&
+        this.#document.models.size > 1
+      ) {
+        const models = Array.from(this.#document.models.values());
+        exported = models[models.length - 1].name;
+      }
+    }
+
+    return {
+      ...this.#document,
+      exportedModel: exported,
+    };
   }
 
   #reportError(message: string, tree: ParserRuleContext): void {
@@ -253,16 +269,20 @@ export class BuildAntimonyListener implements AntimonyListener {
         model,
         variableCtx.variable(),
       );
+      const name = variableCtx.NAME().text;
       if (!head) {
-        return [model, variableCtx.NAME().text, undefined];
+        return [model, name, undefined];
       }
 
       if (head.kind !== "model") {
-        this.#reportError(
-          `Cannot access object of type ${head.kind}`,
-          variableCtx,
-        );
-        return [model, variableCtx.NAME().text, undefined];
+        // TODO: fix this temporary havk to get this to work
+        if (name !== "sboTerm") {
+          this.#reportError(
+            `Cannot access object of type ${head.kind}`,
+            variableCtx,
+          );
+        }
+        return [model, name, undefined];
       }
 
       const got = head.objects.get(variableCtx.NAME().text);
@@ -271,10 +291,10 @@ export class BuildAntimonyListener implements AntimonyListener {
           `'${variableCtx.NAME().text}' is not a subvariable of '${variableCtx.variable().text}'.`,
           variableCtx,
         );
-        return [head, variableCtx.NAME().text, undefined];
+        return [head, name, undefined];
       }
 
-      return [head, variableCtx.NAME().text, got];
+      return [head, name, got];
     } else if (variableCtx instanceof ConstantContext) {
       return this.#getOrCreateObjectAux(model, variableCtx.variable());
     } else {
@@ -406,6 +426,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     this.#document.models.set(name, model);
     this.#currentModel = model;
+
     if (isExported) {
       this.#document.exportedModel = name;
     }

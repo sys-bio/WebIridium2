@@ -80,7 +80,7 @@ event            : nameLabel? AT trigger=formula eventOptions? ':' eventAssignme
                  ;
 eventOptions     : (',' eventOption)+;
 eventOption      : NAME '=' formula;
-eventAssignments : NEWLINE* eventAssignment (',' eventAssignment)*;
+eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula;
 
 annotation         : variableAnnotation | hasAnnotation | modelAnnotation;

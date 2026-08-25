@@ -181,6 +181,7 @@ describe("event", () => {
     complexFormula: "at time > (A + B^2) / (k1 * k2):A = 3",
     multiline: "at time > 5:\nA = 3",
     multilines: "at time > 5:\n   \n  \t \nA = 3",
+    multilinesComma: "at time > 5:\n   \n  \t \nA = 3,\n\tB = 3",
     noSpaces: "at time>5:A=3",
     delay: "at 5 after time > 3: A = 4\nA=3",
     delayFormula: "at B * C after 5 > 3: A = 3",

@@ -3,7 +3,10 @@ import {
   type RuntimeModel,
   type CvodeSimulator,
 } from "iridium-simulator";
-import { deriveModels, type AntimonyModel } from "antimony-language/semantic";
+import {
+  buildAntimonyDocument,
+  type AntimonyModel,
+} from "antimony-language/semantic";
 import type { Action, ErrorResult, Result } from "@/features/taskPool";
 import type { SimulateTimeCourseOptions } from "@/features/simulation/Simulator";
 import { compileToIridium } from "antimony-language/compile";
@@ -93,14 +96,19 @@ self.onmessage = async (e: MessageEvent<unknown>) => {
 
     switch (action.type) {
       case "compile": {
-        const antimonyModel = deriveModels(action.payload);
-        const iridiumModel = compileToIridium(antimonyModel);
+        const antimonyDocument = buildAntimonyDocument(action.payload);
+        const iridiumModel = compileToIridium(antimonyDocument);
         const runtimeModel = await compile(iridiumModel);
         if (!runtimeModel) throw new Error("Unable to compile model.");
 
         // TODO: we should actually pick the main model, not the first one
         self.postMessage(
-          wrapResult(action, { antimonyModel: antimonyModel[0], runtimeModel }),
+          wrapResult(action, {
+            antimonyModel: antimonyDocument.models.get(
+              antimonyDocument.exportedModel,
+            ),
+            runtimeModel,
+          }),
         );
 
         break;
