@@ -822,6 +822,42 @@ describe("model imports", () => {
   });
 });
 
+describe("renaming", () => {
+  it("should throw error when trying to rename model", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "model example(); A = 3; end; A: example(); A is B",
+      );
+    }).toThrowError(SemanticError);
+  });
+
+  describe("with existing objects", () => {
+    // Even though libantimony allows this, we are disallowing it here because
+    // the behavior is very unpredictable. For example, renaming event to existing
+    // variable always make the trigger true. Better to be more restrictive here
+    // in my opinion.
+    it("should throw error when trying to rename reaction to existing variable", () => {
+      expect(() => {
+        buildAntimonyDocument("J: A + B -> C; k1; D = 3; J is D");
+      }).toThrowError(SemanticError);
+    });
+
+    it("should throw error when trying to rename event to existing variable", () => {
+      expect(() => {
+        buildAntimonyDocument("E: at time > 3: D = 3; J is D");
+      }).toThrowError(SemanticError);
+    });
+
+    it("should throw error when trying to rename event to existing reaction", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          "E: at time > 3: A = 3; J: A + B -> C; k1; E is J",
+        );
+      }).toThrowError(SemanticError);
+    });
+  });
+});
+
 describe("annotations", () => {
   it("should set displayName", () => {
     expectModel(

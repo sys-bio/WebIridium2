@@ -574,6 +574,211 @@ describe("ir", () => {
       }).toThrowError(CompileError);
     });
   });
+
+  describe("renaming", () => {
+    it("should rename variables", () => {
+      expectCompilesTo(
+        "A is B",
+        model({
+          variables: {
+            B: parameter(0),
+          },
+        }),
+      );
+    });
+
+    it("should rename variables in reactants", () => {
+      expectCompilesTo(
+        "J: A + A2 -> A3; k1; A is B",
+        model({
+          variables: {
+            B: species(0),
+            A2: species(0),
+            A3: species(0),
+          },
+          reactions: {
+            J: reaction({ B: 1, A2: 1 }, { A3: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+    });
+
+    it("should rename variables in products", () => {
+      expectCompilesTo(
+        "J: A3 + A2 -> B; k1; A is B",
+        model({
+          variables: {
+            B: species(0),
+            A2: species(0),
+            A3: species(0),
+          },
+          reactions: {
+            J: reaction({ A3: 1, A2: 1 }, { B: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+    });
+
+    it("should rename variables in rate laws", () => {
+      expectCompilesTo(
+        "J: A + B -> C; k1; k1 is k2",
+        model({
+          variables: {
+            A: species(0),
+            B: species(0),
+            C: species(0),
+            k2: parameter(0),
+          },
+          reactions: {
+            J: reaction({ A: 1, B: 1 }, { C: 1 }, expr.var("k2")),
+          },
+        }),
+      );
+    });
+
+    it("should rename variables in event triggers", () => {
+      expectCompilesTo(
+        "E: at A > 3: C = 3; A is B",
+        model({
+          variables: {
+            B: parameter(0),
+            C: parameter(0),
+          },
+          events: {
+            E: event(expr.gt(expr.var("B"), expr.num(3)), { C: expr.num(3) }),
+          },
+        }),
+      );
+    });
+
+    it("should rename variables in event assignments", () => {
+      expectCompilesTo(
+        "E: at time > 3: A = 3; A is B",
+        model({
+          variables: {
+            B: parameter(0),
+          },
+          events: {
+            E: event(expr.gt(expr.var("time"), expr.num(3)), {
+              B: expr.num(3),
+            }),
+          },
+        }),
+      );
+    });
+
+    it("should inherit assignment when renaming to existing variable", () => {
+      expectCompilesTo(
+        "B = 3; species A = 1; A is B",
+        model({
+          variables: {
+            B: species(3),
+          },
+        }),
+      );
+    });
+
+    it("should allow re-assigning to old name when it is a variable", () => {
+      expectCompilesTo(
+        "B = 3; A is B; A = 1",
+        model({
+          variables: {
+            B: parameter(1),
+          },
+        }),
+      );
+    });
+
+    it("should allow re-assigning to old name when it is a variable", () => {
+      expectCompilesTo(
+        "B = 3; A is B; A = 1",
+        model({
+          variables: {
+            B: parameter(1),
+          },
+        }),
+      );
+    });
+
+    it("should update rate law of reaction when assigning to new name", () => {
+      expectCompilesTo(
+        "J: A + B -> C; k1; J is D; D = 10",
+        model({
+          variables: {
+            A: species(0),
+            B: species(0),
+            C: species(0),
+          },
+          reactions: {
+            D: reaction({ A: 1, B: 1 }, { C: 1 }, expr.num(10)),
+          },
+        }),
+      );
+    });
+
+    it("should update trigger of event when assigning to new name", () => {
+      expectCompilesTo(
+        "E: at time > 3: A = 3; E is D; D = 10",
+        model({
+          variables: {
+            A: species(0),
+            B: species(0),
+            C: species(0),
+          },
+          events: {
+            D: event(expr.num(10), { A: expr.num(3) }),
+          },
+        }),
+      );
+    });
+
+    it("should update trigger of event when assigning to overwritten name that was formerly a variable", () => {
+      expectCompilesTo(
+        "E: at time > 3: A = 3; D = 3; E is D; D = 10",
+        model({
+          variables: {
+            A: species(0),
+            B: species(0),
+            C: species(0),
+          },
+          events: {
+            D: event(expr.num(10), { A: expr.num(3) }),
+          },
+        }),
+      );
+    });
+
+    it("should allow renaming variable in submodule to one in module", () => {
+      expectCompilesTo(
+        `module test
+            A + B -> C; k1
+            k1 = 4
+        end
+        sub: test()
+        A + B -> C; k1
+        sub.A is A`,
+        model({
+          variables: {
+            A: species(0),
+            B: species(0),
+            C: species(0),
+            k1: parameter(0),
+            sub__B: species(0),
+            sub__C: species(0),
+            sub__k1: parameter(4),
+          },
+          reactions: {
+            sub___J0: reaction(
+              { A: 1, sub__B: 1 },
+              { sub__C: 1 },
+              expr.var("sub__k1"),
+            ),
+            J0: reaction({ A: 1, B: 1 }, { C: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+    });
+  });
 });
 
 describe("wasm", () => {
