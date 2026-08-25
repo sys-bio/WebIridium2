@@ -90,10 +90,10 @@ Model::Model(
     }
 
     p_.resize(original_p_.size() + num_reactions_);
-    dummy_y_dot_ = new double[original_y_.size()];
-    abs_tol_v_ = N_VNew_Serial(original_y_.size(), ctx_);
+    dummy_y_dot_ = new double[NV_LENGTH_S(y_)];
+    abs_tol_v_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx_);
 
-    matrix_ = SUNDenseMatrix(original_y_.size(), original_y_.size(), ctx_);
+    matrix_ = SUNDenseMatrix(NV_LENGTH_S(y_), NV_LENGTH_S(y_), ctx_);
     non_lin_solver_ = SUNNonlinSol_Newton(y_, ctx_);
     linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
 
@@ -111,6 +111,8 @@ Model::Model(
         events_swap_ = std::vector<WasmBool>(event_params.event_info.size());
         current_triggered_events_ = std::vector<WasmBool>(event_params.event_info.size());
     }
+
+    std::cout << "y size: " << NV_LENGTH_S(y_) << std::endl;
 
     ResetState();
 }
@@ -179,8 +181,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (start_time >= end_time) throw std::invalid_argument("required: start_time < end_time");
     if (num_points <= 0) throw std::invalid_argument("required: num_points > 0");
 
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
     convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
+    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
 
     if (!has_init_) {
         if (original_y_.empty()) {
