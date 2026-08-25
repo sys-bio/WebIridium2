@@ -38,19 +38,18 @@ export const compileRhs = (
   const { variables, compartments, reactions, yTable, pTable } = compilation;
   const emitter = new Emitter();
 
-  const rateDetermined: RateDeterminedVariable[] = Array.from(
-    variables.values(),
-  ).filter((p): p is RateDeterminedVariable => p.value.kind === "rate");
-
-  const assignmentDetermined: AssignmentDeterminedVariable[] = Array.from(
-    variables.values(),
-  ).filter(
-    (p): p is AssignmentDeterminedVariable => p.value.kind === "assignment",
-  );
-
-  const reactionDetermined: ReactionDeterminedVariable[] = Array.from(
-    variables.values(),
-  ).filter((p): p is ReactionDeterminedVariable => p.value.kind === "reaction");
+  const rateDetermined: RateDeterminedVariable[] = [];
+  const assignmentDetermined: AssignmentDeterminedVariable[] = [];
+  const reactionDetermined: ReactionDeterminedVariable[] = [];
+  for (const variable of variables.values()) {
+    if (variable.value.kind === "rate") {
+      rateDetermined.push(variable as RateDeterminedVariable);
+    } else if (variable.value.kind === "assignment") {
+      assignmentDetermined.push(variable as AssignmentDeterminedVariable);
+    } else if (variable.value.kind === "reaction") {
+      reactionDetermined.push(variable as ReactionDeterminedVariable);
+    }
+  }
 
   const assignmentMap = new Map(
     assignmentDetermined.map((v) => [v.name, v.value.assignment]),

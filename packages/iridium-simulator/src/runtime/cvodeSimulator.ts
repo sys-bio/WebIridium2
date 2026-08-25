@@ -269,7 +269,7 @@ export class CvodeSimulator {
       numPoints,
     );
 
-    model.binding.DumpStats();
+    // model.binding.DumpStats();
 
     return new TimeCourseOutput(
       model.runtimeModel,
