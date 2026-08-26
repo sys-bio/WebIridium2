@@ -90,7 +90,7 @@ class IrBuilder {
 
   #getAvailableName(name: string): string {
     if (this.#prefixes) {
-      name = this.#prefixes.join() + name;
+      name = this.#prefixes.join("") + name;
     }
 
     let newName = name;
@@ -131,6 +131,7 @@ class IrBuilder {
 
   addSource(source: AntimonyObject): void {
     const name = this.#getAvailableName(source.name);
+    console.log(name);
     this.#sources.set(source, name);
     this.#names.add(name);
   }
@@ -141,8 +142,6 @@ class IrBuilder {
   ): void {
     this.#setName(variable, this.getNameOf(source));
     this.#ir.variables.push(variable);
-    this.#names.add(variable.name);
-    this.#sources.set(source, variable.name);
   }
 
   addReaction(
@@ -151,8 +150,6 @@ class IrBuilder {
   ): void {
     this.#setName(reaction, this.getNameOf(source));
     this.#ir.reactions.push(reaction);
-    this.#names.add(reaction.name);
-    this.#sources.set(source, reaction.name);
   }
 
   addEvent(
@@ -161,8 +158,6 @@ class IrBuilder {
   ): void {
     this.#setName(event, this.getNameOf(source));
     this.#ir.events.push(event);
-    this.#names.add(event.name);
-    this.#sources.set(source, event.name);
   }
 
   addCompartment(container: AntimonyObject, contained: AntimonyObject[]): void {
@@ -187,21 +182,94 @@ class IrBuilder {
   getNameOf(source: AntimonyObject): string {
     const got = this.#sources.get(source);
     if (!got) {
-      throw new CompileInvariantError("Object missing name.");
+      throw new CompileInvariantError(`Object ${source.name} missing name.`);
     }
     return got;
   }
 }
+
+const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
+  const modelStack = [root];
+  const seen = new Set<AntimonyModel>();
+  while (modelStack.length > 0) {
+    const got = modelStack.pop()!;
+
+    if (seen.has(got)) {
+      builder.popPrefix();
+      continue;
+    }
+
+    seen.add(got);
+
+    if (got !== root) {
+      builder.pushPrefix(got.name + "__");
+      modelStack.push(got);
+    }
+
+    for (const object of got.objects.values()) {
+      switch (object.kind) {
+        case "variable":
+          builder.addSource(object);
+          break;
+        case "reaction":
+          builder.addSource(object);
+          break;
+        case "event":
+          builder.addSource(object);
+          break;
+        case "model":
+          modelStack.push(object);
+          break;
+        case "renameLink":
+          break;
+        default:
+          throw new CompileInvariantError(
+            `Unknown object kind: ${(object as AntimonyObject).kind}.`,
+          );
+      }
+    }
+
+    for (const submodel of got.unnamedImports) {
+      modelStack.push(submodel);
+    }
+  }
+};
 
 const compileModel = (
   model: AntimonyModel,
   builder: IrBuilder,
   document: AntimonyDocument,
 ): void => {
-  const submodels: AntimonyModel[] = [];
   const variables: AntimonyVariable[] = [];
   const reactions: AntimonyReaction[] = [];
   const events: AntimonyEvent[] = [];
+
+  for (const object of model.objects.values()) {
+    switch (object.kind) {
+      case "variable":
+        variables.push(object);
+        break;
+      case "reaction":
+        reactions.push(object);
+        break;
+      case "event":
+        events.push(object);
+        break;
+      case "model":
+        compileModel(object, builder, document);
+        break;
+      case "renameLink":
+        break;
+      default:
+        throw new CompileInvariantError(
+          `Unknown object kind: ${(object as AntimonyObject).kind}.`,
+        );
+    }
+  }
+
+  for (const submodel of model.unnamedImports) {
+    compileModel(submodel, builder, document);
+  }
 
   const resolveVariable = (variable: VariableContext): string => {
     const reference = getReferenceFromVariable(variable);
@@ -227,43 +295,6 @@ const compileModel = (
 
     return builder.getNameOf(object);
   };
-
-  for (const object of model.objects.values()) {
-    switch (object.kind) {
-      case "variable":
-        variables.push(object);
-        builder.addSource(object);
-        break;
-      case "reaction":
-        reactions.push(object);
-        builder.addSource(object);
-        break;
-      case "event":
-        events.push(object);
-        builder.addSource(object);
-        break;
-      case "model":
-        submodels.push(object);
-        break;
-      case "renameLink":
-        break;
-      default:
-        throw new CompileInvariantError(
-          `Unknown object kind: ${(object as AntimonyObject).kind}.`,
-        );
-    }
-  }
-
-  for (const unnamedSubmodel of model.unnamedImports) {
-    builder.addSource(unnamedSubmodel);
-    submodels.push(unnamedSubmodel);
-  }
-
-  for (const submodel of submodels) {
-    builder.pushPrefix(submodel.name + "__");
-    compileModel(submodel, builder, document);
-    builder.popPrefix();
-  }
 
   const reactionInvolvedVariables = new Set<AntimonyObject>();
   for (const reaction of reactions) {
@@ -486,6 +517,7 @@ export const compileToIridium = (
   document: AntimonyDocument,
 ): IridiumModel<Metadata> => {
   const builder = new IrBuilder();
+  const exportedModel = document.models.get(document.exportedModel)!;
 
   for (const func of document.functions.values()) {
     builder.addFunction(func, {
@@ -495,7 +527,8 @@ export const compileToIridium = (
     });
   }
 
-  const exportedModel = document.models.get(document.exportedModel)!;
+  addAllSources(exportedModel, builder);
+
   compileModel(exportedModel, builder, document);
 
   return builder.build();

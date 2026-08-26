@@ -61,6 +61,8 @@ const expectCompilesTo = (source: string, expected: IridiumModel): void => {
   deleteMetadataFromArray(got.reactions);
   deleteMetadataFromArray(got.events);
 
+  console.log(got);
+
   const gotNames = {
     variables: Object.fromEntries(got.variables.map((v) => [v.name, v])),
     reactions: Object.fromEntries(got.reactions.map((v) => [v.name, v])),
@@ -668,7 +670,7 @@ describe("ir", () => {
       );
     });
 
-    it("should inherit assignment when renaming to existing variable", () => {
+    it("should inherit assignment when renaming to existing variable with an assignment", () => {
       expectCompilesTo(
         "B = 3; species A = 1; A is B",
         model({
@@ -757,6 +759,47 @@ describe("ir", () => {
               expr.var("sub__k1"),
             ),
             _J0: reaction({ A: 1, B: 1 }, { C: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+
+      expectCompilesTo(
+        `module test1
+          A + B -> C; k1
+        end
+
+        module test2
+          2 A + 2 B -> 2 C; k1
+        end
+
+        module test3
+          sub1: test1()
+          sub2: test2()
+          sub1.B is sub2.B
+        end
+
+        sub3: test3()
+        sub3.sub1.A is sub3.sub2.k1
+        sub3.sub1.k1 is k1`,
+        model({
+          variables: {
+            sub3__sub1__C: species(0),
+            sub3__sub2__A: species(0),
+            sub3__sub2__B: species(0),
+            sub3__sub2__k1: parameter(0),
+            k1: parameter(0),
+          },
+          reactions: {
+            sub3__sub1___J0: reaction(
+              { sub3__sub2__k1: 1, sub3__sub2__B: 1 },
+              { sub3__sub1__C: 1 },
+              expr.var("k1"),
+            ),
+            sub3__sub2___J0: reaction(
+              { sub3__sub2__A: 2, sub3__sub2__B: 2 },
+              { sub3__sub2__C: 2 },
+              expr.var("sub3__sub2__k1"),
+            ),
           },
         }),
       );

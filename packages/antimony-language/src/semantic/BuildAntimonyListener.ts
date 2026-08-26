@@ -266,6 +266,10 @@ export class BuildAntimonyListener implements AntimonyListener {
     return this.#currentModel;
   }
 
+  get #isActive(): boolean {
+    return true;
+  }
+
   #setVariableKind(
     ctx: ParserRuleContext,
     variable: AntimonyVariable,
@@ -481,6 +485,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterModel(ctx: ModelContext): void {
+    if (!this.#isActive) return;
+
     const name = ctx.NAME().text;
     const isExported = Boolean(ctx._star);
     // TODO: we need to stop adding any objects to this model, since the listener will continue anyways
@@ -510,6 +516,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterDeclaration(ctx: DeclarationContext): void {
+    if (!this.#isActive) return;
+
     const head = ctx.declarationHead();
 
     let isConst: boolean | undefined;
@@ -547,10 +555,13 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   exitDeclaration(_ctx: DeclarationContext): void {
+    if (!this.#isActive) return;
+
     this.#currentDeclaration = undefined;
   }
 
   enterDeclarationName(ctx: DeclarationNameContext): void {
+    if (!this.#isActive) return;
     if (!this.#currentDeclaration) return;
 
     // TODO: is it always OK to re-assign?
@@ -585,10 +596,14 @@ export class BuildAntimonyListener implements AntimonyListener {
   */
 
   enterVar(ctx: VarContext): void {
+    if (!this.#isActive) return;
+
     this.#getOrCreateObject(ctx.variable(), undefined);
   }
 
   enterAssignment(ctx: AssignmentContext): void {
+    if (!this.#isActive) return;
+
     const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
     if (!object) {
       this.#reportError("Cannot assign to built-in.", ctx);
@@ -714,6 +729,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterStoichiometry(ctx: StoichiometryContext): void {
+    if (!this.#isActive) return;
+
     const variable = ctx.variable();
     if (variable) {
       const object = this.#getOrCreateObject(variable, undefined);
@@ -727,6 +744,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterReaction(ctx: ReactionContext): void {
+    if (!this.#isActive) return;
+
     const model = this.#getActiveModel();
 
     const nameResult = this.#getOrDefaultName(ctx.nameLabel(), "_J");
@@ -785,6 +804,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterEvent(ctx: EventContext): void {
+    if (!this.#isActive) return;
+
     // It's safe to ignore events with no assignments since they have no effect
     const assignmentsCtx = ctx.eventAssignments();
     if (!assignmentsCtx) return;
@@ -834,6 +855,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterInStatement(ctx: InStatementContext): void {
+    if (!this.#isActive) return;
+
     const compartment = this.#getOrCreateCompartment(ctx.inCompartment());
     const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
 
@@ -846,6 +869,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterFunctionDefinition(ctx: FunctionDefinitionContext): void {
+    if (!this.#isActive) return;
+
     const name = ctx.NAME().text;
     const parameterNames: string[] = [];
     for (const parameterName of ctx.parameterList().NAME()) {
@@ -874,6 +899,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterModelImport(ctx: ModelImportContext): void {
+    if (!this.#isActive) return;
+
     const name = ctx.NAME().text;
     const callingModel = this.#document.models.get(name);
     const currentModel = this.#getActiveModel();
@@ -912,6 +939,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterRename(ctx: RenameContext): void {
+    if (!this.#isActive) return;
+
     const fromCtx = ctx.variable(0);
     const toCtx = ctx.variable(1);
     const fromObject = this.#getOrCreateObject(fromCtx, undefined);
@@ -966,8 +995,9 @@ export class BuildAntimonyListener implements AntimonyListener {
         }
 
         // apply antimony sync rules
-        fromObject.assignment = toObject.assignment;
-        console.log(fromObject.assignment);
+        if (toObject.assignment) {
+          fromObject.assignment = toObject.assignment;
+        }
         if (toObject.variableKind === "species") {
           fromObject.variableKind = "species";
         }
@@ -1002,6 +1032,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterVariableAnnotation(ctx: VariableAnnotationContext): void {
+    if (!this.#isActive) return;
+
     const variableCtx = ctx.variable();
     const body = ctx.annotationBody();
     const item = body.annotationItem();

@@ -3,6 +3,8 @@
  * Meant to be used for testing with expect().toMatchObject.
  */
 
+import type { AntimonyReference } from "../model";
+
 export type TestModel = {
   kind: "model";
   objects: Record<string, any>;
@@ -150,8 +152,8 @@ export const parameter = createVariableFunc("parameter");
 export const compartment = createVariableFunc("compartment");
 
 export const reaction = (
-  reactants: Record<string, number | null>,
-  products: Record<string, number | null>,
+  reactants: Record<string, string | number | null>,
+  products: Record<string, string | number | null>,
   rate?: string,
   extra?: { in?: string },
 ) => {
@@ -164,11 +166,13 @@ export const reaction = (
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
       reference: name.split("."),
-      stoichiometry: stoichiometry === null ? undefined : stoichiometry,
+      stoichiometry:
+        stoichiometry === null ? undefined : { text: stoichiometry.toString() },
     })),
     products: Object.entries(products).map(([name, stoichiometry]) => ({
       reference: name.split("."),
-      stoichiometry: stoichiometry === null ? undefined : stoichiometry,
+      stoichiometry:
+        stoichiometry === null ? undefined : { text: stoichiometry.toString() },
     })),
     rate:
       rate !== undefined
@@ -222,3 +226,8 @@ export const event = (
     };
   }
 };
+
+export const renameLink = (to: string | AntimonyReference) => ({
+  kind: "renameLink",
+  to: typeof to === "string" ? to.split(".") : to,
+});

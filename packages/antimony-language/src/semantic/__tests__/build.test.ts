@@ -1,6 +1,7 @@
 import { it, expect, describe } from "vitest";
 import {
   buildAntimonyDocument,
+  PARENT_SYMBOL,
   type AntimonyModel,
 } from "../../semantic/semantic";
 
@@ -12,6 +13,7 @@ import {
   compartment,
   type TestModel,
   event,
+  renameLink,
 } from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
@@ -435,6 +437,37 @@ describe("$ modifier", () => {
   });
 });
 
+describe("reactions", () => {
+  it("should derive numeric stoichiometries", () => {
+    expectModel(
+      "2 A + 2 B -> 2 C; k1",
+      model({
+        A: species(),
+        B: species(),
+        C: species(),
+        k1: parameter(),
+        _J0: reaction({ A: 2, B: 2 }, { C: 2 }, "k1"),
+      }),
+    );
+  });
+
+  it("should derive variable stoichiometries", () => {
+    expectModel(
+      "n1 A + n2 B -> n3 C; k1",
+      model({
+        A: species(),
+        B: species(),
+        C: species(),
+        n1: parameter(),
+        n2: parameter(),
+        n3: parameter(),
+        k1: parameter(),
+        _J0: reaction({ A: "n1", B: "n2" }, { C: "n3" }, "k1"),
+      }),
+    );
+  });
+});
+
 describe("events", () => {
   it("should add basic events", () => {
     expectModel(
@@ -838,10 +871,96 @@ describe("renaming", () => {
     expectModel("A is A", model({ A: parameter() }));
   });
 
+  it("should leave a rename link at the old name", () => {
+    expectModel(
+      "A is B",
+      model({
+        A: renameLink("B"),
+        B: parameter(),
+      }),
+    );
+  });
+
+  it("should leave a rename link at the old name even with submodels", () => {
+    expectModel(
+      "model test; species A = 5; end; t: test(); t.A is B",
+      model({
+        t: model({
+          A: renameLink([PARENT_SYMBOL, "B"]),
+        }),
+        B: species("5"),
+      }),
+    );
+
+    expectModel(
+      `model test2
+        A + B -> C; k1
+      end
+
+      model test3
+        2 A + 2 B -> 2 C; k1
+      end
+
+      model test
+        sub2: test2()
+        sub3: test3()
+
+        sub2.A is sub3.B
+      end
+
+      sub: test()
+      subagain: test()
+      sub.sub2.B is A`,
+      model({
+        A: species(),
+        sub: model({
+          sub2: model({
+            A: renameLink([PARENT_SYMBOL, "sub3", "B"]),
+            B: renameLink([PARENT_SYMBOL, PARENT_SYMBOL, "A"]),
+            C: species(),
+            k1: parameter(),
+            _J0: reaction({ A: null, B: null }, { C: null }, "k1"),
+          }),
+          sub3: model({
+            A: species(),
+            B: species(),
+            C: species(),
+            k1: parameter(),
+            _J0: reaction({ A: 2, B: 2 }, { C: 2 }, "k1"),
+          }),
+        }),
+        subagain: model({
+          sub2: model({
+            A: renameLink([PARENT_SYMBOL, "sub3", "B"]),
+            B: species(),
+            C: species(),
+            k1: parameter(),
+            _J0: reaction({ A: null, B: null }, { C: null }, "k1"),
+          }),
+          sub3: model({
+            A: species(),
+            B: species(),
+            C: species(),
+            k1: parameter(),
+            _J0: reaction({ A: 2, B: 2 }, { C: 2 }, "k1"),
+          }),
+        }),
+      }),
+    );
+  });
+
   it("should throw error when trying to rename model", () => {
     expect(() => {
       buildAntimonyDocument(
         "model example(); A = 3; end; A: example(); A is B",
+      );
+    }).toThrowError(SemanticError);
+  });
+
+  it("should throw error when trying to rename non-existent variabe in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "model example(); A = 3; end; A: example(); A.fake is B",
       );
     }).toThrowError(SemanticError);
   });
@@ -859,6 +978,24 @@ describe("renaming", () => {
   });
 
   describe("with existing objects", () => {
+    it("should become a species if any was one", () => {
+      expectModel(
+        "species A; var B = 5; B is A",
+        model({
+          A: species("5"),
+          B: renameLink("A"),
+        }),
+      );
+
+      expectModel(
+        "parameter A; species B = 5; B is A",
+        model({
+          A: species("5"),
+          B: renameLink("A"),
+        }),
+      );
+    });
+
     // Even though libantimony allows this, we are disallowing it here because
     // the behavior is very unpredictable. For example, renaming event to existing
     // variable always make the trigger true. Better to be more restrictive here
