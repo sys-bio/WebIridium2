@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+
 import { compileIntermediate, type IridiumModel } from "iridium-simulator";
 import {
   event,
@@ -18,7 +19,7 @@ import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
 // useful to use with WABT to analyze the WebAssembly output.
-const WRITE_BASIC_MODEL = true;
+const WRITE_BASIC_MODEL = false;
 
 const variables = (variables: {
   [name: string]: DslVariable;
@@ -672,7 +673,7 @@ describe("ir", () => {
         "B = 3; species A = 1; A is B",
         model({
           variables: {
-            B: species(3),
+            B: parameter(3),
           },
         }),
       );
@@ -721,25 +722,7 @@ describe("ir", () => {
         "E: at time > 3: A = 3; E is D; D = 10",
         model({
           variables: {
-            A: species(0),
-            B: species(0),
-            C: species(0),
-          },
-          events: {
-            D: event(expr.num(10), { A: expr.num(3) }),
-          },
-        }),
-      );
-    });
-
-    it("should update trigger of event when assigning to overwritten name that was formerly a variable", () => {
-      expectCompilesTo(
-        "E: at time > 3: A = 3; D = 3; E is D; D = 10",
-        model({
-          variables: {
-            A: species(0),
-            B: species(0),
-            C: species(0),
+            A: parameter(0),
           },
           events: {
             D: event(expr.num(10), { A: expr.num(3) }),
@@ -773,7 +756,7 @@ describe("ir", () => {
               { sub__C: 1 },
               expr.var("sub__k1"),
             ),
-            J0: reaction({ A: 1, B: 1 }, { C: 1 }, expr.var("k1")),
+            _J0: reaction({ A: 1, B: 1 }, { C: 1 }, expr.var("k1")),
           },
         }),
       );

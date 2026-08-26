@@ -4,6 +4,7 @@ MODEL     : 'model' | 'module';
 FUNCTION  : 'function';
 END       : 'end';
 IN        : 'in';
+IS        : 'is';
 AT        : 'at';
 AFTER     : 'after';
 UNIT      : 'unit';

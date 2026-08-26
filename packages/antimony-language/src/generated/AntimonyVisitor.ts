@@ -29,6 +29,7 @@ import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
+import { AnnotationIsContext } from "./AntimonyParser";
 import { AnnotationNameContext } from "./AntimonyParser";
 import { AnnotationSubItemContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
@@ -60,6 +61,7 @@ import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { RenameContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
 import { HasAnnotationContext } from "./AntimonyParser";
@@ -282,6 +284,14 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitLogical?: (ctx: LogicalContext) => Result;
 
 	/**
+	 * Visit a parse tree produced by the `annotationIs`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAnnotationIs?: (ctx: AnnotationIsContext) => Result;
+
+	/**
 	 * Visit a parse tree produced by the `annotationName`
 	 * labeled alternative in `AntimonyParser.annotationItem`.
 	 * @param ctx the parse tree
@@ -499,6 +509,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEventAssignment?: (ctx: EventAssignmentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.rename`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitRename?: (ctx: RenameContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.annotation`.

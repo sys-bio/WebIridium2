@@ -212,7 +212,7 @@ const compileModel = (
       );
     }
 
-    if (isBuiltinName(reference[0])) {
+    if (typeof reference[0] === "string" && isBuiltinName(reference[0])) {
       return reference[0];
     }
 
@@ -244,6 +244,8 @@ const compileModel = (
         break;
       case "model":
         submodels.push(object);
+        break;
+      case "renameLink":
         break;
       default:
         throw new CompileInvariantError(
@@ -436,9 +438,9 @@ const compileModel = (
   for (const event of events) {
     const iridiumEvent: Omit<IridiumEvent<Metadata>, "name"> = {
       trigger: compileFormula(event.trigger, resolveVariable),
-      assignments: Array.from(Object.entries(event.assignments)).map(
-        ([name, value]) => ({
-          name,
+      assignments: Array.from(event.assignments.entries()).map(
+        ([reference, value]) => ({
+          name: builder.getNameOf(resolveReference(document, model, reference)),
           value: compileFormula(value, resolveVariable),
         }),
       ),

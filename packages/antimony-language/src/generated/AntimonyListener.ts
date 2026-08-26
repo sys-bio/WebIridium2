@@ -29,6 +29,7 @@ import { ProductContext } from "./AntimonyParser";
 import { SumContext } from "./AntimonyParser";
 import { CompareContext } from "./AntimonyParser";
 import { LogicalContext } from "./AntimonyParser";
+import { AnnotationIsContext } from "./AntimonyParser";
 import { AnnotationNameContext } from "./AntimonyParser";
 import { AnnotationSubItemContext } from "./AntimonyParser";
 import { RootContext } from "./AntimonyParser";
@@ -60,6 +61,7 @@ import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { RenameContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
 import { HasAnnotationContext } from "./AntimonyParser";
@@ -402,6 +404,19 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitLogical?: (ctx: LogicalContext) => void;
+
+	/**
+	 * Enter a parse tree produced by the `annotationIs`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	enterAnnotationIs?: (ctx: AnnotationIsContext) => void;
+	/**
+	 * Exit a parse tree produced by the `annotationIs`
+	 * labeled alternative in `AntimonyParser.annotationItem`.
+	 * @param ctx the parse tree
+	 */
+	exitAnnotationIs?: (ctx: AnnotationIsContext) => void;
 
 	/**
 	 * Enter a parse tree produced by the `annotationName`
@@ -747,6 +762,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEventAssignment?: (ctx: EventAssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.rename`.
+	 * @param ctx the parse tree
+	 */
+	enterRename?: (ctx: RenameContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.rename`.
+	 * @param ctx the parse tree
+	 */
+	exitRename?: (ctx: RenameContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.annotation`.

@@ -20,18 +20,29 @@ export type AntimonyObject =
   | AntimonyVariable
   | AntimonyEvent
   | AntimonyReaction
-  | AntimonyFunction;
+  | AntimonyFunction
+  | AntimonyRenameLink;
 
 /** Objects that can be contained within models. */
 export type AntimonyModelObject = Exclude<AntimonyObject, { kind: "function" }>;
+
+/** Anything that is not a link. */
+export type AntimonyConcreteObject = Exclude<
+  AntimonyObject,
+  { kind: "renameLink" }
+>;
+
+export const PARENT_SYMBOL = Symbol("parent");
+export type PARENT_SYMBOL = typeof PARENT_SYMBOL;
 
 /**
  * Represents a relative path.
  * For example "A.S" is equivalent to the reference `["A", "S"]`
  */
-export type AntimonyReference = string[];
+export type AntimonyReference = ReadonlyArray<string | PARENT_SYMBOL>;
 
 export type AntimonyModel = AntimonyObjectBase<"model"> & {
+  parent?: AntimonyModel;
   objects: Map<string, AntimonyModelObject>;
   /** These are models that were imported without a name. */
   unnamedImports: AntimonyModel[];
@@ -66,10 +77,6 @@ export type AntimonyVariable = AntimonyObjectBase<"variable"> & {
 };
 
 export type AntimonyReactionTerm = {
-  /**
-   * A relative path starting from the parent model.
-   * For example, the term "A.S" will have a path `["A", "S"]`.
-   */
   reference: AntimonyReference;
   stoichiometry?: StoichiometryContext;
 };
@@ -77,7 +84,7 @@ export type AntimonyReactionTerm = {
 export type AntimonyEvent = AntimonyObjectBase<"event"> & {
   compartment: AntimonyReference | null;
   trigger: FormulaContext;
-  assignments: Record<string, FormulaContext>;
+  assignments: Map<AntimonyReference, FormulaContext>;
   delay?: FormulaContext;
   options: Record<string, FormulaContext | undefined>;
 };
@@ -92,4 +99,8 @@ export type AntimonyReaction = AntimonyObjectBase<"reaction"> & {
 export type AntimonyFunction = AntimonyObjectBase<"function"> & {
   parameters: string[];
   body: FormulaContext;
+};
+
+export type AntimonyRenameLink = AntimonyObjectBase<"renameLink"> & {
+  to: AntimonyReference;
 };

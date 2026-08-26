@@ -43,6 +43,9 @@ const stripContextsOnlyToText = (
     }
   } else {
     for (const key in obj) {
+      // dumb hack so it doesn't walk back up when iterating through an AntimonyModel
+      if (key === "parent") continue;
+
       if (
         Array.isArray(key) ||
         (typeof obj[key] === "object" && obj[key] !== null)
@@ -59,6 +62,14 @@ const convertModelMapsToObjects = (model: AntimonyModel): void => {
   for (const object of [...model.objects.values(), ...model.unnamedImports]) {
     if (object.kind === "model") {
       convertModelMapsToObjects(object);
+    } else if (object.kind === "event") {
+      // eslint-disable-next-line
+      (object as any).assignments = Object.fromEntries(
+        Array.from(object.assignments.entries()).map(([reference, value]) => [
+          reference.join("."),
+          value,
+        ]),
+      );
     }
   }
   // eslint-disable-next-line
@@ -290,9 +301,9 @@ describe("declarations", () => {
     );
   });
 
-  it("should treat skip empty assignment", () => {
+  it("should skip empty assignment", () => {
     expectModel(
-      "A;=;A=",
+      "A=;",
       model({
         A: parameter(),
       }),
@@ -823,11 +834,27 @@ describe("model imports", () => {
 });
 
 describe("renaming", () => {
+  it("should have no effect when to itself", () => {
+    expectModel("A is A", model({ A: parameter() }));
+  });
+
   it("should throw error when trying to rename model", () => {
     expect(() => {
       buildAntimonyDocument(
         "model example(); A = 3; end; A: example(); A is B",
       );
+    }).toThrowError(SemanticError);
+  });
+
+  it("should throw error when trying to rename species to existing compartment", () => {
+    expect(() => {
+      buildAntimonyDocument("compartment A; species B; A is B");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should throw error when trying to rename compartment to existing species", () => {
+    expect(() => {
+      buildAntimonyDocument("compartment A; species B; B is A");
     }).toThrowError(SemanticError);
   });
 
@@ -844,7 +871,7 @@ describe("renaming", () => {
 
     it("should throw error when trying to rename event to existing variable", () => {
       expect(() => {
-        buildAntimonyDocument("E: at time > 3: D = 3; J is D");
+        buildAntimonyDocument("E: at time > 3: D = 3; E is D");
       }).toThrowError(SemanticError);
     });
 

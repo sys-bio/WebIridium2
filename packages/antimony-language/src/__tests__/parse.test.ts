@@ -237,7 +237,6 @@ describe("annotations", () => {
     backtickSingle: "A is `hey`",
     missingItem: `A "test"`,
     missingString: `A is `,
-    missingString2: "A is A",
     extraDot: `A. is "test"`,
     extraDot2: `A is. "test"`,
     hasNothing: "A has",
@@ -317,5 +316,16 @@ describe("model import", () => {
     extraComma: "A(B,)",
     extraComma2: "A(B.C,)",
     dotMissing: "A(B.)",
+  });
+});
+
+describe("rename", () => {
+  itShouldSucceedForAll({
+    simple: "A is B",
+    dot: "A.B is B.C",
+  });
+
+  itShouldErrorForAll({
+    multiple: "A is B, C",
   });
 });

@@ -14,6 +14,7 @@ statement : reaction
           | annotation
           | unitDeclaration
           | inStatement
+          | rename
           ;
 
 // e.g
@@ -83,12 +84,15 @@ eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula;
 
+rename : variable IS variable;
+
 annotation         : variableAnnotation | hasAnnotation | modelAnnotation;
 variableAnnotation : variable annotationBody;
 hasAnnotation      : variable HAS unitFormula;
 modelAnnotation    : MODEL NAME? annotationBody;
 annotationBody     : annotationItem string (',' NEWLINE? string)*;
-annotationItem     : NAME #annotationName
+annotationItem     : IS #annotationIs
+                   | NAME #annotationName
                    | NAME '.' annotationItem #annotationSubItem
                    ;
 string             : STRING | LONG_STRING;
