@@ -51,6 +51,7 @@ export type AntimonyModel = AntimonyObjectBase<"model"> & {
   objects: Map<string, AntimonyModelObject>;
   /** These are models that were imported without a name. */
   unnamedImports: AntimonyModel[];
+  exports?: AntimonyReference[];
 };
 
 export type AntimonyInitialAssignment = {

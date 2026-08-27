@@ -884,6 +884,162 @@ describe("model imports", () => {
       buildAntimonyDocument(`${exampleModelString}; A: example(); A + B -> C;`);
     }).toThrowError(SemanticError);
   });
+
+  describe("export list", () => {
+    it("should make rename links for export list", () => {
+      expectDocument(
+        "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub: test(A, B, C)",
+        {
+          models: {
+            [DEFAULT_MODEL_NAME]: model({
+              sub: model({
+                A: renameLink([PARENT_SYMBOL, "A"]),
+                B: renameLink([PARENT_SYMBOL, "B"]),
+                C: renameLink([PARENT_SYMBOL, "C"]),
+              }),
+              A: species("5"),
+              B: parameter("5"),
+              C: parameter("10"),
+            }),
+            test: model(
+              {
+                A: species("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              },
+              [],
+              ["A", "B", "C"],
+            ),
+          },
+          exportedModel: DEFAULT_MODEL_NAME,
+        },
+      );
+    });
+
+    it("should make rename links for export list even when import list is shorter", () => {
+      expectDocument(
+        "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub: test(A, B)",
+        {
+          models: {
+            [DEFAULT_MODEL_NAME]: model({
+              sub: model({
+                A: renameLink([PARENT_SYMBOL, "A"]),
+                B: renameLink([PARENT_SYMBOL, "B"]),
+                C: parameter("10"),
+              }),
+              A: species("5"),
+              B: parameter("5"),
+            }),
+            test: model(
+              {
+                A: species("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              },
+              [],
+              ["A", "B", "C"],
+            ),
+          },
+          exportedModel: DEFAULT_MODEL_NAME,
+        },
+      );
+    });
+
+    it("should make rename links for export list even with subvariables", () => {
+      expectDocument(
+        "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub0: test(); sub1: (sub0.A)",
+        {
+          models: {
+            [DEFAULT_MODEL_NAME]: model({
+              sub0: model({
+                A: parameter("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              }),
+              sub1: model({
+                A: renameLink([PARENT_SYMBOL, "sub0", "A"]),
+                B: parameter("5"),
+                C: parameter("10"),
+              }),
+            }),
+            test: model(
+              {
+                A: species("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              },
+              [],
+              ["A", "B", "C"],
+            ),
+          },
+          exportedModel: DEFAULT_MODEL_NAME,
+        },
+      );
+    });
+
+    it("should create variable in export list if it does not exist", () => {
+      expectDocument("model test(A) B = 5; end; sub: test(C)", {
+        models: {
+          [DEFAULT_MODEL_NAME]: model({
+            sub: model({
+              A: renameLink([PARENT_SYMBOL, "C"]),
+              B: parameter("5"),
+            }),
+            C: parameter(),
+          }),
+          test: model(
+            {
+              A: parameter(),
+              B: parameter("5"),
+            },
+            [],
+            ["A"],
+          ),
+        },
+        exportedModel: DEFAULT_MODEL_NAME,
+      });
+    });
+
+    it("should error when import list has more names than export list", () => {
+      expect(() => {
+        buildAntimonyDocument(`model test(A) A = 5; end; sub: test(A, B)`);
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when export list contains subvariable", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          `model test2() B = 5; end; model test(sub.A) sub: test2(); end`,
+        );
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when export list contains model", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          `model test2() B = 5; end; model test(sub) sub: test2(); end`,
+        );
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when export list contains a built-in constant", () => {
+      expect(() => {
+        buildAntimonyDocument(`model test(pi) end`);
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when export list contains a built-in function", () => {
+      expect(() => {
+        buildAntimonyDocument(`model test(sin) end`);
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when export list contains a function name", () => {
+      expect(() => {
+        buildAntimonyDocument(`function t() 5 end; model test(t) end`);
+      }).toThrowError(SemanticError);
+    });
+  });
 });
 
 describe("renaming", () => {

@@ -91,6 +91,13 @@ const copyAntimonyObject = (
   }
 };
 
+class BadReferenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BadReferenceError";
+  }
+}
+
 export const getReferenceFromVariable = (
   variable: VariableContext,
 ): AntimonyReference => {
@@ -146,7 +153,9 @@ export const resolveReference = (
   for (let i = 0; i < reference.length; i++) {
     const name = reference[i];
     if (current.kind !== "model") {
-      throw new Error(`Can only reference models: ${reference.join(".")}.`);
+      throw new BadReferenceError(
+        `Can only reference models: ${reference.join(".")}.`,
+      );
     }
 
     const got: AntimonyModelObject | undefined =
@@ -154,11 +163,13 @@ export const resolveReference = (
 
     if (!got) {
       if (name === PARENT_SYMBOL) {
-        throw new Error(
+        throw new BadReferenceError(
           `${current.name} has no parent in ${reference.join(".")}.`,
         );
       } else {
-        throw new Error(`Missing ${name} in ${reference.join(".")}.`);
+        throw new BadReferenceError(
+          `Missing ${name} in ${reference.join(".")}.`,
+        );
       }
     }
 
@@ -513,7 +524,29 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
-  exitModel(): void {
+  exitModel(ctx: ModelContext): void {
+    const exportListCtx = ctx.exportList();
+    if (exportListCtx) {
+      const model = this.#getActiveModel();
+      const exports: AntimonyReference[] = [];
+      let isValid = true;
+      for (const variableCtx of exportListCtx.variable()) {
+        try {
+          const reference = getReferenceFromVariable(variableCtx);
+          const object = resolveReference(this.#document, model, reference);
+
+          if (object.kind === "function" || object.kind === "model") {
+          }
+        } catch (err) {
+          if (err instanceof BadReferenceError) {
+            isValid = false;
+            continue;
+          }
+
+          throw err;
+        }
+      }
+    }
     this.#currentModel = undefined;
   }
 
@@ -1028,6 +1061,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   enterDelete(ctx: DeleteContext): void {
+    if (!this.#isActive) return;
+
     const variableCtx = ctx.variable();
     const reference = getReferenceFromVariable(variableCtx);
     if (reference.length <= 1) {

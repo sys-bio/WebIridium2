@@ -9,18 +9,25 @@ export type TestModel = {
   kind: "model";
   objects: Record<string, any>;
   unnamedImports: any[];
+  exportList: string[][];
 };
 
 export const model = (
   objects: Record<string, any>,
   unnamedImports?: any[],
+  exportList?: string[],
 ): TestModel => {
   for (const [name, object] of Object.entries(objects)) {
     // eslint-disable-next-line
     object.name = name;
   }
 
-  return { kind: "model", objects, unnamedImports: unnamedImports ?? [] };
+  return {
+    kind: "model",
+    objects,
+    unnamedImports: unnamedImports ?? [],
+    exportList: exportList ? exportList.map((v) => v.split(".")) : [],
+  };
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
