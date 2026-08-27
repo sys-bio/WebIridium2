@@ -15,6 +15,7 @@ statement : reaction
           | unitDeclaration
           | inStatement
           | rename
+          | delete
           ;
 
 // e.g
@@ -85,6 +86,8 @@ eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula;
 
 rename : variable IS variable;
+
+delete : DELETE variable;
 
 annotation         : variableAnnotation | hasAnnotation | modelAnnotation;
 variableAnnotation : variable annotationBody;

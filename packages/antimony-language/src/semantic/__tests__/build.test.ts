@@ -114,7 +114,7 @@ const expectModel = (code: string, model: TestModel): void => {
   });
 };
 
-it("should derive reactions and parameters for default model", () => {
+it("should build reactions and parameters for default model", () => {
   expectModel(
     defaultModel,
     model({
@@ -509,7 +509,7 @@ describe("events", () => {
 
   it("should error when using reaction in event assignment", () => {
     expect(() => {
-      buildAntimonyDocument("J: A + B -> C; k1; E: at time > 5: E = 5");
+      buildAntimonyDocument("J: A + B -> C; k1; E: at time > 5: J = 5");
     }).toThrow(SemanticError);
   });
 
@@ -1056,10 +1056,10 @@ describe("deleting", () => {
 
   it("should mark events as deleted", () => {
     expectModel(
-      "model test; E: at time > 5: A = 3 end; sub: test(); delete sub.E",
+      "model test; E: at time > 5: A = 3; end; sub: test(); delete sub.E",
       model({
         sub: model({
-          A: parameter("0"),
+          A: parameter(),
           E: event("time>5", { A: "3" }).deleted(),
         }),
       }),
@@ -1068,12 +1068,12 @@ describe("deleting", () => {
 
   it("should mark reactions as deleted", () => {
     expectModel(
-      "model test; J: A + B -> C; k1; end; sub: test(); delete sub.A",
+      "model test; J: A + B -> C; k1; end; sub: test(); delete sub.J",
       model({
         sub: model({
-          A: species("0").deleted(),
-          B: species("0").deleted(),
-          C: species("0").deleted(),
+          A: species(),
+          B: species(),
+          C: species(),
           J: reaction({ A: null, B: null }, { C: null }, "k1").deleted(),
         }),
       }),
@@ -1083,6 +1083,14 @@ describe("deleting", () => {
   it("should error when trying to delete variable not in submodel", () => {
     expect(() => {
       buildAntimonyDocument("A = 5; delete A");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete non-existent variable in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "test model(); A = 5; end; sub: test(); delete sub.fake",
+      );
     }).toThrowError(SemanticError);
   });
 

@@ -10,6 +10,9 @@ import {
   reaction,
   type DslVariable,
   func,
+  variable,
+  rateRule,
+  rateVariable,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
@@ -821,21 +824,77 @@ describe("ir", () => {
 
   describe("deleting", () => {
     it("should delete submodel compartment", () => {
-      expectCompilesTo(
-        "model test; A in C; B in C; end; sub: test(); delete sub.A",
+      expectCompilesToExact(
+        "model test; A in C; B in C; end; sub: test(); delete sub.C",
         model({
           variables: {
-            sub__A: species(0),
-            sub__B: species(0),
+            sub__A: parameter(0),
+            sub__B: parameter(0),
           },
           compartments: {},
         }),
       );
     });
 
+    it("should delete assignments containing deleted subvariable", () => {
+      expectCompilesToExact(
+        `model test
+          A = k1 + k2
+          B := k1 + k2
+          C '= k1 + k2
+          C = k1 + k2
+          D = k2
+          D '= k1 + k2
+          E = k1
+          E '= k2
+          compartment A2 = k1 + k2
+          compartment B2 := k1 + k2
+          compartment C2 '= k1 + k2
+          compartment C2 = k1 + k2
+          compartment D2 = k2
+          compartment D2 '= k1 + k2
+          compartment E2 = k1
+          compartment E2 '= k2
+          species A3 = k1 + k2
+          species B3 := k1 + k2
+          species C3 '= k1 + k2
+          species C3 = k1 + k2
+          species D3 = k2
+          species D3 '= k1 + k2
+          species E3 = k1
+          species E3 '= k2
+        end
+        sub: test()
+        delete sub.k1`,
+        model({
+          variables: {
+            sub__A: parameter(0),
+            sub__B: parameter(0),
+            sub__C: parameter(0),
+            sub__D: parameter(expr.var("sub__k2")),
+            sub__E: rateVariable(expr.num(0), expr.var("sub__k2")),
+
+            sub__A2: parameter(1),
+            sub__B2: parameter(1),
+            sub__C2: parameter(1),
+            sub__D2: parameter(expr.var("sub__k2")),
+            sub__E2: rateVariable(expr.num(1), expr.var("sub__k2")),
+
+            sub__A3: parameter(0),
+            sub__B3: parameter(0),
+            sub__C3: parameter(0),
+            sub__D3: parameter(expr.var("sub__k2")),
+            sub__E3: rateVariable(expr.num(0), expr.var("sub__k2")),
+
+            sub__k2: parameter(0),
+          },
+        }),
+      );
+    });
+
     it("should delete submodel variable from reactants", () => {
-      expectCompilesTo(
-        "model test; A + B -> C; k1; end; sub: test(); delete sub.B",
+      expectCompilesToExact(
+        "model test; A + B -> C; k1; end; sub: test(); delete sub.A",
         model({
           variables: {
             sub__B: species(0),
@@ -843,14 +902,18 @@ describe("ir", () => {
             sub__k1: parameter(0),
           },
           reactions: {
-            sub___J0: reaction({ sub__B: 1 }, { sub__C: 1 }, expr.var("k1")),
+            sub___J0: reaction(
+              { sub__B: 1 },
+              { sub__C: 1 },
+              expr.var("sub__k1"),
+            ),
           },
         }),
       );
     });
 
     it("should delete submodel variable from product", () => {
-      expectCompilesTo(
+      expectCompilesToExact(
         "model test; A + B -> C; k1; end; sub: test(); delete sub.C",
         model({
           variables: {
@@ -859,14 +922,18 @@ describe("ir", () => {
             sub__k1: parameter(0),
           },
           reactions: {
-            sub___J0: reaction({ sub__A: 1, sub__B: 1 }, {}, expr.var("k1")),
+            sub___J0: reaction(
+              { sub__A: 1, sub__B: 1 },
+              {},
+              expr.var("sub__k1"),
+            ),
           },
         }),
       );
     });
 
     it("should delete rate law if contains deleted subvariable", () => {
-      expectCompilesTo(
+      expectCompilesToExact(
         "model test; A + B -> C; k1; end; sub: test(); delete sub.k1",
         model({
           variables: {
@@ -886,7 +953,7 @@ describe("ir", () => {
     });
 
     it("should delete submodel reaction", () => {
-      expectCompilesTo(
+      expectCompilesToExact(
         "model test; J: A + B -> C; k1; end; sub: test(); delete sub.J",
         model({
           variables: {
@@ -900,8 +967,8 @@ describe("ir", () => {
     });
 
     it("should delete submodel event", () => {
-      expectCompilesTo(
-        "model test; E: at time > 5: A = 5 end; sub: test(); delete sub.E",
+      expectCompilesToExact(
+        "model test; E: at time > 5: A = 5; end; sub: test(); delete sub.E",
         model({
           variables: {
             sub__A: parameter(0),
@@ -911,8 +978,8 @@ describe("ir", () => {
     });
 
     it("should delete submodel event if trigger contains deleted subvariable", () => {
-      expectCompilesTo(
-        "model test; E: at k1 > 5: A = 5 end; sub: test(); delete sub.k1",
+      expectCompilesToExact(
+        "model test; E: at k1 > 5: A = 5; end; sub: test(); delete sub.k1",
         model({
           variables: {
             sub__A: parameter(0),
@@ -922,7 +989,7 @@ describe("ir", () => {
     });
 
     it("should delete submodel event assignment for deleted subvariable", () => {
-      expectCompilesTo(
+      expectCompilesToExact(
         "model test; E: at time > 5: A = 5, B = 10; end; sub: test(); delete sub.B",
         model({
           variables: {
@@ -930,7 +997,7 @@ describe("ir", () => {
           },
           events: {
             sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
-              A: expr.num(5),
+              sub__A: expr.num(5),
             }),
           },
         }),
@@ -938,7 +1005,7 @@ describe("ir", () => {
     });
 
     it("should delete submodel event assignment if expression contains deleted subvaraible", () => {
-      expectCompilesTo(
+      expectCompilesToExact(
         "model test; E: at time > 5: A = k1, B = 10; end; sub: test(); delete sub.k1",
         model({
           variables: {
@@ -947,8 +1014,29 @@ describe("ir", () => {
           },
           events: {
             sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
-              B: expr.num(10),
+              sub__B: expr.num(10),
             }),
+          },
+        }),
+      );
+    });
+
+    it("should reset stoichiometry to 1 if stoichiometry contains deleted subvariable", () => {
+      expectCompilesToExact(
+        "model test; J: n A + 2 B -> 3 C; k1; end; sub: test(); delete sub.n",
+        model({
+          variables: {
+            sub__A: species(0),
+            sub__B: species(0),
+            sub__C: species(0),
+            sub__k1: parameter(0),
+          },
+          reactions: {
+            sub__J: reaction(
+              { sub__A: 1, sub__B: 2 },
+              { sub__C: 3 },
+              expr.var("sub__k1"),
+            ),
           },
         }),
       );

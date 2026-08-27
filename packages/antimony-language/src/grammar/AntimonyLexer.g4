@@ -10,6 +10,7 @@ AFTER     : 'after';
 UNIT      : 'unit';
 HAS       : 'has';
 SUBS_ONLY : 'substanceOnly';
+DELETE    : 'delete';
 
 CONST_MODIFIER : 'var' | 'const';
 DECL_WORD      : 'species'

@@ -5,8 +5,10 @@ import type {
   IridiumReaction,
   IridiumReactionTerm,
   IridiumFunction,
+  IridiumVariableValue,
 } from "./model";
 import type { IridiumExpression } from "./ast";
+import { IridiumError } from "../compile/errors";
 
 export type DslVariable = Omit<IridiumVariable, "name">;
 export type DslReaction = Omit<IridiumReaction, "name">;
@@ -101,6 +103,22 @@ export const parameter = <T = unknown>(
       metadata: metadata,
     };
   }
+};
+
+export const rateVariable = <T = unknown>(
+  initial: IridiumExpression<T>,
+  rate: IridiumExpression<T>,
+  metadata?: T,
+): DslVariable => {
+  return {
+    value: {
+      kind: "rate",
+      initial,
+      rate,
+    },
+    hasSubstanceOnly: false,
+    metadata: metadata,
+  };
 };
 
 export const reaction = <T = unknown>(

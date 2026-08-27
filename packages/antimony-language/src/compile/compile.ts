@@ -18,10 +18,19 @@ import type {
   AntimonyReaction,
   AntimonyVariable,
 } from "../semantic/model";
-import { compileFormula, compileStoichiometry } from "./formula";
+import {
+  compileFormula,
+  compileFormula as compileFormulaOriginal,
+  compileStoichiometry as compileStoichiometryOriginal,
+} from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
-import { NameContext, VariableContext, type FormulaContext } from "../grammar";
+import {
+  NameContext,
+  StoichiometryContext,
+  VariableContext,
+  type FormulaContext,
+} from "../grammar";
 import { buildAntimonyDocument } from "../semantic/semantic";
 import {
   getReferenceFromVariable,
@@ -35,7 +44,7 @@ const INVALID_BOOLEAN_MESSAGE =
 /**
  * Evaluates a boolean formula.
  *
- * @throws if the formula is neither exactly `true` or `false`
+ * @throws CompileError - when the formula is neither exactly `true` or `false`
  */
 const evaluateBoolean = (formula: FormulaContext): boolean => {
   if (formula.childCount !== 1) {
@@ -206,6 +215,8 @@ const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
     }
 
     for (const object of got.objects.values()) {
+      if ("isDeleted" in object && object.isDeleted) continue;
+
       switch (object.kind) {
         case "variable":
           builder.addSource(object);
@@ -234,6 +245,16 @@ const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
   }
 };
 
+const GOT_DELETED_SYMBOL = Symbol("GOT_DELETED");
+const SPECIES_DEFAULT: IridiumExpression<Metadata> = {
+  kind: "number",
+  value: 0,
+};
+const COMPARTMENT_DEFAULT: IridiumExpression<Metadata> = {
+  kind: "number",
+  value: 1,
+};
+
 const compileModel = (
   model: AntimonyModel,
   builder: IrBuilder,
@@ -244,6 +265,8 @@ const compileModel = (
   const events: AntimonyEvent[] = [];
 
   for (const object of model.objects.values()) {
+    if ("isDeleted" in object && object.isDeleted) continue;
+
     switch (object.kind) {
       case "variable":
         variables.push(object);
@@ -292,7 +315,43 @@ const compileModel = (
       );
     }
 
+    if (object.isDeleted) {
+      throw GOT_DELETED_SYMBOL;
+    }
+
     return builder.getNameOf(object);
+  };
+
+  /**
+   * Returns a FormulaContext compiled to an IridiumExpression. Returns undefined if the formula
+   * should be deleted (can happen if it contains a deleted variable).
+   */
+  const compileFormulaInModel = (
+    formula: FormulaContext,
+  ): IridiumExpression<Metadata> | undefined => {
+    try {
+      return compileFormulaOriginal(formula, resolveVariable);
+    } catch (err) {
+      if (err === GOT_DELETED_SYMBOL) {
+        return undefined;
+      }
+
+      throw err;
+    }
+  };
+
+  const compileStoichiometry = (
+    stoichiometry: StoichiometryContext,
+  ): IridiumExpression<Metadata> | undefined => {
+    try {
+      return compileStoichiometryOriginal(stoichiometry, resolveVariable);
+    } catch (err) {
+      if (err === GOT_DELETED_SYMBOL) {
+        return undefined;
+      }
+
+      throw err;
+    }
   };
 
   const reactionInvolvedVariables = new Set<AntimonyObject>();
@@ -300,7 +359,10 @@ const compileModel = (
     let rate: IridiumExpression<Metadata>;
 
     if (reaction.rate) {
-      rate = compileFormula(reaction.rate, resolveVariable);
+      rate = compileFormulaInModel(reaction.rate) ?? {
+        kind: "number",
+        value: 0,
+      };
     } else {
       rate = { kind: "number", value: 0 };
     }
@@ -309,13 +371,19 @@ const compileModel = (
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
       const variable = resolveReference(document, model, reactant.reference);
-      if (variable.kind === "variable" && variable.isConst) continue;
+      if (
+        variable.kind === "variable" &&
+        (variable.isConst || variable.isDeleted)
+      )
+        continue;
       reactionInvolvedVariables.add(variable);
       reactants.push({
         name: builder.getNameOf(variable),
-        stoichiometry: reactant.stoichiometry
-          ? compileStoichiometry(reactant.stoichiometry, resolveVariable)
-          : { kind: "number", value: 1 },
+        stoichiometry: (reactant.stoichiometry &&
+          compileStoichiometry(reactant.stoichiometry)) || {
+          kind: "number",
+          value: 1,
+        },
       });
     }
 
@@ -323,13 +391,19 @@ const compileModel = (
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
       const variable = resolveReference(document, model, product.reference);
-      if (variable.kind === "variable" && variable.isConst) continue;
+      if (
+        variable.kind === "variable" &&
+        (variable.isConst || variable.isDeleted)
+      )
+        continue;
       reactionInvolvedVariables.add(variable);
       products.push({
         name: builder.getNameOf(variable),
-        stoichiometry: product.stoichiometry
-          ? compileStoichiometry(product.stoichiometry, resolveVariable)
-          : { kind: "number", value: 1 },
+        stoichiometry: (product.stoichiometry &&
+          compileStoichiometry(product.stoichiometry)) || {
+          kind: "number",
+          value: 1,
+        },
       });
     }
 
@@ -353,9 +427,10 @@ const compileModel = (
             hasSubstanceOnly: variable.hasSubstanceOnly,
             value: {
               kind: "reaction",
-              initial: variable.assignment
-                ? compileFormula(variable.assignment.initial, resolveVariable)
-                : { kind: "number", value: 0 },
+              initial:
+                (variable.assignment &&
+                  compileFormulaInModel(variable.assignment.initial)) ??
+                SPECIES_DEFAULT,
             },
           });
         } else {
@@ -363,9 +438,10 @@ const compileModel = (
             hasSubstanceOnly: variable.hasSubstanceOnly,
             value: {
               kind: "initial",
-              initial: variable.assignment
-                ? compileFormula(variable.assignment.initial, resolveVariable)
-                : { kind: "number", value: 0 },
+              initial:
+                (variable.assignment &&
+                  compileFormulaInModel(variable.assignment.initial)) ??
+                SPECIES_DEFAULT,
             },
           });
         }
@@ -385,21 +461,42 @@ const compileModel = (
         let value: IridiumVariableValue<Metadata>;
 
         if (variable.assignment.kind === "rule") {
-          value = {
-            kind: "assignment",
-            assignment: compileFormula(
-              variable.assignment.rule,
-              resolveVariable,
-            ),
-          };
+          const assignmentExpression = compileFormulaInModel(
+            variable.assignment.rule,
+          );
+          if (!assignmentExpression) {
+            value = {
+              kind: "initial",
+              initial: SPECIES_DEFAULT,
+            };
+          } else {
+            value = {
+              kind: "assignment",
+              assignment: assignmentExpression,
+            };
+          }
         } else if (variable.assignment.kind === "rate") {
-          value = {
-            kind: "rate",
-            initial: variable.assignment.initial
-              ? compileFormula(variable.assignment.initial, resolveVariable)
-              : { kind: "number", value: 0 },
-            rate: compileFormula(variable.assignment.rate, resolveVariable),
-          };
+          const rateExpression = compileFormulaInModel(
+            variable.assignment.rate,
+          );
+          if (!rateExpression) {
+            value = {
+              kind: "initial",
+              initial:
+                (variable.assignment.initial &&
+                  compileFormulaInModel(variable.assignment.initial)) ??
+                SPECIES_DEFAULT,
+            };
+          } else {
+            value = {
+              kind: "rate",
+              initial:
+                (variable.assignment.initial &&
+                  compileFormulaInModel(variable.assignment.initial)) ??
+                SPECIES_DEFAULT,
+              rate: rateExpression,
+            };
+          }
         } else {
           throw new CompileInvariantError("Unknown variable assignment kind.");
         }
@@ -414,33 +511,57 @@ const compileModel = (
       variable.variableKind === "compartment"
     ) {
       let value: IridiumVariableValue<Metadata>;
+      const defaultValue =
+        variable.variableKind === "compartment"
+          ? COMPARTMENT_DEFAULT
+          : SPECIES_DEFAULT;
 
       if (variable.assignment === undefined) {
         value = {
           kind: "initial",
-          initial: {
-            kind: "number",
-            value: variable.variableKind === "compartment" ? 1 : 0,
-          },
+          initial: defaultValue,
         };
       } else if (variable.assignment.kind === "initial") {
         value = {
           kind: "initial",
-          initial: compileFormula(variable.assignment.initial, resolveVariable),
+          initial:
+            compileFormulaInModel(variable.assignment.initial) ?? defaultValue,
         };
       } else if (variable.assignment.kind === "rule") {
-        value = {
-          kind: "assignment",
-          assignment: compileFormula(variable.assignment.rule, resolveVariable),
-        };
+        const assignmentExpression = compileFormulaInModel(
+          variable.assignment.rule,
+        );
+        if (!assignmentExpression) {
+          value = {
+            kind: "initial",
+            initial: defaultValue,
+          };
+        } else {
+          value = {
+            kind: "assignment",
+            assignment: assignmentExpression,
+          };
+        }
       } else if (variable.assignment.kind === "rate") {
-        value = {
-          kind: "rate",
-          initial: variable.assignment.initial
-            ? compileFormula(variable.assignment.initial, resolveVariable)
-            : { kind: "number", value: 0 },
-          rate: compileFormula(variable.assignment.rate, resolveVariable),
-        };
+        const rateExpression = compileFormulaInModel(variable.assignment.rate);
+        if (!rateExpression) {
+          value = {
+            kind: "initial",
+            initial:
+              (variable.assignment.initial &&
+                compileFormulaInModel(variable.assignment.initial)) ??
+              defaultValue,
+          };
+        } else {
+          value = {
+            kind: "rate",
+            initial:
+              (variable.assignment.initial &&
+                compileFormulaInModel(variable.assignment.initial)) ??
+              defaultValue,
+            rate: rateExpression,
+          };
+        }
       } else {
         throw new CompileInvariantError("Unknown variable assignment kind.");
       }
@@ -457,23 +578,40 @@ const compileModel = (
         model,
         variable.compartment,
       );
-      if (!compartments.has(compartment)) {
-        compartments.set(compartment, [variable]);
-      } else {
-        compartments.get(compartment)!.push(variable);
+      if (!("isDeleted" in compartment) || !compartment.isDeleted) {
+        if (!compartments.has(compartment)) {
+          compartments.set(compartment, [variable]);
+        } else {
+          compartments.get(compartment)!.push(variable);
+        }
       }
     }
   }
 
   for (const event of events) {
+    const triggerExpression = compileFormulaInModel(event.trigger);
+    if (!triggerExpression) continue;
+
+    const assignments = [];
+
+    for (const [reference, value] of event.assignments) {
+      const object = resolveReference(document, model, reference);
+      if ("isDeleted" in object && object.isDeleted) continue;
+
+      const assignmentExpression = compileFormulaInModel(value);
+      if (!assignmentExpression) continue;
+
+      assignments.push({
+        name: builder.getNameOf(object),
+        value: assignmentExpression,
+      });
+    }
+
+    if (assignments.length === 0) continue;
+
     const iridiumEvent: Omit<IridiumEvent<Metadata>, "name"> = {
-      trigger: compileFormula(event.trigger, resolveVariable),
-      assignments: Array.from(event.assignments.entries()).map(
-        ([reference, value]) => ({
-          name: builder.getNameOf(resolveReference(document, model, reference)),
-          value: compileFormula(value, resolveVariable),
-        }),
-      ),
+      trigger: triggerExpression,
+      assignments: assignments,
       isPersistent: event.options.persistent
         ? evaluateBoolean(event.options.persistent)
         : true,

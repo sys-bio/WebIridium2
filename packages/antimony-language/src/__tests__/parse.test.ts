@@ -329,3 +329,17 @@ describe("rename", () => {
     multiple: "A is B, C",
   });
 });
+
+describe("delete", () => {
+  itShouldSucceedForAll({
+    simple: "delete A",
+    simple2: "delete A.B",
+  });
+
+  itShouldErrorForAll({
+    string: 'delete "hey"',
+    number: "delete 5",
+    call: "delete test()",
+    labeled: "J: delete test",
+  });
+});

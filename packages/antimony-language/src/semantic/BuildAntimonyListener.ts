@@ -6,6 +6,7 @@ import {
   ConstantContext,
   DeclarationContext,
   DeclarationNameContext,
+  DeleteContext,
   EventContext,
   FormulaContext,
   FunctionDefinitionContext,
@@ -410,6 +411,7 @@ export class BuildAntimonyListener implements AntimonyListener {
           defaultVariableKind ?? this.#currentDeclaration?.kind ?? "parameter",
         compartment: this.#getOrCreateCompartment(compartmentCtx),
         name: name,
+        isDeleted: false,
         isConst:
           variableCtx instanceof ConstantContext ||
           (this.#currentDeclaration?.isConst ?? false),
@@ -795,6 +797,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     model.objects.set(name, {
       kind: "reaction",
+      isDeleted: false,
       name,
       compartment,
       reactants,
@@ -852,6 +855,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     this.#getActiveModel().objects.set(name, {
       kind: "event",
+      isDeleted: false,
       name,
       compartment,
       assignments,
@@ -1021,6 +1025,30 @@ export class BuildAntimonyListener implements AntimonyListener {
         getReferenceFromVariable(toCtx),
       ),
     });
+  }
+
+  enterDelete(ctx: DeleteContext): void {
+    const variableCtx = ctx.variable();
+    const reference = getReferenceFromVariable(variableCtx);
+    if (reference.length <= 1) {
+      this.#reportError("Only variables inside submodels can be deleted.", ctx);
+      return;
+    }
+
+    const got = this.#getOrCreateObject(variableCtx, undefined);
+    if (!got) {
+      this.#reportError("Cannot delete built-in.", ctx);
+      return;
+    }
+
+    if ("isDeleted" in got) {
+      got.isDeleted = true;
+    } else {
+      this.#reportError(
+        `Cannot delete ${got.name} because it is a ${got.kind}.`,
+        ctx,
+      );
+    }
   }
 
   #getContentFromString(stringCtx: StringContext): string {

@@ -159,7 +159,7 @@ export const reaction = (
   reactants: Record<string, string | number | null>,
   products: Record<string, string | number | null>,
   rate?: string,
-) => {
+): typeof antimonyObjectProto => {
   return Object.assign(Object.create(antimonyObjectProto), {
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
@@ -178,7 +178,6 @@ export const reaction = (
             text: rate,
           }
         : undefined,
-    compartment,
   });
 };
 
@@ -186,7 +185,7 @@ export const event = (
   trigger: string,
   assignmentsOrOptions: Record<string, string>,
   assignments?: Record<string, string>,
-) => {
+): typeof antimonyObjectProto => {
   const newAssignments: Record<string, { text: string }> = {};
   if (assignments) {
     const delay = assignmentsOrOptions.delay;
