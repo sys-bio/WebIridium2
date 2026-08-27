@@ -504,7 +504,27 @@ describe("events", () => {
   it("should error for invalid option", () => {
     expect(() => {
       buildAntimonyDocument("at 5, t = false: A = 0");
-    }).toThrow();
+    }).toThrow(SemanticError);
+  });
+
+  it("should error when using reaction in event assignment", () => {
+    expect(() => {
+      buildAntimonyDocument("J: A + B -> C; k1; E: at time > 5: E = 5");
+    }).toThrow(SemanticError);
+  });
+
+  it("should error when using event in event assignment", () => {
+    expect(() => {
+      buildAntimonyDocument("E1: at time > 5: A = 10; E2: at time > 5: E1 = 5");
+    }).toThrow(SemanticError);
+  });
+
+  it("should error when using submodel in event assignment", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "model test; A = 5; end; sub: test(); E: at time > 5: sub = 5",
+      );
+    }).toThrow(SemanticError);
   });
 });
 
@@ -537,7 +557,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
+        J: reaction({ A: null }, { B: null }, "k1").in("comp"),
       }),
     );
   });
@@ -549,7 +569,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
+        J: reaction({ A: null }, { B: null }, "k1").in("comp"),
       }),
     );
   });
@@ -561,7 +581,7 @@ describe("compartments", () => {
         A: species(),
         B: species(),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
+        J: reaction({ A: null }, { B: null }, "k1").in("comp"),
       }),
     );
   });
@@ -573,7 +593,7 @@ describe("compartments", () => {
         A: species().in("comp"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
+        J: reaction({ A: null }, { B: null }, "k1").in("comp"),
       }),
     );
   });
@@ -585,8 +605,8 @@ describe("compartments", () => {
         A: species().in("comp2"),
         B: species().in("comp"),
         k1: parameter(),
-        J: reaction({ A: null }, { B: null }, "k1", { in: "comp" }),
-        J2: reaction({ A: null }, {}, "k2", { in: "comp2" }),
+        J: reaction({ A: null }, { B: null }, "k1").in("comp"),
+        J2: reaction({ A: null }, {}, "k2").in("comp2"),
       }),
     );
   });
@@ -1019,6 +1039,69 @@ describe("renaming", () => {
         );
       }).toThrowError(SemanticError);
     });
+  });
+});
+
+describe("deleting", () => {
+  it("should mark variables as deleted", () => {
+    expectModel(
+      "model test; species A = 5; end; sub: test(); delete sub.A",
+      model({
+        sub: model({
+          A: species("5").deleted(),
+        }),
+      }),
+    );
+  });
+
+  it("should mark events as deleted", () => {
+    expectModel(
+      "model test; E: at time > 5: A = 3 end; sub: test(); delete sub.E",
+      model({
+        sub: model({
+          A: parameter("0"),
+          E: event("time>5", { A: "3" }).deleted(),
+        }),
+      }),
+    );
+  });
+
+  it("should mark reactions as deleted", () => {
+    expectModel(
+      "model test; J: A + B -> C; k1; end; sub: test(); delete sub.A",
+      model({
+        sub: model({
+          A: species("0").deleted(),
+          B: species("0").deleted(),
+          C: species("0").deleted(),
+          J: reaction({ A: null, B: null }, { C: null }, "k1").deleted(),
+        }),
+      }),
+    );
+  });
+
+  it("should error when trying to delete variable not in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument("A = 5; delete A");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete reaction not in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument("J: A + B -> C; k1; delete J");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete event not in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument("E: at time > 3: A = 5; delete E");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete submodel", () => {
+    expect(() => {
+      buildAntimonyDocument("model test; A = 5; end; sub: test(); delete test");
+    }).toThrowError(SemanticError);
   });
 });
 

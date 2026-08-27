@@ -820,6 +820,13 @@ export class BuildAntimonyListener implements AntimonyListener {
         this.#reportError("Cannot assign to built-in.", ctx);
         return;
       }
+      if (variable.kind !== "variable") {
+        this.#reportError(
+          `Cannot assign to ${assignment.variable().text} in an event because it is a ${variable.kind}.`,
+          assignment,
+        );
+        continue;
+      }
 
       assignments.set(
         getReferenceFromVariable(assignment.variable()),

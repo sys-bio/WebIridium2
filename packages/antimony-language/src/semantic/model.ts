@@ -15,6 +15,11 @@ export type AntimonyObjectBase<Kind extends string> = {
   displayName?: string;
 };
 
+export type AntimonyDeleteableBase<Kind extends string> =
+  AntimonyObjectBase<Kind> & {
+    isDeleted: boolean;
+  };
+
 export type AntimonyObject =
   | AntimonyModel
   | AntimonyVariable
@@ -67,9 +72,8 @@ export type AntimonyAssignment =
 export type VariableKind = "species" | "parameter" | "compartment";
 
 // TODO: units
-export type AntimonyVariable = AntimonyObjectBase<"variable"> & {
+export type AntimonyVariable = AntimonyDeleteableBase<"variable"> & {
   variableKind: VariableKind;
-  displayName?: string;
   compartment: AntimonyReference | null;
   isConst: boolean;
   hasSubstanceOnly: boolean;
@@ -81,7 +85,7 @@ export type AntimonyReactionTerm = {
   stoichiometry?: StoichiometryContext;
 };
 
-export type AntimonyEvent = AntimonyObjectBase<"event"> & {
+export type AntimonyEvent = AntimonyDeleteableBase<"event"> & {
   compartment: AntimonyReference | null;
   trigger: FormulaContext;
   assignments: Map<AntimonyReference, FormulaContext>;
@@ -89,7 +93,7 @@ export type AntimonyEvent = AntimonyObjectBase<"event"> & {
   options: Record<string, FormulaContext | undefined>;
 };
 
-export type AntimonyReaction = AntimonyObjectBase<"reaction"> & {
+export type AntimonyReaction = AntimonyDeleteableBase<"reaction"> & {
   compartment: AntimonyReference | null;
   reactants: AntimonyReactionTerm[];
   products: AntimonyReactionTerm[];

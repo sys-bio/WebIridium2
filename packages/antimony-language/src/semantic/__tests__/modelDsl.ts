@@ -88,13 +88,17 @@ const variableModifiers = {
   }),
 };
 
-const variableProto = {
+const antimonyObjectProto = {
   in(this: Record<string, unknown>, compartment: string) {
     this.compartment = compartment.split(".");
     return this;
   },
   display(this: Record<string, unknown>, displayName: string) {
     this.displayName = displayName;
+    return this;
+  },
+  deleted(this: Record<string, unknown>) {
+    this.isDeleted = true;
     return this;
   },
 };
@@ -107,10 +111,10 @@ const createVariableFunc = (kind: string) => {
       this: VariableState,
       formulaOrRule?: string,
       rate?: string,
-    ): typeof variableProto {
+    ): typeof antimonyObjectProto {
       if (formulaOrRule) {
         // eslint-disable-next-line
-        return Object.assign(Object.create(variableProto), {
+        return Object.assign(Object.create(antimonyObjectProto), {
           kind: "variable",
           variableKind: kind,
           isConst: this.const ?? false,
@@ -135,7 +139,7 @@ const createVariableFunc = (kind: string) => {
       }
 
       // eslint-disable-next-line
-      return Object.assign(Object.create(variableProto), {
+      return Object.assign(Object.create(antimonyObjectProto), {
         kind: "variable",
         variableKind: kind,
         isConst: this.const ?? false,
@@ -155,14 +159,8 @@ export const reaction = (
   reactants: Record<string, string | number | null>,
   products: Record<string, string | number | null>,
   rate?: string,
-  extra?: { in?: string },
 ) => {
-  let compartment = null;
-  if (extra && extra.in) {
-    compartment = extra.in.split(".");
-  }
-
-  return {
+  return Object.assign(Object.create(antimonyObjectProto), {
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
       reference: name.split("."),
@@ -181,7 +179,7 @@ export const reaction = (
           }
         : undefined,
     compartment,
-  };
+  });
 };
 
 export const event = (
@@ -206,24 +204,24 @@ export const event = (
       newOptions[name] = { text: value };
     }
 
-    return {
+    return Object.assign(Object.create(antimonyObjectProto), {
       kind: "event",
       trigger: { text: trigger },
       delay: delay && { text: delay },
       assignments: newAssignments,
       options: newOptions,
-    };
+    });
   } else {
     for (const [name, value] of Object.entries(assignmentsOrOptions)) {
       newAssignments[name] = { text: value };
     }
 
-    return {
+    return Object.assign(Object.create(antimonyObjectProto), {
       kind: "event",
       trigger: { text: trigger },
       assignments: newAssignments,
       options: {},
-    };
+    });
   }
 };
 

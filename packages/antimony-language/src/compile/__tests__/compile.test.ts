@@ -50,32 +50,35 @@ const compileToIr = (source: string): IridiumModel => {
   return iridium;
 };
 
+const toComparableModel = (model: IridiumModel): Record<string, unknown> => {
+  deleteMetadataFromArray(model.variables);
+  deleteMetadataFromArray(model.reactions);
+  deleteMetadataFromArray(model.events);
+  deleteMetadataFromArray(model.compartments);
+  deleteMetadataFromArray(model.functions);
+
+  return {
+    variables: Object.fromEntries(model.variables.map((v) => [v.name, v])),
+    reactions: Object.fromEntries(model.reactions.map((v) => [v.name, v])),
+    events: Object.fromEntries(model.events.map((v) => [v.name, v])),
+    compartments: model.compartments,
+    functions: model.functions,
+  };
+};
+
+const expectCompilesToExact = (
+  source: string,
+  expected: IridiumModel,
+): void => {
+  const gotComparable = toComparableModel(compileToIr(source));
+  const expectedComparable = toComparableModel(expected);
+  expect(gotComparable).toEqual(expectedComparable);
+};
+
 const expectCompilesTo = (source: string, expected: IridiumModel): void => {
-  deleteMetadataFromArray(expected.variables);
-  deleteMetadataFromArray(expected.reactions);
-  deleteMetadataFromArray(expected.events);
-
-  const got = compileToIr(source);
-
-  deleteMetadataFromArray(got.variables);
-  deleteMetadataFromArray(got.reactions);
-  deleteMetadataFromArray(got.events);
-
-  console.log(got);
-
-  const gotNames = {
-    variables: Object.fromEntries(got.variables.map((v) => [v.name, v])),
-    reactions: Object.fromEntries(got.reactions.map((v) => [v.name, v])),
-    events: Object.fromEntries(got.events.map((v) => [v.name, v])),
-  };
-
-  const expectedNames = {
-    variables: Object.fromEntries(expected.variables.map((v) => [v.name, v])),
-    reactions: Object.fromEntries(expected.reactions.map((v) => [v.name, v])),
-    events: Object.fromEntries(expected.events.map((v) => [v.name, v])),
-  };
-
-  expect(gotNames).toMatchObject(expectedNames);
+  const gotComparable = toComparableModel(compileToIr(source));
+  const expectedComparable = toComparableModel(expected);
+  expect(gotComparable).toMatchObject(expectedComparable);
 };
 
 describe("ir", () => {
@@ -180,7 +183,7 @@ describe("ir", () => {
 
     it("should compile chained operators", () => {
       expectCompilesTo(
-        "A = 1 > 3 == 1 + 2 != func(B)",
+        "A = 1 > 3 == 1 + 2 != func(5)",
         variables({
           A: parameter(
             expr.and(
@@ -190,7 +193,7 @@ describe("ir", () => {
               ),
               expr.neq(
                 expr.add(expr.num(1), expr.num(2)),
-                expr.call("func", [expr.var("B")]),
+                expr.call("func", [expr.num(5)]),
               ),
             ),
           ),
@@ -213,6 +216,7 @@ describe("ir", () => {
               expr.pow(expr.num(10), expr.num(5)),
             ),
           ),
+          B: parameter(0),
         }),
       );
     });
@@ -227,6 +231,7 @@ describe("ir", () => {
             variables: {
               A: species(1),
               B: species(1),
+              k1: parameter(0),
             },
             reactions: {
               J: reaction({ A: 1 }, { B: 1 }, expr.var("k1")),
@@ -434,7 +439,7 @@ describe("ir", () => {
         "function test() 5 end",
         model({
           functions: {
-            a: func([], expr.num(5)),
+            test: func([], expr.num(5)),
           },
         }),
       );
@@ -445,7 +450,7 @@ describe("ir", () => {
         "function test(a, b, c) a + b + c end",
         model({
           functions: {
-            a: func(
+            test: func(
               ["a", "b", "c"],
               expr.add(expr.add(expr.var("a"), expr.var("b")), expr.var("c")),
             ),
@@ -464,7 +469,7 @@ describe("ir", () => {
   describe("model imports", () => {
     it("should flatten named imports", () => {
       expectCompilesTo(
-        "model example; A + B -> C; k1; end; A: example(); B: example()",
+        "model example; A + B -> C; k1; at A > 10: A = 5; end; A: example(); B: example()",
         model({
           variables: {
             A__A: species(0),
@@ -487,6 +492,14 @@ describe("ir", () => {
               { B__C: 1 },
               expr.var("B__k1"),
             ),
+          },
+          events: {
+            A___E0: event(expr.gt(expr.var("A__A"), expr.num(10)), {
+              A__A: expr.num(5),
+            }),
+            B___E0: event(expr.gt(expr.var("B__A"), expr.num(10)), {
+              B__A: expr.num(5),
+            }),
           },
         }),
       );
@@ -800,6 +813,142 @@ describe("ir", () => {
               { sub3__sub2__C: 2 },
               expr.var("sub3__sub2__k1"),
             ),
+          },
+        }),
+      );
+    });
+  });
+
+  describe("deleting", () => {
+    it("should delete submodel compartment", () => {
+      expectCompilesTo(
+        "model test; A in C; B in C; end; sub: test(); delete sub.A",
+        model({
+          variables: {
+            sub__A: species(0),
+            sub__B: species(0),
+          },
+          compartments: {},
+        }),
+      );
+    });
+
+    it("should delete submodel variable from reactants", () => {
+      expectCompilesTo(
+        "model test; A + B -> C; k1; end; sub: test(); delete sub.B",
+        model({
+          variables: {
+            sub__B: species(0),
+            sub__C: species(0),
+            sub__k1: parameter(0),
+          },
+          reactions: {
+            sub___J0: reaction({ sub__B: 1 }, { sub__C: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel variable from product", () => {
+      expectCompilesTo(
+        "model test; A + B -> C; k1; end; sub: test(); delete sub.C",
+        model({
+          variables: {
+            sub__A: species(0),
+            sub__B: species(0),
+            sub__k1: parameter(0),
+          },
+          reactions: {
+            sub___J0: reaction({ sub__A: 1, sub__B: 1 }, {}, expr.var("k1")),
+          },
+        }),
+      );
+    });
+
+    it("should delete rate law if contains deleted subvariable", () => {
+      expectCompilesTo(
+        "model test; A + B -> C; k1; end; sub: test(); delete sub.k1",
+        model({
+          variables: {
+            sub__A: species(0),
+            sub__B: species(0),
+            sub__C: species(0),
+          },
+          reactions: {
+            sub___J0: reaction(
+              { sub__A: 1, sub__B: 1 },
+              { sub__C: 1 },
+              expr.num(0),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel reaction", () => {
+      expectCompilesTo(
+        "model test; J: A + B -> C; k1; end; sub: test(); delete sub.J",
+        model({
+          variables: {
+            sub__A: parameter(0),
+            sub__B: parameter(0),
+            sub__C: parameter(0),
+            sub__k1: parameter(0),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel event", () => {
+      expectCompilesTo(
+        "model test; E: at time > 5: A = 5 end; sub: test(); delete sub.E",
+        model({
+          variables: {
+            sub__A: parameter(0),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel event if trigger contains deleted subvariable", () => {
+      expectCompilesTo(
+        "model test; E: at k1 > 5: A = 5 end; sub: test(); delete sub.k1",
+        model({
+          variables: {
+            sub__A: parameter(0),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel event assignment for deleted subvariable", () => {
+      expectCompilesTo(
+        "model test; E: at time > 5: A = 5, B = 10; end; sub: test(); delete sub.B",
+        model({
+          variables: {
+            sub__A: parameter(0),
+          },
+          events: {
+            sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
+              A: expr.num(5),
+            }),
+          },
+        }),
+      );
+    });
+
+    it("should delete submodel event assignment if expression contains deleted subvaraible", () => {
+      expectCompilesTo(
+        "model test; E: at time > 5: A = k1, B = 10; end; sub: test(); delete sub.k1",
+        model({
+          variables: {
+            sub__A: parameter(0),
+            sub__B: parameter(0),
+          },
+          events: {
+            sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
+              B: expr.num(10),
+            }),
           },
         }),
       );

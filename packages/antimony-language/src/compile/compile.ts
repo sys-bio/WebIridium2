@@ -131,7 +131,6 @@ class IrBuilder {
 
   addSource(source: AntimonyObject): void {
     const name = this.#getAvailableName(source.name);
-    console.log(name);
     this.#sources.set(source, name);
     this.#names.add(name);
   }
