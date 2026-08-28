@@ -35,8 +35,9 @@ import {
   type AntimonyModelObject,
   type AntimonyReference,
   type AntimonyDocument,
-  PARENT_SYMBOL,
   type AntimonyConcreteObject,
+  type AntimonyFormula,
+  type AntimonyStoichiometry,
 } from "./model";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -52,8 +53,33 @@ export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
 export const DEFAULT_MODEL_NAME = "__main";
 export const DEFAULT_IMPORT_PREFIX = "_sys";
 
+const prependScope = (
+  formula: { scope: AntimonyReference | null },
+  prefix: string | number,
+): void => {
+  if (formula.scope) {
+    formula.scope = [prefix, ...formula.scope];
+  } else {
+    formula.scope = [prefix];
+  }
+};
+
+const prependCompartment = (
+  object: { compartment: AntimonyReference | null },
+  prefix: string | number,
+): void => {
+  if (object.compartment) {
+    object.compartment = [prefix, ...object.compartment];
+  }
+};
+
+/**
+ * Copies an AntimonyObject and prepends a string to every reference.
+ * Used in model imports.
+ */
 const copyAntimonyObject = (
   object: AntimonyModelObject,
+  referencePrefix: string | number,
 ): AntimonyModelObject => {
   switch (object.kind) {
     case "model": {
@@ -62,37 +88,127 @@ const copyAntimonyObject = (
         objects: new Map(),
         unnamedImports: [],
       };
-      copy;
+
       for (const [name, subobject] of object.objects) {
-        const subobjectCopy = copyAntimonyObject(subobject);
+        const subobjectCopy = copyAntimonyObject(subobject, referencePrefix);
         if (subobjectCopy.kind === "model") {
           subobjectCopy.parent = copy;
         }
         copy.objects.set(name, subobjectCopy);
       }
+
       for (const submodel of object.unnamedImports) {
-        const submodelCopy = copyAntimonyObject(submodel) as AntimonyModel;
+        const submodelCopy = copyAntimonyObject(
+          submodel,
+          referencePrefix,
+        ) as AntimonyModel;
         submodelCopy.parent = copy;
         copy.unnamedImports.push(submodelCopy);
       }
+
       return copy;
     }
     case "variable": {
-      const copy: AntimonyVariable = { ...object };
+      const copy = { ...object };
+
+      prependCompartment(copy, referencePrefix);
+
       if (object.assignment) {
         copy.assignment = { ...object.assignment };
+
+        if (copy.assignment.kind === "initial") {
+          copy.assignment.initial = { ...copy.assignment.initial };
+          prependScope(copy.assignment.initial, referencePrefix);
+        } else if (copy.assignment.kind === "rule") {
+          copy.assignment.rule = { ...copy.assignment.rule };
+          prependScope(copy.assignment.rule, referencePrefix);
+        } else if (copy.assignment.kind === "rate") {
+          if (copy.assignment.initial) {
+            copy.assignment.initial = { ...copy.assignment.initial };
+            prependScope(copy.assignment.initial, referencePrefix);
+          }
+          copy.assignment.rate = { ...copy.assignment.rate };
+          prependScope(copy.assignment.rate, referencePrefix);
+        }
       }
+
       return copy;
     }
-    case "reaction":
-    case "event":
+    case "reaction": {
+      const copy = { ...object };
+
+      prependCompartment(copy, referencePrefix);
+
+      if (copy.rate) {
+        copy.rate = { ...copy.rate };
+        prependScope(copy.rate, referencePrefix);
+      }
+
+      const newReactants = [];
+      for (const reactant of copy.reactants) {
+        const newReactant = { ...reactant };
+        if (newReactant.stoichiometry) {
+          newReactant.stoichiometry = { ...newReactant.stoichiometry };
+          prependScope(newReactant.stoichiometry, referencePrefix);
+        }
+        newReactant.reference = [referencePrefix, ...newReactant.reference];
+        newReactants.push(newReactant);
+      }
+      copy.reactants = newReactants;
+
+      const newProducts = [];
+      for (const product of copy.products) {
+        const newProduct = { ...product };
+        if (newProduct.stoichiometry) {
+          newProduct.stoichiometry = { ...newProduct.stoichiometry };
+          prependScope(newProduct.stoichiometry, referencePrefix);
+        }
+        newProduct.reference = [referencePrefix, ...newProduct.reference];
+        newProducts.push(newProduct);
+      }
+      copy.products = newProducts;
+
+      return copy;
+    }
+    case "event": {
+      const copy = { ...object };
+
+      prependCompartment(copy, referencePrefix);
+
+      copy.trigger = { ...copy.trigger };
+      prependScope(copy.trigger, referencePrefix);
+
+      if (copy.delay) {
+        copy.delay = { ...copy.delay };
+        prependScope(copy.delay, referencePrefix);
+      }
+
+      const newAssignments = new Map<AntimonyReference, AntimonyFormula>();
+      for (const [reference, assignment] of copy.assignments) {
+        const assignmentCopy = { ...assignment };
+        prependScope(assignmentCopy, referencePrefix);
+        newAssignments.set([referencePrefix, ...reference], assignmentCopy);
+      }
+      copy.assignments = newAssignments;
+
+      const newOptions = { ...copy.options };
+      for (const [name, option] of Object.entries(copy.options)) {
+        if (option) {
+          const optionCopy = { ...option };
+          prependScope(optionCopy, referencePrefix);
+          newOptions[name] = optionCopy;
+        }
+      }
+      copy.options = newOptions;
+
+      return copy;
+    }
     case "renameLink":
-      return { ...object };
+      return { ...object, to: [referencePrefix, ...object.to] };
   }
 };
 
-const referenceToString = (reference: AntimonyReference) =>
-  reference.map((r) => (r === PARENT_SYMBOL ? "^" : r)).join(".");
+const referenceToString = (reference: AntimonyReference) => reference.join(".");
 
 export const getReferenceFromVariable = (
   variable: VariableContext,
@@ -119,14 +235,31 @@ export const getReferenceFromVariable = (
   return reference;
 };
 
+type ObjectWithModelInfo = [
+  model: AntimonyModel,
+  name: string | number,
+  obj: AntimonyConcreteObject,
+];
+
+// This one doesn't point to a model so name can't be a number
+type ModelObjectWithModelInfo = [
+  model: AntimonyModel,
+  name: string,
+  obj: AntimonyConcreteObject,
+];
+
 /**
  * If the object is a renameLink, follow it. Otherwise, return the object.
  */
-const resolveObject = (
-  model: AntimonyModel,
-  object: AntimonyObject | undefined,
-): AntimonyConcreteObject | undefined =>
-  object?.kind === "renameLink" ? resolveReference(model, object.to) : object;
+const resolveObjectWithModelInfo = (
+  rootModel: AntimonyModel,
+  object: AntimonyObject,
+  containingModel: AntimonyModel,
+): ObjectWithModelInfo => {
+  return object?.kind === "renameLink"
+    ? resolveReferenceWithModelInfo(rootModel, object.to)
+    : [containingModel, object.name, object];
+};
 
 export class BadReferenceError extends Error {
   constructor(message: string) {
@@ -135,89 +268,86 @@ export class BadReferenceError extends Error {
   }
 }
 
-/**
- * Resolves an AntimonyReference and returns the model the reference pointed to, the name
- * of the object within that model, and the object if it exists.
- */
 const resolveReferenceWithModelInfo = (
-  model: AntimonyModel,
+  rootModel: AntimonyModel,
   reference: AntimonyReference,
-): [AntimonyModel, string | number | PARENT_SYMBOL, AntimonyConcreteObject] => {
-  let parent: AntimonyModel = model;
-  let current: AntimonyObject = model;
+  startModel?: AntimonyModel,
+): ObjectWithModelInfo => {
+  let parent: AntimonyModel = startModel ?? rootModel;
+  let current: AntimonyObject = startModel ?? rootModel;
 
   for (const name of reference) {
     if (current.kind !== "model") {
       throw new BadReferenceError(
-        `Cannot access ${current.name} in ${referenceToString(reference)} because it is not a current.`,
+        `Cannot access ${current.name} in ${referenceToString(reference)} because it is not a model.`,
       );
     }
 
     let got: AntimonyObject | undefined =
-      name === PARENT_SYMBOL
-        ? current.parent
-        : typeof name === "number"
-          ? current.unnamedImports[name]
-          : current.objects.get(name);
+      typeof name === "number"
+        ? current.unnamedImports[name]
+        : current.objects.get(name);
 
     if (!got) {
-      if (name === PARENT_SYMBOL) {
-        throw new BadReferenceError(
-          `${current.name} has no parent in ${referenceToString(reference)}.`,
-        );
-      } else {
-        throw new BadReferenceError(
-          `${name} is not a subvariable of ${current.name}.`,
-        );
-      }
+      throw new BadReferenceError(
+        `${name} is not a subvariable of ${current.name}.`,
+      );
     }
 
     parent = current;
-    current = resolveObject(current, got)!;
+    current = got;
   }
 
-  return [parent, reference[reference.length - 1], current];
+  return resolveObjectWithModelInfo(rootModel, current, parent);
 };
 
+/**
+ * @param rootModel - where any links are resolved from
+ * @param reference - reference to resolve
+ * @param startModel - an optional model where the reference should start at
+ */
 export const resolveReference = (
-  model: AntimonyModel,
+  rootModel: AntimonyModel,
   reference: AntimonyReference,
+  startModel?: AntimonyModel,
 ): AntimonyConcreteObject => {
   const [_model, _name, object] = resolveReferenceWithModelInfo(
-    model,
+    rootModel,
     reference,
+    startModel,
   );
   return object;
 };
 
-/**
- * Create reference from one object to another.
- * @param from - reference to where we want our new reference to start from
- * @param to - reference to where we want our new reference to point to
- */
 const createReference = (
-  from: AntimonyReference,
-  to: AntimonyReference,
+  model: AntimonyModel,
+  childName?: string,
 ): AntimonyReference => {
-  // then we want createReference(B.S.A, A.S.A)
-  // then we want createReference(A.B.C.m, A.B.D.m)
-  // which is PARENT,PARENT,A,S,A
   const reference = [];
 
-  let sharedAncestorIndex = 0;
-  for (let i = 0; i < from.length - 1; i++) {
-    if (from[i] !== to[i]) {
-      break;
+  let current = model.parent;
+  let child = model;
+  while (current) {
+    if (current.objects.has(child.name)) {
+      reference.push(child.name);
+    } else {
+      const index = current.unnamedImports.indexOf(model);
+      if (index < 0) {
+        throw new Error(
+          `${child.name} nowhere to be found inside ${model.name}.`,
+        );
+      }
+      reference.push(index);
     }
-    sharedAncestorIndex += 1;
+
+    child = current;
+    current = current.parent;
   }
 
-  for (let i = 0; i < from.length - sharedAncestorIndex - 1; i++) {
-    reference.push(PARENT_SYMBOL);
-  }
+  reference.reverse();
 
-  for (let i = sharedAncestorIndex; i < to.length; i++) {
-    reference.push(to[i]);
+  if (childName !== undefined) {
+    reference.push(childName);
   }
 
   return reference;
@@ -294,6 +424,42 @@ export class BuildAntimonyListener implements AntimonyListener {
     return this.#currentModel;
   }
 
+  #createFormula(formula: FormulaContext): AntimonyFormula;
+  #createFormula(
+    formula: FormulaContext | undefined,
+  ): AntimonyFormula | undefined;
+  #createFormula(
+    formula: FormulaContext | undefined,
+  ): AntimonyFormula | undefined {
+    if (formula === undefined) return undefined;
+
+    const model = this.#getActiveModel();
+    if (model.parent) {
+      return { scope: createReference(model), ctx: formula };
+    } else {
+      return { scope: null, ctx: formula };
+    }
+  }
+
+  #createStoichiometry(
+    stoichiometry: StoichiometryContext,
+  ): AntimonyStoichiometry;
+  #createStoichiometry(
+    stoichiometry: StoichiometryContext | undefined,
+  ): AntimonyStoichiometry | undefined;
+  #createStoichiometry(
+    stoichiometry: StoichiometryContext | undefined,
+  ): AntimonyStoichiometry | undefined {
+    if (stoichiometry === undefined) return undefined;
+
+    const model = this.#getActiveModel();
+    if (model.parent) {
+      return { scope: createReference(model), ctx: stoichiometry };
+    } else {
+      return { scope: null, ctx: stoichiometry };
+    }
+  }
+
   get #isActive(): boolean {
     return true;
   }
@@ -359,11 +525,17 @@ export class BuildAntimonyListener implements AntimonyListener {
     variableCtx: VariableContext,
   ): [model: AntimonyModel, name: string, object: AntimonyObject | undefined] {
     if (variableCtx instanceof NameContext) {
-      return [
-        model,
-        variableCtx.NAME().text,
-        resolveObject(model, model.objects.get(variableCtx.NAME().text)),
-      ];
+      const name = variableCtx.NAME().text;
+      const object = model.objects.get(name);
+      if (!object) {
+        return [model, name, undefined];
+      } else {
+        return resolveObjectWithModelInfo(
+          this.#getActiveModel(),
+          object,
+          model,
+        ) as ModelObjectWithModelInfo;
+      }
     } else if (variableCtx instanceof SubvariableContext) {
       const [_model, _name, head] = this.#resolveVariable(
         model,
@@ -394,7 +566,11 @@ export class BuildAntimonyListener implements AntimonyListener {
         return [head, name, undefined];
       }
 
-      return [head, name, resolveObject(head, got)];
+      return resolveObjectWithModelInfo(
+        this.#getActiveModel(),
+        got,
+        head,
+      ) as ModelObjectWithModelInfo;
     } else if (variableCtx instanceof ConstantContext) {
       return this.#resolveVariable(model, variableCtx.variable());
     } else {
@@ -523,7 +699,6 @@ export class BuildAntimonyListener implements AntimonyListener {
     const model: AntimonyModel = {
       kind: "model",
       name,
-      parent: this.#getActiveModel(),
       objects: new Map(),
       unnamedImports: [],
     };
@@ -696,7 +871,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       object.assignment = {
         kind: "rule",
-        rule: formula,
+        rule: this.#createFormula(formula),
       };
     } else if (mod === "'") {
       if (object.kind !== "variable") {
@@ -717,7 +892,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       object.assignment = {
         kind: "rate",
-        rate: formula,
+        rate: this.#createFormula(formula),
         initial: object?.assignment?.initial,
       };
     } else {
@@ -733,15 +908,15 @@ export class BuildAntimonyListener implements AntimonyListener {
         if (!object.assignment) {
           object.assignment = {
             kind: "initial",
-            initial: formula,
+            initial: this.#createFormula(formula),
           };
         } else {
-          object.assignment.initial = formula;
+          object.assignment.initial = this.#createFormula(formula);
         }
       } else if (object.kind === "event") {
-        object.trigger = formula;
+        object.trigger = this.#createFormula(formula);
       } else if (object.kind === "reaction") {
-        object.rate = formula;
+        object.rate = this.#createFormula(formula);
       } else {
         this.#reportError(
           `${(object as AntimonyObject).name} of type ${(object as AntimonyObject).kind} cannot be assigned to.`,
@@ -783,7 +958,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       terms.push({
         reference: getReferenceFromVariable(reactant.variable()),
-        stoichiometry: reactant.stoichiometry(),
+        stoichiometry: this.#createStoichiometry(reactant.stoichiometry()),
       });
     }
     return terms;
@@ -859,7 +1034,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       compartment,
       reactants,
       products,
-      rate: ctx.formula(),
+      rate: this.#createFormula(ctx.formula()),
     });
   }
 
@@ -870,7 +1045,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     const assignmentsCtx = ctx.eventAssignments();
     if (!assignmentsCtx) return;
 
-    const assignments = new Map<AntimonyReference, FormulaContext>();
+    const assignments = new Map<AntimonyReference, AntimonyFormula>();
     for (const assignment of assignmentsCtx.eventAssignment()) {
       const variable = this.#getOrCreateObject(
         assignment.variable(),
@@ -890,11 +1065,11 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       assignments.set(
         getReferenceFromVariable(assignment.variable()),
-        assignment.formula(),
+        this.#createFormula(assignment.formula()),
       );
     }
 
-    const options: Record<string, FormulaContext> = {};
+    const options: Record<string, AntimonyFormula> = {};
     const eventOptions = ctx.eventOptions();
     if (eventOptions) {
       for (const option of eventOptions.eventOption()) {
@@ -904,7 +1079,7 @@ export class BuildAntimonyListener implements AntimonyListener {
           continue;
         }
 
-        options[name] = option.formula();
+        options[name] = this.#createFormula(option.formula());
       }
     }
 
@@ -916,8 +1091,8 @@ export class BuildAntimonyListener implements AntimonyListener {
       name,
       compartment,
       assignments,
-      trigger: ctx._trigger,
-      delay: ctx._delay,
+      trigger: this.#createFormula(ctx._trigger),
+      delay: this.#createFormula(ctx._delay),
       options: options,
     });
   }
@@ -966,12 +1141,10 @@ export class BuildAntimonyListener implements AntimonyListener {
     });
   }
 
-  #createRenameLink(
-    fromReference: AntimonyReference,
+  #rename(
     fromModel: AntimonyModel,
     fromName: string,
     fromObject: AntimonyModelObject,
-    toReference: AntimonyReference,
     toModel: AntimonyModel,
     toName: string,
     toObject: AntimonyObject | undefined,
@@ -982,6 +1155,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       return;
     }
 
+    // apply antimony sync/merge rules
     if (toObject) {
       if (fromObject.kind !== toObject.kind) {
         this.#reportError(
@@ -994,10 +1168,14 @@ export class BuildAntimonyListener implements AntimonyListener {
         toObject.kind === "variable"
       ) {
         if (
-          (toObject.variableKind === "compartment" &&
+          ((toObject.variableKind === "compartment" &&
             fromObject.variableKind !== "parameter") ||
-          (fromObject.variableKind === "compartment" &&
-            toObject.variableKind !== "parameter")
+            (fromObject.variableKind === "compartment" &&
+              toObject.variableKind !== "parameter")) &&
+          !(
+            fromObject.variableKind === "compartment" &&
+            toObject.variableKind === "compartment"
+          )
         ) {
           this.#reportError(
             `Cannot rename ${fromObject.name} which is a ${fromObject.variableKind} to ${toObject.name} because it is a ${toObject.variableKind}.`,
@@ -1006,7 +1184,6 @@ export class BuildAntimonyListener implements AntimonyListener {
           return;
         }
 
-        // apply antimony sync rules
         if (toObject.assignment) {
           fromObject.assignment = toObject.assignment;
         }
@@ -1021,7 +1198,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     fromModel.objects.set(fromName, {
       kind: "renameLink",
       name: fromName,
-      to: createReference(fromReference, toReference),
+      to: createReference(toModel, toName),
     });
   }
 
@@ -1053,12 +1230,10 @@ export class BuildAntimonyListener implements AntimonyListener {
       toCtx,
     );
 
-    this.#createRenameLink(
-      getReferenceFromVariable(fromCtx),
+    this.#rename(
       fromModel,
       fromName,
       fromObject,
-      getReferenceFromVariable(toCtx),
       toModel,
       toName,
       toObject,
@@ -1075,8 +1250,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (callingModel === parentModel) {
       this.#reportError(`Cannot import '${name}' into itself.`, ctx);
       return;
-    }
-    if (!callingModel) {
+    } else if (!callingModel) {
       this.#reportError(`No model with the name of '${name}'.`, ctx);
       return;
     }
@@ -1087,8 +1261,13 @@ export class BuildAntimonyListener implements AntimonyListener {
       importName = nameLabelCtx.NAME().text;
     }
 
-    const copiedModel = copyAntimonyObject(callingModel) as AntimonyModel;
-    let referenceHead: string | number;
+    let referenceHead = importName ?? parentModel.unnamedImports.length;
+    const copiedModel = copyAntimonyObject(
+      callingModel,
+      referenceHead,
+    ) as AntimonyModel;
+    copiedModel.parent = parentModel;
+
     if (importName === undefined) {
       copiedModel.name = `${DEFAULT_IMPORT_PREFIX}${parentModel.unnamedImports.length}`;
       referenceHead = parentModel.unnamedImports.length;
@@ -1121,10 +1300,9 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
 
       const importCtx = importCtxs[i];
-      const fromReference = [referenceHead, ...exportReference];
       const [fromModel, fromName, fromObject] = resolveReferenceWithModelInfo(
         parentModel,
-        fromReference,
+        [referenceHead, ...exportReference],
       );
       if (typeof fromName !== "string") {
         throw new Error("Export reference last item was not a string.");
@@ -1133,15 +1311,13 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
 
       const [toModel, toName, toObject] = this.#resolveVariable(
-        this.#getActiveModel(),
+        parentModel,
         importCtx,
       );
-      this.#createRenameLink(
-        fromReference,
+      this.#rename(
         fromModel,
         fromName,
         fromObject,
-        getReferenceFromVariable(importCtx),
         toModel,
         toName,
         toObject,
@@ -1156,7 +1332,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     const variableCtx = ctx.variable();
     const reference = getReferenceFromVariable(variableCtx);
     if (reference.length <= 1) {
-      this.#reportError("Only variables inside submodels can be deleted.", ctx);
+      this.#reportError("Only objects inside submodels can be deleted.", ctx);
       return;
     }
 

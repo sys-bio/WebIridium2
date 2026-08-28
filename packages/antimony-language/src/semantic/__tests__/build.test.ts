@@ -1,7 +1,6 @@
 import { it, expect, describe } from "vitest";
 import {
   buildAntimonyDocument,
-  PARENT_SYMBOL,
   type AntimonyModel,
 } from "../../semantic/semantic";
 
@@ -695,6 +694,7 @@ describe("model", () => {
 describe("model imports", () => {
   const exampleModelString = "model example(); S + E -> ES;; end";
   const exampleModel = (
+    referencePrefix?: string,
     merge?: Record<string, unknown>,
     unnamedImports?: unknown[],
   ) =>
@@ -703,7 +703,15 @@ describe("model imports", () => {
         S: species(),
         E: species(),
         ES: species(),
-        _J0: reaction({ S: null, E: null }, { ES: null }),
+        _J0: reaction(
+          {
+            [referencePrefix ? referencePrefix + ".S" : "S"]: null,
+            [referencePrefix ? referencePrefix + ".E" : "E"]: null,
+          },
+          {
+            [referencePrefix ? referencePrefix + ".ES" : "ES"]: null,
+          },
+        ),
         ...merge,
       },
       unnamedImports,
@@ -712,7 +720,7 @@ describe("model imports", () => {
   it("should import simple model", () => {
     expectDocument(`${exampleModelString}; example();`, {
       models: {
-        [DEFAULT_MODEL_NAME]: model({}, [exampleModel()]),
+        [DEFAULT_MODEL_NAME]: model({}, [exampleModel("0")]),
         example: exampleModel(),
       },
       exportedModel: DEFAULT_MODEL_NAME,
@@ -723,9 +731,9 @@ describe("model imports", () => {
     expectDocument(`${exampleModelString}; example(); example(); example();`, {
       models: {
         [DEFAULT_MODEL_NAME]: model({}, [
-          exampleModel(),
-          exampleModel(),
-          exampleModel(),
+          exampleModel("0"),
+          exampleModel("1"),
+          exampleModel("2"),
         ]),
         example: exampleModel(),
       },
@@ -737,7 +745,7 @@ describe("model imports", () => {
     expectDocument(`${exampleModelString}; A: example(); B: example()`, {
       models: {
         [DEFAULT_MODEL_NAME]: model(
-          { A: exampleModel(), B: exampleModel() },
+          { A: exampleModel("A"), B: exampleModel("B") },
           [],
         ),
         example: exampleModel(),
@@ -752,8 +760,8 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model(
-            { A: exampleModel(), B: exampleModel() },
-            [exampleModel()],
+            { A: exampleModel("A"), B: exampleModel("B") },
+            [exampleModel("0")],
           ),
           example: exampleModel(),
         },
@@ -768,11 +776,11 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model({}, [
-            model({}, [exampleModel()]),
-            exampleModel(),
+            model({}, [exampleModel("0.0")]),
+            exampleModel("1"),
           ]),
           example: exampleModel(),
-          example2: model({}, [exampleModel()]),
+          example2: model({}, [exampleModel("0")]),
         },
         exportedModel: DEFAULT_MODEL_NAME,
       },
@@ -785,11 +793,11 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model({
-            A: model({ A: exampleModel() }),
-            B: exampleModel(),
+            A: model({ A: exampleModel("A.A") }),
+            B: exampleModel("B"),
           }),
           example: exampleModel(),
-          example2: model({ A: exampleModel() }),
+          example2: model({ A: exampleModel("A") }),
         },
         exportedModel: DEFAULT_MODEL_NAME,
       },
@@ -802,10 +810,10 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model({
-            A: exampleModel(),
+            A: exampleModel("A"),
           }),
           example: exampleModel(),
-          example2: model({ A: exampleModel() }),
+          example2: model({ A: exampleModel("A") }),
         },
         exportedModel: DEFAULT_MODEL_NAME,
       },
@@ -832,8 +840,8 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model({
-            A: exampleModel(),
-            B: exampleModel(),
+            A: exampleModel("A"),
+            B: exampleModel("B"),
             _J0: reaction({ "A.E": null }, { "B.E": null }),
           }),
           example: exampleModel(),
@@ -849,8 +857,8 @@ describe("model imports", () => {
       {
         models: {
           [DEFAULT_MODEL_NAME]: model({
-            A: exampleModel(),
-            B: exampleModel(),
+            A: exampleModel("A"),
+            B: exampleModel("B"),
             _J0: reaction({ "A.E": null, "B.E": null }, { C: null }),
           }),
           example: exampleModel(),
@@ -864,7 +872,7 @@ describe("model imports", () => {
     expectDocument(`${exampleModelString}; A: example(); A.E = 3`, {
       models: {
         [DEFAULT_MODEL_NAME]: model({
-          A: exampleModel({
+          A: exampleModel("A", {
             E: species("3"),
           }),
         }),
@@ -900,9 +908,9 @@ describe("model imports", () => {
           models: {
             [DEFAULT_MODEL_NAME]: model({
               sub: model({
-                A: renameLink([PARENT_SYMBOL, "A"]),
-                B: renameLink([PARENT_SYMBOL, "B"]),
-                C: renameLink([PARENT_SYMBOL, "C"]),
+                A: renameLink("A"),
+                B: renameLink("B"),
+                C: renameLink("C"),
               }),
               A: species("5"),
               B: parameter("5"),
@@ -936,9 +944,9 @@ describe("model imports", () => {
               },
               [
                 model({
-                  A: renameLink([PARENT_SYMBOL, "A"]),
-                  B: renameLink([PARENT_SYMBOL, "B"]),
-                  C: renameLink([PARENT_SYMBOL, "C"]),
+                  A: renameLink("A"),
+                  B: renameLink("B"),
+                  C: renameLink("C"),
                 }),
               ],
             ),
@@ -964,8 +972,8 @@ describe("model imports", () => {
           models: {
             [DEFAULT_MODEL_NAME]: model({
               sub: model({
-                A: renameLink([PARENT_SYMBOL, "A"]),
-                B: renameLink([PARENT_SYMBOL, "B"]),
+                A: renameLink("A"),
+                B: renameLink("B"),
                 C: parameter("10"),
               }),
               A: species("5"),
@@ -998,7 +1006,7 @@ describe("model imports", () => {
                 C: parameter("10"),
               }),
               sub1: model({
-                A: renameLink([PARENT_SYMBOL, "sub0", "A"]),
+                A: renameLink("sub0.A"),
                 B: parameter("5"),
                 C: parameter("10"),
               }),
@@ -1023,7 +1031,7 @@ describe("model imports", () => {
         models: {
           [DEFAULT_MODEL_NAME]: model({
             sub: model({
-              A: renameLink([PARENT_SYMBOL, "C"]),
+              A: renameLink("C"),
               B: parameter("5"),
             }),
             C: parameter(),
@@ -1103,7 +1111,7 @@ describe("renaming", () => {
       "model test; species A = 5; end; t: test(); t.A is B",
       model({
         t: model({
-          A: renameLink([PARENT_SYMBOL, "B"]),
+          A: renameLink("B"),
         }),
         B: species("5"),
       }),
@@ -1132,34 +1140,50 @@ describe("renaming", () => {
         A: species(),
         sub: model({
           sub2: model({
-            A: renameLink([PARENT_SYMBOL, "sub3", "B"]),
-            B: renameLink([PARENT_SYMBOL, PARENT_SYMBOL, "A"]),
+            A: renameLink("sub.sub3.B"),
+            B: renameLink("A"),
             C: species(),
             k1: parameter(),
-            _J0: reaction({ A: null, B: null }, { C: null }, "k1"),
+            _J0: reaction(
+              { "sub.sub2.A": null, "sub.sub2.B": null },
+              { "sub.sub2.C": null },
+              "k1",
+            ),
           }),
           sub3: model({
             A: species(),
             B: species(),
             C: species(),
             k1: parameter(),
-            _J0: reaction({ A: 2, B: 2 }, { C: 2 }, "k1"),
+            _J0: reaction(
+              { "sub.sub3.A": 2, "sub.sub3.B": 2 },
+              { "sub.sub3.C": 2 },
+              "k1",
+            ),
           }),
         }),
         subagain: model({
           sub2: model({
-            A: renameLink([PARENT_SYMBOL, "sub3", "B"]),
+            A: renameLink("subagain.sub3.B"),
             B: species(),
             C: species(),
             k1: parameter(),
-            _J0: reaction({ A: null, B: null }, { C: null }, "k1"),
+            _J0: reaction(
+              { "subagain.sub2.A": null, "subagain.sub2.B": null },
+              { "subagain.sub2.C": null },
+              "k1",
+            ),
           }),
           sub3: model({
             A: species(),
             B: species(),
             C: species(),
             k1: parameter(),
-            _J0: reaction({ A: 2, B: 2 }, { C: 2 }, "k1"),
+            _J0: reaction(
+              { "subagain.sub3.A": 2, "subagain.sub3.B": 2 },
+              { "subagain.sub3.C": 2 },
+              "k1",
+            ),
           }),
         }),
       }),
@@ -1257,7 +1281,7 @@ describe("deleting", () => {
       model({
         sub: model({
           A: parameter(),
-          E: event("time>5", { A: "3" }).deleted(),
+          E: event("time>5", { "sub.A": "3" }).deleted(),
         }),
       }),
     );
@@ -1271,7 +1295,11 @@ describe("deleting", () => {
           A: species(),
           B: species(),
           C: species(),
-          J: reaction({ A: null, B: null }, { C: null }, "k1").deleted(),
+          J: reaction(
+            { "sub.A": null, "sub.B": null },
+            { "sub.C": null },
+            "k1",
+          ).deleted(),
         }),
       }),
     );

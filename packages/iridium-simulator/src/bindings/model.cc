@@ -112,8 +112,6 @@ Model::Model(
         current_triggered_events_ = std::vector<WasmBool>(event_params.event_info.size());
     }
 
-    std::cout << "y size: " << NV_LENGTH_S(y_) << std::endl;
-
     ResetState();
 }
 

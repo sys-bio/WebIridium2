@@ -13,24 +13,20 @@ import {
 import type {
   AntimonyDocument,
   AntimonyEvent,
+  AntimonyFormula,
   AntimonyModel,
   AntimonyObject,
   AntimonyReaction,
+  AntimonyStoichiometry,
   AntimonyVariable,
 } from "../semantic/model";
 import {
-  compileFormula,
   compileFormula as compileFormulaOriginal,
   compileStoichiometry as compileStoichiometryOriginal,
 } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
-import {
-  NameContext,
-  StoichiometryContext,
-  VariableContext,
-  type FormulaContext,
-} from "../grammar";
+import { FormulaContext, NameContext, VariableContext } from "../grammar";
 import { buildAntimonyDocument } from "../semantic/semantic";
 import {
   getReferenceFromVariable,
@@ -82,6 +78,7 @@ class IrBuilder {
   #ir: IridiumModel<Metadata>;
   #names: Set<string>;
   #sources: Map<AntimonyObject, string>;
+  #compartments: Map<string, string[]>;
   #prefixes: string[];
 
   constructor() {
@@ -92,6 +89,7 @@ class IrBuilder {
       events: [],
       functions: [],
     };
+    this.#compartments = new Map();
     this.#names = new Set();
     this.#sources = new Map();
     this.#prefixes = [];
@@ -168,11 +166,23 @@ class IrBuilder {
     this.#ir.events.push(event);
   }
 
-  addCompartment(container: AntimonyObject, contained: AntimonyObject[]): void {
-    this.#ir.compartments.push({
-      containerVariable: this.getNameOf(container),
-      containedVariables: contained.map((variable) => this.getNameOf(variable)),
-    });
+  addToCompartment(
+    containerSource: AntimonyObject,
+    containedSource: AntimonyObject,
+  ): void {
+    const containerName = this.getNameOf(containerSource);
+    const containedName = this.getNameOf(containedSource);
+    let containerArray = this.#compartments.get(containerName);
+    if (!containerArray) {
+      const containedArray = [containedName];
+      this.#compartments.set(containerName, containedArray);
+      this.#ir.compartments.push({
+        containerVariable: containerName,
+        containedVariables: containedArray,
+      });
+    } else {
+      containerArray.push(containedName);
+    }
   }
 
   addFunction(source: AntimonyObject, func: IridiumFunction<Metadata>): void {
@@ -196,9 +206,21 @@ class IrBuilder {
   }
 }
 
-const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
+const flattenModel = (
+  root: AntimonyModel,
+  builder: IrBuilder,
+): {
+  variables: AntimonyVariable[];
+  reactions: AntimonyReaction[];
+  events: AntimonyEvent[];
+} => {
+  const variables: AntimonyVariable[] = [];
+  const reactions: AntimonyReaction[] = [];
+  const events: AntimonyEvent[] = [];
+
   const modelStack = [root];
   const seen = new Set<AntimonyModel>();
+
   while (modelStack.length > 0) {
     const got = modelStack.pop()!;
 
@@ -214,18 +236,21 @@ const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
       modelStack.push(got);
     }
 
-    for (const object of got.objects.values()) {
+    for (const [name, object] of got.objects) {
       if ("isDeleted" in object && object.isDeleted) continue;
 
       switch (object.kind) {
         case "variable":
           builder.addSource(object);
+          variables.push(object);
           break;
         case "reaction":
           builder.addSource(object);
+          reactions.push(object);
           break;
         case "event":
           builder.addSource(object);
+          events.push(object);
           break;
         case "model":
           modelStack.push(object);
@@ -243,6 +268,8 @@ const addAllSources = (root: AntimonyModel, builder: IrBuilder): void => {
       modelStack.push(submodel);
     }
   }
+
+  return { variables, reactions, events };
 };
 
 const GOT_DELETED_SYMBOL = Symbol("GOT_DELETED");
@@ -260,38 +287,11 @@ const compileModel = (
   builder: IrBuilder,
   document: AntimonyDocument,
 ): void => {
-  const variables: AntimonyVariable[] = [];
-  const reactions: AntimonyReaction[] = [];
-  const events: AntimonyEvent[] = [];
+  const { variables, reactions, events } = flattenModel(model, builder);
 
-  for (const object of model.objects.values()) {
-    if ("isDeleted" in object && object.isDeleted) continue;
-
-    switch (object.kind) {
-      case "variable":
-        variables.push(object);
-        break;
-      case "reaction":
-        reactions.push(object);
-        break;
-      case "event":
-        events.push(object);
-        break;
-      case "model":
-        compileModel(object, builder, document);
-        break;
-      case "renameLink":
-        break;
-      default:
-        throw new CompileInvariantError(
-          `Unknown object kind: ${(object as AntimonyObject).kind}.`,
-        );
-    }
-  }
-
-  for (const submodel of model.unnamedImports) {
-    compileModel(submodel, builder, document);
-  }
+  // We use this variable as a sort of "second" side-channel argument to resolveVariable.
+  // since the callback only accepts one parameter.
+  let resolveScope = model;
 
   const resolveVariable = (variable: VariableContext): string => {
     const reference = getReferenceFromVariable(variable);
@@ -313,7 +313,7 @@ const compileModel = (
       }
     }
 
-    const object = resolveReference(model, reference);
+    const object = resolveReference(model, reference, resolveScope);
 
     if (object.kind !== "variable" && object.kind !== "reaction") {
       throw new CompileError(
@@ -334,10 +334,16 @@ const compileModel = (
    * should be deleted (can happen if it contains a deleted variable).
    */
   const compileFormulaInModel = (
-    formula: FormulaContext,
+    formula: AntimonyFormula,
   ): IridiumExpression<Metadata> | undefined => {
+    if (formula.scope) {
+      resolveScope = resolveReference(model, formula.scope) as AntimonyModel;
+    } else {
+      resolveScope = model;
+    }
+
     try {
-      return compileFormulaOriginal(formula, resolveVariable);
+      return compileFormulaOriginal(formula.ctx, resolveVariable);
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
@@ -347,11 +353,20 @@ const compileModel = (
     }
   };
 
-  const compileStoichiometry = (
-    stoichiometry: StoichiometryContext,
+  const compileStoichiometryInModel = (
+    stoichiometry: AntimonyStoichiometry,
   ): IridiumExpression<Metadata> | undefined => {
+    if (stoichiometry.scope) {
+      resolveScope = resolveReference(
+        model,
+        stoichiometry.scope,
+      ) as AntimonyModel;
+    } else {
+      resolveScope = model;
+    }
+
     try {
-      return compileStoichiometryOriginal(stoichiometry, resolveVariable);
+      return compileStoichiometryOriginal(stoichiometry.ctx, resolveVariable);
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
@@ -383,11 +398,12 @@ const compileModel = (
         (variable.isConst || variable.isDeleted)
       )
         continue;
+
       reactionInvolvedVariables.add(variable);
       reactants.push({
         name: builder.getNameOf(variable),
         stoichiometry: (reactant.stoichiometry &&
-          compileStoichiometry(reactant.stoichiometry)) || {
+          compileStoichiometryInModel(reactant.stoichiometry)) || {
           kind: "number",
           value: 1,
         },
@@ -407,7 +423,7 @@ const compileModel = (
       products.push({
         name: builder.getNameOf(variable),
         stoichiometry: (product.stoichiometry &&
-          compileStoichiometry(product.stoichiometry)) || {
+          compileStoichiometryInModel(product.stoichiometry)) || {
           kind: "number",
           value: 1,
         },
@@ -421,172 +437,90 @@ const compileModel = (
     });
   }
 
-  const compartments: Map<AntimonyObject, AntimonyObject[]> = new Map();
-
   for (const variable of variables) {
-    if (variable.variableKind === "species") {
-      if (
-        variable.assignment === undefined ||
-        variable.assignment?.kind === "initial"
-      ) {
-        if (reactionInvolvedVariables.has(variable)) {
-          builder.addVariable(variable, {
-            hasSubstanceOnly: variable.hasSubstanceOnly,
-            value: {
-              kind: "reaction",
-              initial:
-                (variable.assignment &&
-                  compileFormulaInModel(variable.assignment.initial)) ??
-                SPECIES_DEFAULT,
-            },
-          });
-        } else {
-          builder.addVariable(variable, {
-            hasSubstanceOnly: variable.hasSubstanceOnly,
-            value: {
-              kind: "initial",
-              initial:
-                (variable.assignment &&
-                  compileFormulaInModel(variable.assignment.initial)) ??
-                SPECIES_DEFAULT,
-            },
-          });
-        }
-      } else {
-        if (reactionInvolvedVariables.has(variable)) {
-          throw new CompileError(
-            `Species cannot be simultaneously involved in a reaction and determined by a rate/assignment rule`,
-            {
-              tree:
-                variable.assignment.kind === "rule"
-                  ? variable.assignment.rule
-                  : variable.assignment.rate,
-            },
-          );
-        }
-
-        let value: IridiumVariableValue<Metadata>;
-
-        if (variable.assignment.kind === "rule") {
-          const assignmentExpression = compileFormulaInModel(
-            variable.assignment.rule,
-          );
-          if (!assignmentExpression) {
-            value = {
-              kind: "initial",
-              initial: SPECIES_DEFAULT,
-            };
-          } else {
-            value = {
-              kind: "assignment",
-              assignment: assignmentExpression,
-            };
-          }
-        } else if (variable.assignment.kind === "rate") {
-          const rateExpression = compileFormulaInModel(
-            variable.assignment.rate,
-          );
-          if (!rateExpression) {
-            value = {
-              kind: "initial",
-              initial:
-                (variable.assignment.initial &&
-                  compileFormulaInModel(variable.assignment.initial)) ??
-                SPECIES_DEFAULT,
-            };
-          } else {
-            value = {
-              kind: "rate",
-              initial:
-                (variable.assignment.initial &&
-                  compileFormulaInModel(variable.assignment.initial)) ??
-                SPECIES_DEFAULT,
-              rate: rateExpression,
-            };
-          }
-        } else {
-          throw new CompileInvariantError("Unknown variable assignment kind.");
-        }
-
-        builder.addVariable(variable, {
-          value,
-          hasSubstanceOnly: variable.hasSubstanceOnly,
-        });
-      }
-    } else if (
-      variable.variableKind === "parameter" ||
+    const defaultValue =
       variable.variableKind === "compartment"
-    ) {
-      let value: IridiumVariableValue<Metadata>;
-      const defaultValue =
-        variable.variableKind === "compartment"
-          ? COMPARTMENT_DEFAULT
-          : SPECIES_DEFAULT;
+        ? COMPARTMENT_DEFAULT
+        : SPECIES_DEFAULT;
+    let value: IridiumVariableValue<Metadata> | undefined;
 
-      if (variable.assignment === undefined) {
+    if (reactionInvolvedVariables.has(variable)) {
+      if (
+        variable.assignment?.kind === "rule" ||
+        variable.assignment?.kind === "rate"
+      ) {
+        throw new CompileError(
+          `Species cannot be simultaneously involved in a reaction and determined by a rate/assignment rule`,
+          {
+            tree:
+              variable.assignment.kind === "rule"
+                ? variable.assignment.rule.ctx
+                : variable.assignment.rate.ctx,
+          },
+        );
+      }
+
+      value = {
+        kind: "reaction",
+        initial:
+          (variable.assignment?.initial &&
+            compileFormulaInModel(variable.assignment.initial)) ??
+          defaultValue,
+      };
+    } else if (variable.assignment?.kind === "initial") {
+      value = {
+        kind: "initial",
+        initial:
+          compileFormulaInModel(variable.assignment.initial) ?? defaultValue,
+      };
+    } else if (variable.assignment?.kind === "rule") {
+      const assignmentExpression = compileFormulaInModel(
+        variable.assignment.rule,
+      );
+      if (!assignmentExpression) {
         value = {
           kind: "initial",
           initial: defaultValue,
         };
-      } else if (variable.assignment.kind === "initial") {
+      } else {
+        value = {
+          kind: "assignment",
+          assignment: assignmentExpression,
+        };
+      }
+    } else if (variable.assignment?.kind === "rate") {
+      const rateExpression = compileFormulaInModel(variable.assignment.rate);
+      if (!rateExpression) {
         value = {
           kind: "initial",
           initial:
-            compileFormulaInModel(variable.assignment.initial) ?? defaultValue,
+            (variable.assignment.initial &&
+              compileFormulaInModel(variable.assignment.initial)) ??
+            defaultValue,
         };
-      } else if (variable.assignment.kind === "rule") {
-        const assignmentExpression = compileFormulaInModel(
-          variable.assignment.rule,
-        );
-        if (!assignmentExpression) {
-          value = {
-            kind: "initial",
-            initial: defaultValue,
-          };
-        } else {
-          value = {
-            kind: "assignment",
-            assignment: assignmentExpression,
-          };
-        }
-      } else if (variable.assignment.kind === "rate") {
-        const rateExpression = compileFormulaInModel(variable.assignment.rate);
-        if (!rateExpression) {
-          value = {
-            kind: "initial",
-            initial:
-              (variable.assignment.initial &&
-                compileFormulaInModel(variable.assignment.initial)) ??
-              defaultValue,
-          };
-        } else {
-          value = {
-            kind: "rate",
-            initial:
-              (variable.assignment.initial &&
-                compileFormulaInModel(variable.assignment.initial)) ??
-              defaultValue,
-            rate: rateExpression,
-          };
-        }
       } else {
-        throw new CompileInvariantError("Unknown variable assignment kind.");
+        value = {
+          kind: "rate",
+          initial:
+            (variable.assignment.initial &&
+              compileFormulaInModel(variable.assignment.initial)) ??
+            defaultValue,
+          rate: rateExpression,
+        };
       }
-
-      builder.addVariable(variable, {
-        value,
-        hasSubstanceOnly: variable.hasSubstanceOnly,
-      });
+    } else {
+      value = { kind: "initial", initial: defaultValue };
     }
+
+    builder.addVariable(variable, {
+      value,
+      hasSubstanceOnly: variable.hasSubstanceOnly,
+    });
 
     if (variable.compartment) {
       const compartment = resolveReference(model, variable.compartment);
       if (!("isDeleted" in compartment) || !compartment.isDeleted) {
-        if (!compartments.has(compartment)) {
-          compartments.set(compartment, [variable]);
-        } else {
-          compartments.get(compartment)!.push(variable);
-        }
+        builder.addToCompartment(compartment, variable);
       }
     }
   }
@@ -616,30 +550,23 @@ const compileModel = (
       trigger: triggerExpression,
       assignments: assignments,
       isPersistent: event.options.persistent
-        ? evaluateBoolean(event.options.persistent)
+        ? evaluateBoolean(event.options.persistent.ctx)
         : true,
       isFromTrigger: event.options.fromTrigger
-        ? evaluateBoolean(event.options.fromTrigger)
+        ? evaluateBoolean(event.options.fromTrigger.ctx)
         : true,
-      isT0: event.options.t0 ? evaluateBoolean(event.options.t0) : true,
+      isT0: event.options.t0 ? evaluateBoolean(event.options.t0.ctx) : true,
     };
 
     if (event.delay) {
-      iridiumEvent.delay = compileFormula(event.delay, resolveVariable);
+      iridiumEvent.delay = compileFormulaInModel(event.delay);
     }
 
     if (event.options.priority) {
-      iridiumEvent.priority = compileFormula(
-        event.options.priority,
-        resolveVariable,
-      );
+      iridiumEvent.priority = compileFormulaInModel(event.options.priority);
     }
 
     builder.addEvent(event, iridiumEvent);
-  }
-
-  for (const [container, contained] of compartments) {
-    builder.addCompartment(container, contained);
   }
 };
 
@@ -663,11 +590,9 @@ export const compileToIridium = (
     builder.addFunction(func, {
       name: func.name,
       parameters: func.parameters,
-      body: compileFormula(func.body, resolveFunctionScopeVariable),
+      body: compileFormulaOriginal(func.body, resolveFunctionScopeVariable),
     });
   }
-
-  addAllSources(exportedModel, builder);
 
   compileModel(exportedModel, builder, document);
 

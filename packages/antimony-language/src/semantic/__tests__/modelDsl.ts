@@ -9,7 +9,7 @@ export type TestModel = {
   kind: "model";
   objects: Record<string, any>;
   unnamedImports?: any[];
-  exports?: string[][];
+  exports?: (string | number)[][];
 };
 
 export const model = (
@@ -30,7 +30,7 @@ export const model = (
     model.unnamedImports = unnamedImports;
   }
   if (exports) {
-    model.exports = exports.map((v) => v.split("."));
+    model.exports = exports.map((v) => stringToReference(v));
   }
 
   return model;
@@ -103,7 +103,7 @@ const variableModifiers = {
 
 const antimonyObjectProto = {
   in(this: Record<string, unknown>, compartment: string) {
-    this.compartment = compartment.split(".");
+    this.compartment = stringToReference(compartment);
     return this;
   },
   display(this: Record<string, unknown>, displayName: string) {
@@ -136,17 +136,17 @@ const createVariableFunc = (kind: string) => {
             this.assignmentType === "rule"
               ? {
                   kind: "rule",
-                  rule: { text: formulaOrRule },
+                  rule: { ctx: { text: formulaOrRule } },
                 }
               : this.assignmentType === "rate"
                 ? {
                     kind: "rate",
-                    initial: { text: formulaOrRule },
-                    rate: { text: rate },
+                    initial: { ctx: { text: formulaOrRule } },
+                    rate: { ctx: { text: rate } },
                   }
                 : {
                     kind: "initial",
-                    initial: { text: formulaOrRule },
+                    initial: { ctx: { text: formulaOrRule } },
                   },
         });
       }
@@ -168,6 +168,17 @@ export const parameter = createVariableFunc("parameter");
 
 export const compartment = createVariableFunc("compartment");
 
+const stringToReference = (s: string) => {
+  return s.split(".").map((v) => {
+    const n = Number(v);
+    if (Number.isNaN(n)) {
+      return v;
+    } else {
+      return n;
+    }
+  });
+};
+
 export const reaction = (
   reactants: Record<string, string | number | null>,
   products: Record<string, string | number | null>,
@@ -176,19 +187,23 @@ export const reaction = (
   return Object.assign(Object.create(antimonyObjectProto), {
     kind: "reaction",
     reactants: Object.entries(reactants).map(([name, stoichiometry]) => ({
-      reference: name.split("."),
+      reference: stringToReference(name),
       stoichiometry:
-        stoichiometry === null ? undefined : { text: stoichiometry.toString() },
+        stoichiometry === null
+          ? undefined
+          : { ctx: { text: stoichiometry.toString() } },
     })),
     products: Object.entries(products).map(([name, stoichiometry]) => ({
-      reference: name.split("."),
+      reference: stringToReference(name),
       stoichiometry:
-        stoichiometry === null ? undefined : { text: stoichiometry.toString() },
+        stoichiometry === null
+          ? undefined
+          : { ctx: { text: stoichiometry.toString() } },
     })),
     rate:
       rate !== undefined
         ? {
-            text: rate,
+            ctx: { text: rate },
           }
         : undefined,
   });
@@ -199,7 +214,7 @@ export const event = (
   assignmentsOrOptions: Record<string, string>,
   assignments?: Record<string, string>,
 ): typeof antimonyObjectProto => {
-  const newAssignments: Record<string, { text: string }> = {};
+  const newAssignments: Record<string, { ctx: { text: string } }> = {};
   if (assignments) {
     const delay = assignmentsOrOptions.delay;
 
@@ -208,29 +223,29 @@ export const event = (
     }
 
     for (const [name, value] of Object.entries(assignments)) {
-      newAssignments[name] = { text: value };
+      newAssignments[name] = { ctx: { text: value } };
     }
 
-    const newOptions: Record<string, { text: string }> = {};
+    const newOptions: Record<string, { ctx: { text: string } }> = {};
     for (const [name, value] of Object.entries(assignmentsOrOptions)) {
-      newOptions[name] = { text: value };
+      newOptions[name] = { ctx: { text: value } };
     }
 
     return Object.assign(Object.create(antimonyObjectProto), {
       kind: "event",
-      trigger: { text: trigger },
-      delay: delay && { text: delay },
+      trigger: { ctx: { text: trigger } },
+      delay: delay && { ctx: { text: delay } },
       assignments: newAssignments,
       options: newOptions,
     });
   } else {
     for (const [name, value] of Object.entries(assignmentsOrOptions)) {
-      newAssignments[name] = { text: value };
+      newAssignments[name] = { ctx: { text: value } };
     }
 
     return Object.assign(Object.create(antimonyObjectProto), {
       kind: "event",
-      trigger: { text: trigger },
+      trigger: { ctx: { text: trigger } },
       assignments: newAssignments,
       options: {},
     });
@@ -239,5 +254,5 @@ export const event = (
 
 export const renameLink = (to: string | AntimonyReference) => ({
   kind: "renameLink",
-  to: typeof to === "string" ? to.split(".") : to,
+  to: typeof to === "string" ? stringToReference(to) : to,
 });

@@ -22,11 +22,9 @@ const UNSUPPORTED_TAGS = [
 ];
 const WIP_TAGS = [
   "CSymbolRateOf",
-  "comp:ModelDefinition",
-  "comp:Port",
-  "comp:ReplacedElement",
-  "comp:Submodel",
-  "comp:SubmodelOutput",
+  "comp:ConversionFactor",
+  "comp:TimeConversionFactor",
+  "comp:ExtentConversionFactor",
 ];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.

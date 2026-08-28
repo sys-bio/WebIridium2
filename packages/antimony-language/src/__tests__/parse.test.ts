@@ -334,6 +334,8 @@ describe("delete", () => {
   itShouldSucceedForAll({
     simple: "delete A",
     simple2: "delete A.B",
+    simple3: "delete A.B;",
+    insideModel: "delete sub1.E0;",
   });
 
   itShouldErrorForAll({

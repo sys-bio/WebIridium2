@@ -10,8 +10,6 @@ import {
   reaction,
   type DslVariable,
   func,
-  variable,
-  rateRule,
   rateVariable,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
@@ -802,7 +800,7 @@ describe("ir", () => {
             sub3__sub1__C: species(0),
             sub3__sub2__A: species(0),
             sub3__sub2__B: species(0),
-            sub3__sub2__k1: parameter(0),
+            sub3__sub2__k1: species(0),
             k1: parameter(0),
           },
           reactions: {

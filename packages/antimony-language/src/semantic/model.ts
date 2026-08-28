@@ -15,10 +15,9 @@ export type AntimonyObjectBase<Kind extends string> = {
   displayName?: string;
 };
 
-export type AntimonyDeleteableBase<Kind extends string> =
-  AntimonyObjectBase<Kind> & {
-    isDeleted: boolean;
-  };
+export type AntimonyDeleteable = {
+  isDeleted: boolean;
+};
 
 export type AntimonyObject =
   | AntimonyModel
@@ -37,15 +36,22 @@ export type AntimonyConcreteObject = Exclude<
   { kind: "renameLink" }
 >;
 
-export const PARENT_SYMBOL = Symbol("parent");
-export type PARENT_SYMBOL = typeof PARENT_SYMBOL;
-
 /**
- * Represents a relative path.
+ * Represents an absolute path.
  * For example "A.S" is equivalent to the reference `["A", "S"]`.
  * A number refers to the index in the unnamedImports of a model.
  */
-export type AntimonyReference = ReadonlyArray<string | number | PARENT_SYMBOL>;
+export type AntimonyReference = ReadonlyArray<string | number>;
+
+export type AntimonyFormula = {
+  scope: AntimonyReference | null;
+  ctx: FormulaContext;
+};
+
+export type AntimonyStoichiometry = {
+  scope: AntimonyReference | null;
+  ctx: StoichiometryContext;
+};
 
 export type AntimonyModel = AntimonyObjectBase<"model"> & {
   parent?: AntimonyModel;
@@ -57,13 +63,16 @@ export type AntimonyModel = AntimonyObjectBase<"model"> & {
 
 export type AntimonyInitialAssignment = {
   kind: "initial";
-  initial: FormulaContext;
+  initial: AntimonyFormula;
 };
-export type AntimonyRuleAssignment = { kind: "rule"; rule: FormulaContext };
+export type AntimonyRuleAssignment = {
+  kind: "rule";
+  rule: AntimonyFormula;
+};
 export type AntimonyRateAssignment = {
   kind: "rate";
-  rate: FormulaContext;
-  initial?: FormulaContext;
+  rate: AntimonyFormula;
+  initial?: AntimonyFormula;
 };
 
 export type AntimonyAssignment =
@@ -74,36 +83,40 @@ export type AntimonyAssignment =
 export type VariableKind = "species" | "parameter" | "compartment";
 
 // TODO: units
-export type AntimonyVariable = AntimonyDeleteableBase<"variable"> & {
-  variableKind: VariableKind;
-  compartment: AntimonyReference | null;
-  isConst: boolean;
-  hasSubstanceOnly: boolean;
-  assignment?: AntimonyAssignment;
-};
+export type AntimonyVariable = AntimonyObjectBase<"variable"> &
+  AntimonyDeleteable & {
+    variableKind: VariableKind;
+    compartment: AntimonyReference | null;
+    isConst: boolean;
+    hasSubstanceOnly: boolean;
+    assignment?: AntimonyAssignment;
+  };
 
 export type AntimonyReactionTerm = {
   reference: AntimonyReference;
-  stoichiometry?: StoichiometryContext;
+  stoichiometry?: AntimonyStoichiometry;
 };
 
-export type AntimonyEvent = AntimonyDeleteableBase<"event"> & {
-  compartment: AntimonyReference | null;
-  trigger: FormulaContext;
-  assignments: Map<AntimonyReference, FormulaContext>;
-  delay?: FormulaContext;
-  options: Record<string, FormulaContext | undefined>;
-};
+export type AntimonyEvent = AntimonyObjectBase<"event"> &
+  AntimonyDeleteable & {
+    compartment: AntimonyReference | null;
+    trigger: AntimonyFormula;
+    assignments: Map<AntimonyReference, AntimonyFormula>;
+    delay?: AntimonyFormula;
+    options: Record<string, AntimonyFormula | undefined>;
+  };
 
-export type AntimonyReaction = AntimonyDeleteableBase<"reaction"> & {
-  compartment: AntimonyReference | null;
-  reactants: AntimonyReactionTerm[];
-  products: AntimonyReactionTerm[];
-  rate?: FormulaContext;
-};
+export type AntimonyReaction = AntimonyObjectBase<"reaction"> &
+  AntimonyDeleteable & {
+    compartment: AntimonyReference | null;
+    reactants: AntimonyReactionTerm[];
+    products: AntimonyReactionTerm[];
+    rate?: AntimonyFormula;
+  };
 
 export type AntimonyFunction = AntimonyObjectBase<"function"> & {
   parameters: string[];
+  // not using AntimonyFormula here since we don't need scope
   body: FormulaContext;
 };
 
