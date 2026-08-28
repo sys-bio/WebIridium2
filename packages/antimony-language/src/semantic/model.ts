@@ -42,9 +42,10 @@ export type PARENT_SYMBOL = typeof PARENT_SYMBOL;
 
 /**
  * Represents a relative path.
- * For example "A.S" is equivalent to the reference `["A", "S"]`
+ * For example "A.S" is equivalent to the reference `["A", "S"]`.
+ * A number refers to the index in the unnamedImports of a model.
  */
-export type AntimonyReference = ReadonlyArray<string | PARENT_SYMBOL>;
+export type AntimonyReference = ReadonlyArray<string | number | PARENT_SYMBOL>;
 
 export type AntimonyModel = AntimonyObjectBase<"model"> & {
   parent?: AntimonyModel;

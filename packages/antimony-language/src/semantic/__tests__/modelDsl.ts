@@ -8,26 +8,32 @@ import type { AntimonyReference } from "../model";
 export type TestModel = {
   kind: "model";
   objects: Record<string, any>;
-  unnamedImports: any[];
-  exportList: string[][];
+  unnamedImports?: any[];
+  exports?: string[][];
 };
 
 export const model = (
   objects: Record<string, any>,
   unnamedImports?: any[],
-  exportList?: string[],
+  exports?: string[],
 ): TestModel => {
   for (const [name, object] of Object.entries(objects)) {
     // eslint-disable-next-line
     object.name = name;
   }
 
-  return {
+  let model: TestModel = {
     kind: "model",
     objects,
-    unnamedImports: unnamedImports ?? [],
-    exportList: exportList ? exportList.map((v) => v.split(".")) : [],
   };
+  if (unnamedImports) {
+    model.unnamedImports = unnamedImports;
+  }
+  if (exports) {
+    model.exports = exports.map((v) => v.split("."));
+  }
+
+  return model;
 };
 
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */

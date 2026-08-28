@@ -101,9 +101,16 @@ const expectDocument = (
       // eslint-disable-next-line
       stripContextsOnlyToText(gotModel!.objects as any),
     ).toMatchObject(expectedModel.objects);
-    expect(stripContextsOnlyToText(gotModel!.unnamedImports)).toMatchObject(
-      expectedModel.unnamedImports,
-    );
+
+    if (expectedModel.unnamedImports) {
+      expect(stripContextsOnlyToText(gotModel!.unnamedImports)).toMatchObject(
+        expectedModel.unnamedImports,
+      );
+    }
+
+    if (expectedModel.exports) {
+      expect(gotModel!.exports).toMatchObject(expectedModel.exports);
+    }
   }
 };
 
@@ -916,6 +923,40 @@ describe("model imports", () => {
       );
     });
 
+    it("should make rename links for export list with no import name", () => {
+      expectDocument(
+        "model test(A, B, C) species A = 5; B = 5; C = 10; end; test(A, B, C)",
+        {
+          models: {
+            [DEFAULT_MODEL_NAME]: model(
+              {
+                A: species("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              },
+              [
+                model({
+                  A: renameLink([PARENT_SYMBOL, "A"]),
+                  B: renameLink([PARENT_SYMBOL, "B"]),
+                  C: renameLink([PARENT_SYMBOL, "C"]),
+                }),
+              ],
+            ),
+            test: model(
+              {
+                A: species("5"),
+                B: parameter("5"),
+                C: parameter("10"),
+              },
+              [],
+              ["A", "B", "C"],
+            ),
+          },
+          exportedModel: DEFAULT_MODEL_NAME,
+        },
+      );
+    });
+
     it("should make rename links for export list even when import list is shorter", () => {
       expectDocument(
         "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub: test(A, B)",
@@ -947,12 +988,12 @@ describe("model imports", () => {
 
     it("should make rename links for export list even with subvariables", () => {
       expectDocument(
-        "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub0: test(); sub1: (sub0.A)",
+        "model test(A, B, C) species A = 5; B = 5; C = 10; end; sub0: test(); sub1: test(sub0.A)",
         {
           models: {
             [DEFAULT_MODEL_NAME]: model({
               sub0: model({
-                A: parameter("5"),
+                A: species("5"),
                 B: parameter("5"),
                 C: parameter("10"),
               }),
@@ -1024,19 +1065,19 @@ describe("model imports", () => {
 
     it("should error when export list contains a built-in constant", () => {
       expect(() => {
-        buildAntimonyDocument(`model test(pi) end`);
+        buildAntimonyDocument(`model test(pi); end`);
       }).toThrowError(SemanticError);
     });
 
     it("should error when export list contains a built-in function", () => {
       expect(() => {
-        buildAntimonyDocument(`model test(sin) end`);
+        buildAntimonyDocument(`model test(sin); end`);
       }).toThrowError(SemanticError);
     });
 
     it("should error when export list contains a function name", () => {
       expect(() => {
-        buildAntimonyDocument(`function t() 5 end; model test(t) end`);
+        buildAntimonyDocument(`function t() 5; end; model test(t); end`);
       }).toThrowError(SemanticError);
     });
   });
@@ -1164,7 +1205,7 @@ describe("renaming", () => {
       );
 
       expectModel(
-        "parameter A; species B = 5; B is A",
+        "var A; species B = 5; B is A",
         model({
           A: species("5"),
           B: renameLink("A"),
@@ -1245,7 +1286,7 @@ describe("deleting", () => {
   it("should error when trying to delete non-existent variable in submodel", () => {
     expect(() => {
       buildAntimonyDocument(
-        "test model(); A = 5; end; sub: test(); delete sub.fake",
+        "model test(); A = 5; end; sub: test(); delete sub.fake",
       );
     }).toThrowError(SemanticError);
   });

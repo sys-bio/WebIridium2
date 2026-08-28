@@ -302,11 +302,18 @@ const compileModel = (
       );
     }
 
-    if (typeof reference[0] === "string" && isBuiltinName(reference[0])) {
-      return reference[0];
+    if (typeof reference[0] === "string") {
+      if (isBuiltinName(reference[0])) {
+        return reference[0];
+      } else if (document.functions.has(reference[0])) {
+        throw new CompileError(
+          `${reference[0]} is a function and cannot be used as a variable.`,
+          { tree: variable },
+        );
+      }
     }
 
-    const object = resolveReference(document, model, reference);
+    const object = resolveReference(model, reference);
 
     if (object.kind !== "variable" && object.kind !== "reaction") {
       throw new CompileError(
@@ -370,7 +377,7 @@ const compileModel = (
     const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(document, model, reactant.reference);
+      const variable = resolveReference(model, reactant.reference);
       if (
         variable.kind === "variable" &&
         (variable.isConst || variable.isDeleted)
@@ -390,7 +397,7 @@ const compileModel = (
     const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(document, model, product.reference);
+      const variable = resolveReference(model, product.reference);
       if (
         variable.kind === "variable" &&
         (variable.isConst || variable.isDeleted)
@@ -573,11 +580,7 @@ const compileModel = (
     }
 
     if (variable.compartment) {
-      const compartment = resolveReference(
-        document,
-        model,
-        variable.compartment,
-      );
+      const compartment = resolveReference(model, variable.compartment);
       if (!("isDeleted" in compartment) || !compartment.isDeleted) {
         if (!compartments.has(compartment)) {
           compartments.set(compartment, [variable]);
@@ -595,7 +598,7 @@ const compileModel = (
     const assignments = [];
 
     for (const [reference, value] of event.assignments) {
-      const object = resolveReference(document, model, reference);
+      const object = resolveReference(model, reference);
       if ("isDeleted" in object && object.isDeleted) continue;
 
       const assignmentExpression = compileFormulaInModel(value);

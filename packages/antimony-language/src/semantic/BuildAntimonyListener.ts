@@ -91,12 +91,8 @@ const copyAntimonyObject = (
   }
 };
 
-class BadReferenceError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "BadReferenceError";
-  }
-}
+const referenceToString = (reference: AntimonyReference) =>
+  reference.map((r) => (r === PARENT_SYMBOL ? "^" : r)).join(".");
 
 export const getReferenceFromVariable = (
   variable: VariableContext,
@@ -127,56 +123,71 @@ export const getReferenceFromVariable = (
  * If the object is a renameLink, follow it. Otherwise, return the object.
  */
 const resolveObject = (
-  document: AntimonyDocument,
   model: AntimonyModel,
   object: AntimonyObject | undefined,
 ): AntimonyConcreteObject | undefined =>
-  object?.kind === "renameLink"
-    ? resolveReference(document, model, object.to)
-    : object;
+  object?.kind === "renameLink" ? resolveReference(model, object.to) : object;
 
-export const resolveReference = (
-  document: AntimonyDocument,
+export class BadReferenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BadReferenceError";
+  }
+}
+
+/**
+ * Resolves an AntimonyReference and returns the model the reference pointed to, the name
+ * of the object within that model, and the object if it exists.
+ */
+const resolveReferenceWithModelInfo = (
   model: AntimonyModel,
   reference: AntimonyReference,
-): AntimonyConcreteObject => {
-  // special-case for functions
-  if (
-    typeof reference[0] === "string" &&
-    document.functions.has(reference[0])
-  ) {
-    return document.functions.get(reference[0])!;
-  }
-
+): [AntimonyModel, string | number | PARENT_SYMBOL, AntimonyConcreteObject] => {
+  let parent: AntimonyModel = model;
   let current: AntimonyObject = model;
 
-  for (let i = 0; i < reference.length; i++) {
-    const name = reference[i];
+  for (const name of reference) {
     if (current.kind !== "model") {
       throw new BadReferenceError(
-        `Can only reference models: ${reference.join(".")}.`,
+        `Cannot access ${current.name} in ${referenceToString(reference)} because it is not a current.`,
       );
     }
 
-    const got: AntimonyModelObject | undefined =
-      name === PARENT_SYMBOL ? current.parent : current.objects.get(name);
+    let got: AntimonyObject | undefined =
+      name === PARENT_SYMBOL
+        ? current.parent
+        : typeof name === "number"
+          ? current.unnamedImports[name]
+          : current.objects.get(name);
 
     if (!got) {
       if (name === PARENT_SYMBOL) {
         throw new BadReferenceError(
-          `${current.name} has no parent in ${reference.join(".")}.`,
+          `${current.name} has no parent in ${referenceToString(reference)}.`,
         );
       } else {
         throw new BadReferenceError(
-          `Missing ${name} in ${reference.join(".")}.`,
+          `${name} is not a subvariable of ${current.name}.`,
         );
       }
     }
 
-    current = resolveObject(document, current, got)!;
+    parent = current;
+    current = resolveObject(current, got)!;
   }
 
-  return current as AntimonyConcreteObject;
+  return [parent, reference[reference.length - 1], current];
+};
+
+export const resolveReference = (
+  model: AntimonyModel,
+  reference: AntimonyReference,
+): AntimonyConcreteObject => {
+  const [_model, _name, object] = resolveReferenceWithModelInfo(
+    model,
+    reference,
+  );
+  return object;
 };
 
 /**
@@ -211,6 +222,11 @@ const createReference = (
 
   return reference;
 };
+
+const isRenameable = (object: AntimonyObject): object is AntimonyModelObject =>
+  object.kind === "variable" ||
+  object.kind === "reaction" ||
+  object.kind === "event";
 
 /**
  * Builds Antimony models from a parse tree.
@@ -346,11 +362,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       return [
         model,
         variableCtx.NAME().text,
-        resolveObject(
-          this.#document,
-          model,
-          model.objects.get(variableCtx.NAME().text),
-        ),
+        resolveObject(model, model.objects.get(variableCtx.NAME().text)),
       ];
     } else if (variableCtx instanceof SubvariableContext) {
       const [_model, _name, head] = this.#resolveVariable(
@@ -382,7 +394,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         return [head, name, undefined];
       }
 
-      return [head, name, resolveObject(this.#document, head, got)];
+      return [head, name, resolveObject(head, got)];
     } else if (variableCtx instanceof ConstantContext) {
       return this.#resolveVariable(model, variableCtx.variable());
     } else {
@@ -531,20 +543,34 @@ export class BuildAntimonyListener implements AntimonyListener {
       const exports: AntimonyReference[] = [];
       let isValid = true;
       for (const variableCtx of exportListCtx.variable()) {
-        try {
-          const reference = getReferenceFromVariable(variableCtx);
-          const object = resolveReference(this.#document, model, reference);
-
-          if (object.kind === "function" || object.kind === "model") {
-          }
-        } catch (err) {
-          if (err instanceof BadReferenceError) {
-            isValid = false;
-            continue;
-          }
-
-          throw err;
+        const reference = getReferenceFromVariable(variableCtx);
+        if (reference.length > 1) {
+          this.#reportError("Cannot export subvariables.", variableCtx);
+          isValid = false;
+          continue;
         }
+
+        const object = this.#getOrCreateObject(variableCtx, undefined);
+        if (!object) {
+          this.#reportError("Cannot export built-in.", variableCtx);
+          isValid = false;
+          continue;
+        }
+
+        if (!isRenameable(object)) {
+          this.#reportError(
+            `Cannot export ${variableCtx.text} because it is a ${object.kind}.`,
+            variableCtx,
+          );
+          isValid = false;
+          continue;
+        }
+
+        exports.push(reference);
+      }
+
+      if (isValid) {
+        model.exports = exports;
       }
     }
     this.#currentModel = undefined;
@@ -802,7 +828,6 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of reactants) {
           const reactant = resolveReference(
-            this.#document,
             model,
             term.reference,
           ) as AntimonyVariable;
@@ -817,7 +842,6 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of products) {
           const product = resolveReference(
-            this.#document,
             model,
             term.reference,
           ) as AntimonyVariable;
@@ -942,73 +966,17 @@ export class BuildAntimonyListener implements AntimonyListener {
     });
   }
 
-  enterModelImport(ctx: ModelImportContext): void {
-    if (!this.#isActive) return;
-
-    const name = ctx.NAME().text;
-    const callingModel = this.#document.models.get(name);
-    const currentModel = this.#getActiveModel();
-    if (callingModel === currentModel) {
-      this.#reportError(`Cannot import '${name}' into itself.`, ctx);
-      return;
-    }
-    if (!callingModel) {
-      this.#reportError(`No model with the name of '${name}'.`, ctx);
-      return;
-    }
-
-    let importName: string | undefined;
-    const nameLabelCtx = ctx.nameLabel();
-    if (nameLabelCtx) {
-      importName = nameLabelCtx.NAME().text;
-    }
-
-    const copiedModel = copyAntimonyObject(callingModel) as AntimonyModel;
-    if (importName === undefined) {
-      copiedModel.name = `${DEFAULT_IMPORT_PREFIX}${currentModel.unnamedImports.length}`;
-      currentModel.unnamedImports.push(copiedModel);
-    } else {
-      const prevObject = currentModel.objects.get(importName);
-      if (prevObject && prevObject.kind !== "model") {
-        this.#reportError(
-          `Cannot import to ${importName} as it is already a ${prevObject.kind}.`,
-          ctx,
-        );
-        return;
-      }
-
-      copiedModel.name = importName;
-      currentModel.objects.set(importName, copiedModel);
-    }
-  }
-
-  enterRename(ctx: RenameContext): void {
-    if (!this.#isActive) return;
-
-    const fromCtx = ctx.variable(0);
-    const toCtx = ctx.variable(1);
-    const fromObject = this.#getOrCreateObject(fromCtx, undefined);
-    const [fromModel, fromName, _fromObject] = this.#resolveVariable(
-      this.#getActiveModel(),
-      fromCtx,
-    );
-    if (!fromObject) {
-      this.#reportError("Cannot rename a built-in", ctx);
-      return;
-    }
-    if (fromObject.kind === "function" || fromObject.kind === "model") {
-      this.#reportError(
-        `Cannot rename ${fromObject.name} because it is a ${fromObject.kind}.`,
-        ctx,
-      );
-      return;
-    }
-
-    const [toModel, toName, toObject] = this.#resolveVariable(
-      this.#getActiveModel(),
-      toCtx,
-    );
-
+  #createRenameLink(
+    fromReference: AntimonyReference,
+    fromModel: AntimonyModel,
+    fromName: string,
+    fromObject: AntimonyModelObject,
+    toReference: AntimonyReference,
+    toModel: AntimonyModel,
+    toName: string,
+    toObject: AntimonyObject | undefined,
+    ctx: ParserRuleContext,
+  ): void {
     // do nothing when renaming to itself
     if (fromObject === toObject) {
       return;
@@ -1053,11 +1021,133 @@ export class BuildAntimonyListener implements AntimonyListener {
     fromModel.objects.set(fromName, {
       kind: "renameLink",
       name: fromName,
-      to: createReference(
-        getReferenceFromVariable(fromCtx),
-        getReferenceFromVariable(toCtx),
-      ),
+      to: createReference(fromReference, toReference),
     });
+  }
+
+  enterRename(ctx: RenameContext): void {
+    if (!this.#isActive) return;
+
+    const fromCtx = ctx.variable(0);
+    const toCtx = ctx.variable(1);
+
+    const fromObject = this.#getOrCreateObject(fromCtx, undefined);
+    const [fromModel, fromName, _fromObject] = this.#resolveVariable(
+      this.#getActiveModel(),
+      fromCtx,
+    );
+    if (!fromObject) {
+      this.#reportError("Cannot rename a built-in", ctx);
+      return;
+    }
+    if (!isRenameable(fromObject)) {
+      this.#reportError(
+        `Cannot rename ${fromObject.name} because it is a ${fromObject.kind}.`,
+        ctx,
+      );
+      return;
+    }
+
+    const [toModel, toName, toObject] = this.#resolveVariable(
+      this.#getActiveModel(),
+      toCtx,
+    );
+
+    this.#createRenameLink(
+      getReferenceFromVariable(fromCtx),
+      fromModel,
+      fromName,
+      fromObject,
+      getReferenceFromVariable(toCtx),
+      toModel,
+      toName,
+      toObject,
+      ctx,
+    );
+  }
+
+  enterModelImport(ctx: ModelImportContext): void {
+    if (!this.#isActive) return;
+
+    const name = ctx.NAME().text;
+    const callingModel = this.#document.models.get(name);
+    const parentModel = this.#getActiveModel();
+    if (callingModel === parentModel) {
+      this.#reportError(`Cannot import '${name}' into itself.`, ctx);
+      return;
+    }
+    if (!callingModel) {
+      this.#reportError(`No model with the name of '${name}'.`, ctx);
+      return;
+    }
+
+    let importName: string | undefined;
+    const nameLabelCtx = ctx.nameLabel();
+    if (nameLabelCtx) {
+      importName = nameLabelCtx.NAME().text;
+    }
+
+    const copiedModel = copyAntimonyObject(callingModel) as AntimonyModel;
+    let referenceHead: string | number;
+    if (importName === undefined) {
+      copiedModel.name = `${DEFAULT_IMPORT_PREFIX}${parentModel.unnamedImports.length}`;
+      referenceHead = parentModel.unnamedImports.length;
+      parentModel.unnamedImports.push(copiedModel);
+    } else {
+      const prevObject = parentModel.objects.get(importName);
+      if (prevObject && prevObject.kind !== "model") {
+        this.#reportError(
+          `Cannot import to ${importName} as it is already a ${prevObject.kind}.`,
+          ctx,
+        );
+        return;
+      }
+
+      copiedModel.name = importName;
+      referenceHead = importName;
+      parentModel.objects.set(importName, copiedModel);
+    }
+
+    const importListCtx = ctx.exportList();
+    const importCtxs = importListCtx.variable();
+    for (let i = 0; i < importCtxs.length; i++) {
+      const exportReference = copiedModel.exports?.[i];
+      if (!exportReference) {
+        this.#reportError(
+          `${copiedModel.name} only exports ${copiedModel.exports?.length ?? 0} variables but you tried to use ${importCtxs.length}.`,
+          importCtxs[i],
+        );
+        break;
+      }
+
+      const importCtx = importCtxs[i];
+      const fromReference = [referenceHead, ...exportReference];
+      const [fromModel, fromName, fromObject] = resolveReferenceWithModelInfo(
+        parentModel,
+        fromReference,
+      );
+      if (typeof fromName !== "string") {
+        throw new Error("Export reference last item was not a string.");
+      } else if (!isRenameable(fromObject)) {
+        throw new Error("Export reference is not renameable.");
+      }
+
+      const [toModel, toName, toObject] = this.#resolveVariable(
+        this.#getActiveModel(),
+        importCtx,
+      );
+      this.#createRenameLink(
+        fromReference,
+        fromModel,
+        fromName,
+        fromObject,
+        getReferenceFromVariable(importCtx),
+        toModel,
+        toName,
+        toObject,
+        importCtx,
+      );
+    }
   }
 
   enterDelete(ctx: DeleteContext): void {
