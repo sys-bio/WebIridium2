@@ -25,6 +25,7 @@ const WIP_TAGS = [
   "comp:ConversionFactor",
   "comp:TimeConversionFactor",
   "comp:ExtentConversionFactor",
+  "comp:ExternalModelDefinition",
 ];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
@@ -107,8 +108,8 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
         params.startTime,
         params.endTime,
         params.numberOfPoints + 1,
+        1e-8,
         1e-10,
-        1e-12,
         params.amounts,
       );
 

@@ -23,13 +23,24 @@
 // #define DEBUG_LOG
 
 int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
-    return model->rhs_fn_(
+    int result = model->rhs_fn_(
         t,
         NV_DATA_S(y),
         NV_DATA_S(ydot),
         model->p_.data(),
         model->current_triggered_events_.data()
     );
+#ifdef DEBUG_LOG
+        for (int i = 0; i < NV_LENGTH_S(ydot); i++) {
+            if (i == 0) std::cout << "[time " << t << "] {";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(ydot, i);
+        
+            if (i == NV_LENGTH_S(ydot) - 1) std::cout << "}" << std::endl;
+        }
+#endif
+    return result;
 }
 
 // For the empty RHS, there will be one dummy value in the state vector. We just set it to 0.
@@ -119,6 +130,7 @@ Model::~Model() {
     if (output_array_) {
         delete[] output_array_;
     }
+    SUNNonlinSolFree(non_lin_solver_);
     SUNLinSolFree_Dense(linear_solver_);
     SUNMatDestroy_Dense(matrix_);
     delete[] dummy_y_dot_;

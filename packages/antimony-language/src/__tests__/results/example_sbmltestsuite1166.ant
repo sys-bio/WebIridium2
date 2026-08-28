@@ -1,0 +1,74 @@
+## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=S,D,E,ES amounts=S,D,E,ES
+## tags=Compartment,Reaction,Species,comp:Deletion,comp:ModelDefinition,comp:Port,comp:ReplacedElement,comp:Submodel,Amount
+
+// Created by libAntimony v3.0.0
+
+// Warnings from automatic translation:
+//    Unable to connect a replaced element for reaction J0 in model case01166: the variable B.oldrxn could not be found.
+//    Unable to connect a replaced element for reaction J1 in model case01166: the variable B.oldrxn could not be found.
+
+model enzyme(comp, S, E, D, ES, J0, J1)
+
+  // Compartments and Species:
+  compartment comp;
+  species S in comp, E in comp, D in comp, ES in comp;
+
+  // Reactions:
+  J0: S + E -> ES; ;
+  J1: ES -> E + D; ;
+
+  // Species initializations:
+  S = ;
+  E = ;
+  D = ;
+  ES = ;
+
+  // Compartment initializations:
+  comp = 1;
+
+  // Other declarations:
+  const comp;
+end
+
+enzyme is "enzyme"
+
+model simple(S, D, comp, J0)
+
+  // Compartments and Species:
+  compartment comp;
+  species S in comp, D in comp;
+
+  // Reactions:
+  J0: S -> D; ;
+
+  // Species initializations:
+  S = 5;
+  D = 10;
+
+  // Compartment initializations:
+  comp = 1;
+
+  // Other declarations:
+  const comp;
+end
+
+model *case01166()
+
+  // Sub-modules, and any changes to those submodules:
+  A: enzyme(comp, S, E, D, ES, J0, J1);
+  B: simple();
+  B.comp is comp;
+  B.S is S;
+  B.D is D;
+
+  // Reactions:
+  J0: S + E -> ES; (S + E)/ES;
+  J1: ES -> E + D; ES/(E + D);
+
+  // Species initializations:
+  E = 7;
+  ES = 0.1;
+
+  // Deleted elements from submodels:
+  delete B.J0;
+end
