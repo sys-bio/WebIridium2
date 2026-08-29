@@ -582,6 +582,11 @@ export class BuildAntimonyListener implements AntimonyListener {
       const name = reference[i];
 
       if (current.kind !== "model") {
+        // TODO: actually implement this properly
+        if (name === "sboTerm") {
+          return [parent, current.name, undefined];
+        }
+
         this.#reportError(
           `Cannot access object ${name} in ${referenceToString(reference)} because it is not a model.`,
           ctx,
@@ -893,6 +898,9 @@ export class BuildAntimonyListener implements AntimonyListener {
 
   enterAssignment(ctx: AssignmentContext): void {
     if (!this.#isActive) return;
+
+    // TODO: do this properly
+    if (ctx.variable().text.endsWith(".sboTerm")) return;
 
     const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
     if (!object) {
