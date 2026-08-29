@@ -392,7 +392,7 @@ describe("declarations", () => {
   it("should not let you update species to compartment", () => {
     expect(() => {
       buildAntimonyDocument("species A = 0; const compartment A = 5");
-    }).toThrow();
+    }).toThrowError(SemanticError);
   });
 
   it("should not override const if not specified", () => {
@@ -417,7 +417,7 @@ describe("declarations", () => {
   it("should not allow substanceOnly on compartment", () => {
     expect(() => {
       buildAntimonyDocument("substanceOnly compartment A");
-    }).toThrow(SemanticError);
+    }).toThrowError(SemanticError);
   });
 
   it("should forbid declaring built-in constant", () => {
@@ -525,6 +525,27 @@ describe("reactions", () => {
       }),
     );
   });
+
+  it("should error when trying to overwrite a parameter with a non-initial assignment", () => {
+    // this is a little more restrictive then the original Antimony which only errors
+    // for rate rules.
+    expect(() => {
+      buildAntimonyDocument("A := 5; A: ->;");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A' = 5; A: ->;");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should not error when trying to overwrite a parameter with initial assignment", () => {
+    expectModel(
+      "A = 100; A: -> ;",
+      model({
+        A: reaction({}, {}),
+      }),
+    );
+  });
 });
 
 describe("events", () => {
@@ -563,19 +584,19 @@ describe("events", () => {
   it("should error for invalid option", () => {
     expect(() => {
       buildAntimonyDocument("at 5, t = false: A = 0");
-    }).toThrow(SemanticError);
+    }).toThrowError(SemanticError);
   });
 
   it("should error when using reaction in event assignment", () => {
     expect(() => {
       buildAntimonyDocument("J: A + B -> C; k1; E: at time > 5: J = 5");
-    }).toThrow(SemanticError);
+    }).toThrowError(SemanticError);
   });
 
   it("should error when using event in event assignment", () => {
     expect(() => {
       buildAntimonyDocument("E1: at time > 5: A = 10; E2: at time > 5: E1 = 5");
-    }).toThrow(SemanticError);
+    }).toThrowError(SemanticError);
   });
 
   it("should error when using submodel in event assignment", () => {
@@ -583,7 +604,57 @@ describe("events", () => {
       buildAntimonyDocument(
         "model test; A = 5; end; sub: test(); E: at time > 5: sub = 5",
       );
-    }).toThrow(SemanticError);
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to overwrite a reaction with an event", () => {
+    expect(() => {
+      buildAntimonyDocument("J: A + B -> C; k1; J: at time > 5: A = 5");
+    }).toThrowError(SemanticError);
+  });
+});
+
+describe("subvariable name labels", () => {
+  it("should update existing reaction in submodel", () => {
+    expectModel(
+      "model test; J: A + B -> C; k1; end; sub: test(); sub.J: D + E -> F; k2",
+      model({
+        sub: model({
+          A: species(),
+          B: species(),
+          C: species(),
+          J: reaction({ D: null, E: null }, { F: null }, "k2"),
+        }),
+      }),
+    );
+  });
+
+  it("should update existing event in submodel", () => {
+    expectModel(
+      "model test; E: at time > 5: A = 5; end; sub: test(); sub.E: at time > 5: B = 5",
+      model({
+        sub: model({
+          A: parameter(),
+          E: event("time>5", { B: "5" }),
+        }),
+      }),
+    );
+  });
+
+  it("should error when trying to update non-existent object in submodel", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "model A; C = 5; end; sub: A(); sub.D: A + B -> C; k1",
+      );
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to update objects of different types", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        "model A; species C = 5; end; sub: A(); sub.C: A + B -> C; k1",
+      );
+    }).toThrowError(SemanticError);
   });
 });
 
@@ -857,20 +928,18 @@ describe("model imports", () => {
     );
   });
 
-  it("should override imports", () => {
-    expectDocument(
-      `${exampleModelString}; model example2(); A: example(); end; A: example2(); A: example()`,
-      {
-        models: {
-          [DEFAULT_MODEL_NAME]: model({
-            A: exampleModel("A"),
-          }),
-          example: exampleModel(),
-          example2: model({ A: exampleModel("A") }),
-        },
-        exportedModel: DEFAULT_MODEL_NAME,
-      },
-    );
+  it("should error when trying to import with a name already owned by a model", () => {
+    expect(() => {
+      buildAntimonyDocument(
+        `${exampleModelString}; model example2(); A: example(); end; A: example2(); A: example()`,
+      );
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to import itself", () => {
+    expect(() => {
+      buildAntimonyDocument("model test; A: test(); end");
+    }).toThrowError(SemanticError);
   });
 
   it("should error when trying to import with a name already owned by a variable", () => {

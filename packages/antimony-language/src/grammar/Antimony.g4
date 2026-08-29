@@ -55,7 +55,7 @@ variable : NAME #name
          ;
 
 inCompartment : IN variable;
-nameLabel     : NAME inCompartment? ':';
+nameLabel     : NAME ('.' NAME)* inCompartment? ':';
 
 // e.g "J1 in compartment1: 2 A + 4 B -> C; k1*20"
 reaction        : nameLabel? reactionFormula ';' formula? inCompartment?;

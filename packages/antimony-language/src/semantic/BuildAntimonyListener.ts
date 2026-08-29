@@ -237,6 +237,10 @@ export const getReferenceFromVariable = (
   return reference;
 };
 
+const getReferenceFromNameLabel = (nameLabel: NameLabelContext) => {
+  return nameLabel.NAME().map((v) => v.text);
+};
+
 type ObjectWithModelInfo = [
   model: AntimonyModel,
   name: string | number,
@@ -247,7 +251,7 @@ type ObjectWithModelInfo = [
 type ModelObjectWithModelInfo = [
   model: AntimonyModel,
   name: string,
-  obj: AntimonyConcreteObject,
+  obj: AntimonyConcreteObject | undefined,
 ];
 
 /**
@@ -419,6 +423,10 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
+  get #isActive(): boolean {
+    return true;
+  }
+
   #getActiveModel(): AntimonyModel {
     if (!this.#currentModel) {
       return this.#baseModel;
@@ -462,7 +470,39 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
-  get #isActive(): boolean {
+  /** returns true on success. */
+  #setObject(
+    model: AntimonyModel,
+    name: string,
+    object: AntimonyModelObject,
+    ctx: ParserRuleContext,
+  ): boolean {
+    const existing = model.objects.get(name);
+    if (existing) {
+      if (existing.kind !== object.kind) {
+        if (
+          existing.kind !== "variable" ||
+          existing.variableKind !== "parameter"
+        ) {
+          this.#reportError(
+            `Cannot assign to ${name} with a ${object.kind} because it is already a ${existing.kind}.`,
+            ctx,
+          );
+          return false;
+        } else if (
+          existing.assignment &&
+          existing.assignment.kind !== "initial"
+        ) {
+          this.#reportError(
+            `Cannot assign to ${name} with a ${object.kind} because it already has an assignment.`,
+            ctx,
+          );
+          return false;
+        }
+      }
+    }
+
+    model.objects.set(name, object);
     return true;
   }
 
@@ -522,62 +562,74 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
-  #resolveVariable(
-    model: AntimonyModel,
-    variableCtx: VariableContext,
-  ): [model: AntimonyModel, name: string, object: AntimonyObject | undefined] {
-    if (variableCtx instanceof NameContext) {
-      const name = variableCtx.NAME().text;
-      const object = model.objects.get(name);
-      if (!object) {
-        return [model, name, undefined];
-      } else {
+  /**
+   * This resolves a reference but with some special rules.
+   *  - if the reference is exactly one item long and does not resolve to any
+   *    object, undefined will be returned instead of throwing (subvariables
+   *    will still throw if they don't exist).
+   *  - function names will be resolved
+   *  RenameLinks will still be resolved as usual.
+   */
+  #resolveReferenceForAssignment(
+    rootModel: AntimonyModel,
+    reference: AntimonyReference,
+    ctx: ParserRuleContext,
+  ): ModelObjectWithModelInfo {
+    let parent: AntimonyModel = rootModel;
+    let current: AntimonyObject = rootModel;
+
+    for (let i = 0; i < reference.length; i++) {
+      const name = reference[i];
+
+      if (current.kind !== "model") {
+        this.#reportError(
+          `Cannot access object ${name} in ${referenceToString(reference)} because it is not a model.`,
+          ctx,
+        );
         return resolveObjectWithModelInfo(
-          this.#getActiveModel(),
-          object,
-          model,
+          rootModel,
+          current,
+          parent,
         ) as ModelObjectWithModelInfo;
       }
-    } else if (variableCtx instanceof SubvariableContext) {
-      const [_model, _name, head] = this.#resolveVariable(
-        model,
-        variableCtx.variable(),
-      );
-      const name = variableCtx.NAME().text;
-      if (!head) {
-        return [model, name, undefined];
-      }
 
-      if (head.kind !== "model") {
-        // TODO: fix this temporary havk to get this to work
-        if (name !== "sboTerm") {
-          this.#reportError(
-            `Cannot access object of type ${head.kind}`,
-            variableCtx,
-          );
-        }
-        return [model, name, undefined];
-      }
+      let got: AntimonyObject | undefined =
+        typeof name === "number"
+          ? current.unnamedImports[name]
+          : current.objects.get(name);
 
-      const got = head.objects.get(variableCtx.NAME().text);
       if (!got) {
-        this.#reportError(
-          `'${variableCtx.NAME().text}' is not a subvariable of '${variableCtx.variable().text}'.`,
-          variableCtx,
-        );
-        return [head, name, undefined];
+        if (i === 0) {
+          return [parent, name as string, undefined];
+        } else {
+          this.#reportError(
+            `${name} is not a subvariable of ${current.name}.`,
+            ctx,
+          );
+          return [parent, name as string, undefined];
+        }
       }
 
-      return resolveObjectWithModelInfo(
-        this.#getActiveModel(),
-        got,
-        head,
-      ) as ModelObjectWithModelInfo;
-    } else if (variableCtx instanceof ConstantContext) {
-      return this.#resolveVariable(model, variableCtx.variable());
-    } else {
-      throw new Error(`unknown variable type: ${variableCtx.text}`);
+      parent = current;
+      current = got;
     }
+
+    return resolveObjectWithModelInfo(
+      rootModel,
+      current,
+      parent,
+    ) as ModelObjectWithModelInfo;
+  }
+
+  #resolveVariable(
+    rootModel: AntimonyModel,
+    variableCtx: VariableContext,
+  ): ModelObjectWithModelInfo {
+    return this.#resolveReferenceForAssignment(
+      rootModel,
+      getReferenceFromVariable(variableCtx),
+      variableCtx,
+    );
   }
 
   /**
@@ -631,13 +683,13 @@ export class BuildAntimonyListener implements AntimonyListener {
     return object;
   }
 
-  #getOrDefaultName(
+  #getOrDefaultReference(
     nameLabelCtx: NameLabelContext | undefined,
     prefix: string,
-  ): { name: string; compartment: AntimonyReference | null } {
+  ): { reference: AntimonyReference; compartment: AntimonyReference | null } {
     if (nameLabelCtx) {
       return {
-        name: nameLabelCtx.NAME().text,
+        reference: getReferenceFromNameLabel(nameLabelCtx),
         compartment: this.#getOrCreateCompartment(nameLabelCtx.inCompartment()),
       };
     } else {
@@ -647,7 +699,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         candidate = `${prefix}${i++}`;
       } while (this.#getActiveModel().objects.has(candidate));
 
-      return { name: candidate, compartment: null };
+      return { reference: [candidate], compartment: null };
     }
   }
 
@@ -1016,12 +1068,18 @@ export class BuildAntimonyListener implements AntimonyListener {
   enterReaction(ctx: ReactionContext): void {
     if (!this.#isActive) return;
 
-    const model = this.#getActiveModel();
+    const nameLabelCtx = ctx.nameLabel();
+    let { reference, compartment } = this.#getOrDefaultReference(
+      nameLabelCtx,
+      "_J",
+    );
 
-    const nameResult = this.#getOrDefaultName(ctx.nameLabel(), "_J");
-
-    const name = nameResult.name;
-    let compartment = nameResult.compartment;
+    const activeModel = this.#getActiveModel();
+    const [parentModel, name, _existing] = this.#resolveReferenceForAssignment(
+      activeModel,
+      reference,
+      nameLabelCtx ?? ctx,
+    ) as ModelObjectWithModelInfo;
 
     const compartmentCtx = ctx.inCompartment();
     if (compartmentCtx) {
@@ -1037,7 +1095,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of reactants) {
           const reactant = resolveReference(
-            model,
+            activeModel,
             term.reference,
           ) as AntimonyVariable;
           reactant.compartment = compartment;
@@ -1051,7 +1109,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (compartment) {
         for (const term of products) {
           const product = resolveReference(
-            model,
+            activeModel,
             term.reference,
           ) as AntimonyVariable;
           product.compartment = compartment;
@@ -1061,15 +1119,20 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     // TODO: throw when two reactions have the same name
 
-    model.objects.set(name, {
-      kind: "reaction",
-      isDeleted: false,
+    this.#setObject(
+      parentModel,
       name,
-      compartment,
-      reactants,
-      products,
-      rate: this.#createFormula(ctx.formula()),
-    });
+      {
+        kind: "reaction",
+        isDeleted: false,
+        name,
+        compartment,
+        reactants,
+        products,
+        rate: this.#createFormula(ctx.formula()),
+      },
+      ctx,
+    );
   }
 
   enterEvent(ctx: EventContext): void {
@@ -1117,18 +1180,32 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
     }
 
-    const { name, compartment } = this.#getOrDefaultName(ctx.nameLabel(), "_E");
+    const nameLabelCtx = ctx.nameLabel();
+    const { reference, compartment } = this.#getOrDefaultReference(
+      nameLabelCtx,
+      "_E",
+    );
+    const [parentModel, name] = this.#resolveReferenceForAssignment(
+      this.#getActiveModel(),
+      reference,
+      nameLabelCtx ?? ctx,
+    ) as ModelObjectWithModelInfo;
 
-    this.#getActiveModel().objects.set(name, {
-      kind: "event",
-      isDeleted: false,
+    this.#setObject(
+      parentModel,
       name,
-      compartment,
-      assignments,
-      trigger: this.#createFormula(ctx._trigger),
-      delay: this.#createFormula(ctx._delay),
-      options: options,
-    });
+      {
+        kind: "event",
+        isDeleted: false,
+        name,
+        compartment,
+        assignments,
+        trigger: this.#createFormula(ctx._trigger),
+        delay: this.#createFormula(ctx._delay),
+        options: options,
+      },
+      ctx,
+    );
   }
 
   enterInStatement(ctx: InStatementContext): void {
@@ -1280,19 +1357,41 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const name = ctx.NAME().text;
     const callingModel = this.#document.models.get(name);
-    const parentModel = this.#getActiveModel();
-    if (callingModel === parentModel) {
-      this.#reportError(`Cannot import '${name}' into itself.`, ctx);
-      return;
-    } else if (!callingModel) {
+    if (!callingModel) {
       this.#reportError(`No model with the name of '${name}'.`, ctx);
       return;
     }
 
+    let parentModel: AntimonyObject;
     let importName: string | undefined;
+    let existingObject: AntimonyObject | undefined;
     const nameLabelCtx = ctx.nameLabel();
     if (nameLabelCtx) {
-      importName = nameLabelCtx.NAME().text;
+      const importReference = getReferenceFromNameLabel(nameLabelCtx);
+      [parentModel, importName, existingObject] =
+        this.#resolveReferenceForAssignment(
+          this.#getActiveModel(),
+          importReference,
+          nameLabelCtx,
+        ) as ModelObjectWithModelInfo;
+    } else {
+      parentModel = this.#getActiveModel();
+    }
+
+    // NOTE: this DOES not match the original Antimony's behavior but is much more
+    // sensible in my opinion. In the original, you can import into an existing model's name
+    // which can make the model invalid as references are no longer valid.
+    if (existingObject) {
+      this.#reportError(
+        `Cannot import to ${importName} as it is already a ${existingObject.kind}.`,
+        ctx,
+      );
+      return;
+    }
+
+    if (callingModel === parentModel) {
+      this.#reportError(`Cannot import '${name}' into itself.`, ctx);
+      return;
     }
 
     let referenceHead = importName ?? parentModel.unnamedImports.length;
@@ -1307,15 +1406,6 @@ export class BuildAntimonyListener implements AntimonyListener {
       referenceHead = parentModel.unnamedImports.length;
       parentModel.unnamedImports.push(copiedModel);
     } else {
-      const prevObject = parentModel.objects.get(importName);
-      if (prevObject && prevObject.kind !== "model") {
-        this.#reportError(
-          `Cannot import to ${importName} as it is already a ${prevObject.kind}.`,
-          ctx,
-        );
-        return;
-      }
-
       copiedModel.name = importName;
       referenceHead = importName;
       parentModel.objects.set(importName, copiedModel);

@@ -37,6 +37,12 @@ const SKIP_CASES = new Set<number>([
   // These ones are converted incorrectly since libantimony seems to not handle
   // passing constants as parameters to user-defined functions correctly (?)
   1486, 1490, 1491,
+
+  // This one doesn't convert the rate rule deletion.
+  1149,
+
+  // The Antimony converter doesn't express a deleted submodel parameter with a rate rule properly.
+  1162,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.

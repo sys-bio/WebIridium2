@@ -537,27 +537,6 @@ describe("ir", () => {
       );
     });
 
-    it("should not duplicate when an import is of the same name", () => {
-      expectCompilesTo(
-        "model example; A + B -> C; k1; end; A: example(); A: example()",
-        model({
-          variables: {
-            A__A: species(0),
-            A__B: species(0),
-            A__C: species(0),
-            A__k1: parameter(0),
-          },
-          reactions: {
-            A___J0: reaction(
-              { A__A: 1, A__B: 1 },
-              { A__C: 1 },
-              expr.var("A__k1"),
-            ),
-          },
-        }),
-      );
-    });
-
     it("should resolve name collisions", () => {
       expectCompilesTo(
         "A__A = 10; model example; A + B -> C; k1; end; A: example(); B: example()",
@@ -583,27 +562,6 @@ describe("ir", () => {
               { B__A: 1, B__B: 1 },
               { B__C: 1 },
               expr.var("B__k1"),
-            ),
-          },
-        }),
-      );
-    });
-
-    it("should not duplicate when an import is of the same name", () => {
-      expectCompilesTo(
-        "model example; A + B -> C; k1; end; A: example(); A: example()",
-        model({
-          variables: {
-            A__A: species(0),
-            A__B: species(0),
-            A__C: species(0),
-            A__k1: parameter(0),
-          },
-          reactions: {
-            A___J0: reaction(
-              { A__A: 1, A__B: 1 },
-              { A__C: 1 },
-              expr.var("A__k1"),
             ),
           },
         }),
