@@ -264,6 +264,59 @@ describe("assignments", () => {
       buildAntimonyDocument("function a(b); b; end; a = 3");
     }).toThrowError(SemanticError);
   });
+
+  describe("with no rhs", () => {
+    it("should delete initial assignment", () => {
+      expectModel(
+        "species A = 5; A = ;",
+        model({
+          A: species(),
+        }),
+      );
+    });
+
+    it("should delete initial assignment (with rule assignment)", () => {
+      expectModel(
+        "species A = 5; A := ;",
+        model({
+          A: species(),
+        }),
+      );
+    });
+
+    it("should delete rate assignment when there is no one", () => {
+      expectModel(
+        "species A = 5; A '= ;",
+        model({
+          A: species(),
+        }),
+      );
+    });
+
+    it("should delete rate assignment", () => {
+      expectModel(
+        "species A = 5; A '= 10; A '= ;",
+        model({
+          A: species("5"),
+        }),
+      );
+    });
+
+    it("should delete initial value of rate assignment", () => {
+      expectModel(
+        "species A = 5; A '= 10; A = ;",
+        model({
+          A: species.rate(undefined, "10"),
+        }),
+      );
+    });
+
+    it("should error when trying to delete rule assignment with empty initial", () => {
+      expect(() => {
+        buildAntimonyDocument("species A := 5; A = ;");
+      }).toThrowError(SemanticError);
+    });
+  });
 });
 
 describe("declarations", () => {

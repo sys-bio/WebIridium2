@@ -236,7 +236,7 @@ const flattenModel = (
       modelStack.push(got);
     }
 
-    for (const [name, object] of got.objects) {
+    for (const object of got.objects.values()) {
       if ("isDeleted" in object && object.isDeleted) continue;
 
       switch (object.kind) {
@@ -526,7 +526,10 @@ const compileModel = (
   }
 
   for (const event of events) {
-    const triggerExpression = compileFormulaInModel(event.trigger);
+    const triggerExpression: IridiumExpression<Metadata> | undefined =
+      event.trigger
+        ? compileFormulaInModel(event.trigger)
+        : { kind: "variable", name: "true" };
     if (!triggerExpression) continue;
 
     const assignments = [];

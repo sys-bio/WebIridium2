@@ -100,7 +100,7 @@ export type AntimonyReactionTerm = {
 export type AntimonyEvent = AntimonyObjectBase<"event"> &
   AntimonyDeleteable & {
     compartment: AntimonyReference | null;
-    trigger: AntimonyFormula;
+    trigger?: AntimonyFormula;
     assignments: Map<AntimonyReference, AntimonyFormula>;
     delay?: AntimonyFormula;
     options: Record<string, AntimonyFormula | undefined>;

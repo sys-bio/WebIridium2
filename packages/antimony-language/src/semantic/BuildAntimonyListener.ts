@@ -175,8 +175,10 @@ const copyAntimonyObject = (
 
       prependCompartment(copy, referencePrefix);
 
-      copy.trigger = { ...copy.trigger };
-      prependScope(copy.trigger, referencePrefix);
+      if (copy.trigger) {
+        copy.trigger = { ...copy.trigger };
+        prependScope(copy.trigger, referencePrefix);
+      }
 
       if (copy.delay) {
         copy.delay = { ...copy.delay };
@@ -849,7 +851,6 @@ export class BuildAntimonyListener implements AntimonyListener {
     this.#updateToDeclarationIfNecessary(ctx, object);
 
     const formula = ctx.formula();
-    if (!formula) return;
 
     const mod = ctx._mod?.text;
     if (mod === ":") {
@@ -869,10 +870,14 @@ export class BuildAntimonyListener implements AntimonyListener {
         return;
       }
 
-      object.assignment = {
-        kind: "rule",
-        rule: this.#createFormula(formula),
-      };
+      if (formula) {
+        object.assignment = {
+          kind: "rule",
+          rule: this.#createFormula(formula),
+        };
+      } else {
+        object.assignment = undefined;
+      }
     } else if (mod === "'") {
       if (object.kind !== "variable") {
         this.#reportError(
@@ -890,11 +895,24 @@ export class BuildAntimonyListener implements AntimonyListener {
         return;
       }
 
-      object.assignment = {
-        kind: "rate",
-        rate: this.#createFormula(formula),
-        initial: object?.assignment?.initial,
-      };
+      if (formula) {
+        object.assignment = {
+          kind: "rate",
+          rate: this.#createFormula(formula),
+          initial: object?.assignment?.initial,
+        };
+      } else {
+        if (object.assignment?.kind === "rate") {
+          if (object.assignment.initial) {
+            object.assignment = {
+              kind: "initial",
+              initial: object.assignment.initial,
+            };
+          } else {
+            object.assignment = undefined;
+          }
+        }
+      }
     } else {
       if (object.kind === "variable") {
         if (object.assignment?.kind === "rule") {
@@ -905,18 +923,34 @@ export class BuildAntimonyListener implements AntimonyListener {
           return;
         }
 
-        if (!object.assignment) {
-          object.assignment = {
-            kind: "initial",
-            initial: this.#createFormula(formula),
-          };
+        if (formula) {
+          if (!object.assignment) {
+            object.assignment = {
+              kind: "initial",
+              initial: this.#createFormula(formula),
+            };
+          } else {
+            object.assignment.initial = this.#createFormula(formula);
+          }
         } else {
-          object.assignment.initial = this.#createFormula(formula);
+          if (object.assignment?.kind === "rate") {
+            object.assignment.initial = undefined;
+          } else {
+            object.assignment = undefined;
+          }
         }
       } else if (object.kind === "event") {
-        object.trigger = this.#createFormula(formula);
+        if (formula) {
+          object.trigger = this.#createFormula(formula);
+        } else {
+          object.trigger = undefined;
+        }
       } else if (object.kind === "reaction") {
-        object.rate = this.#createFormula(formula);
+        if (formula) {
+          object.rate = this.#createFormula(formula);
+        } else {
+          object.rate = undefined;
+        }
       } else {
         this.#reportError(
           `${(object as AntimonyObject).name} of type ${(object as AntimonyObject).kind} cannot be assigned to.`,

@@ -387,6 +387,23 @@ describe("ir", () => {
           }),
         );
       });
+
+      it("should use 0 when rate is deleted", () => {
+        expectCompilesTo(
+          "J: A + B -> C; k1; J = ;",
+          model({
+            variables: {
+              A: species(0),
+              B: species(0),
+              C: species(0),
+              k1: parameter(0),
+            },
+            reactions: {
+              J: reaction({ A: 1, B: 1 }, { C: 1 }, expr.num(0)),
+            },
+          }),
+        );
+      });
     });
 
     describe("events", () => {
@@ -427,6 +444,20 @@ describe("ir", () => {
                   isT0: false,
                 },
               ),
+            },
+          }),
+        );
+      });
+
+      it("should default to true when trigger is deleted", () => {
+        expectCompilesTo(
+          "E: at time > 5: A = 5; E = ;",
+          model({
+            variables: {
+              A: parameter(0),
+            },
+            events: {
+              E: event(expr.var("true"), { A: expr.num(5) }),
             },
           }),
         );
