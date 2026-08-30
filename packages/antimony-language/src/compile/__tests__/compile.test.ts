@@ -11,6 +11,7 @@ import {
   type DslVariable,
   func,
   rateVariable,
+  assignmentVariable,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
@@ -806,6 +807,257 @@ describe("ir", () => {
           },
         }),
       );
+    });
+
+    describe("with conversion factors", () => {
+      it("should scale initial assignment from old name", () => {
+        expectCompilesTo(
+          "A = 5; A is B / conv",
+          model({
+            variables: {
+              B: parameter(expr.mul(expr.num(5), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should scale initial assignment from old name in submodel", () => {
+        expectCompilesTo(
+          "model test; A = 5; end; sub: test(); sub.A is B / conv",
+          model({
+            variables: {
+              B: parameter(expr.mul(expr.num(5), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should not scale initial assignment from new name", () => {
+        expectCompilesTo(
+          "A = 5; A is B / conv; B = 25",
+          model({
+            variables: {
+              B: parameter(expr.num(25)),
+            },
+          }),
+        );
+      });
+
+      it("should scale assignment rule from old name", () => {
+        expectCompilesTo(
+          "A := 5; A is B / conv",
+          model({
+            variables: {
+              B: assignmentVariable(expr.mul(expr.num(5), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should initial assignment and rate rule from old name", () => {
+        expectCompilesTo(
+          "A '= 5; A = 10; A is B / conv",
+          model({
+            variables: {
+              B: rateVariable(
+                expr.mul(expr.num(10), expr.var("conv")),
+                expr.mul(expr.num(5), expr.var("conv")),
+              ),
+            },
+          }),
+        );
+      });
+
+      it("should scale rate rule from old name", () => {
+        expectCompilesTo(
+          "A '= 5; A is B / conv; B = 10",
+          model({
+            variables: {
+              B: rateVariable(
+                expr.num(10),
+                expr.mul(expr.num(5), expr.var("conv")),
+              ),
+            },
+          }),
+        );
+      });
+
+      it("should scale rate law from old name", () => {
+        expectCompilesTo(
+          "J: -> ; k1; J is J2 / conv",
+          model({
+            reactions: {
+              J2: reaction({}, {}, expr.mul(expr.var("k1"), expr.var("conv"))),
+            },
+          }),
+        );
+
+        expectCompilesTo(
+          "J: -> ; k1; J is J2 / conv; J = 10",
+          model({
+            reactions: {
+              J2: reaction({}, {}, expr.mul(expr.num(10), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should not scale rate law from new name", () => {
+        expectCompilesTo(
+          "J: -> ; k1; J is J2 / conv; J2 = 20",
+          model({
+            reactions: {
+              J2: reaction({}, {}, expr.num(20)),
+            },
+          }),
+        );
+      });
+
+      it("should scale variable when referred to old name", () => {
+        expectCompilesTo(
+          "A = 5; A * conv is B; C = A",
+          model({
+            variables: {
+              C: parameter(expr.div(expr.var("B"), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should not scale variable when referred to new name", () => {
+        expectCompilesTo(
+          "A = 5; A * conv is B; C = B",
+          model({
+            variables: {
+              C: parameter(expr.var("B")),
+            },
+          }),
+        );
+      });
+
+      it("should scale reaction when referring to old name", () => {
+        expectCompilesTo(
+          "J:->;5; J * conv is J2; C = J",
+          model({
+            variables: {
+              C: parameter(expr.div(expr.var("J2"), expr.var("conv"))),
+            },
+          }),
+        );
+      });
+
+      it("should not scale reaction when referred to new name", () => {
+        expectCompilesTo(
+          "J:->;5; J * conv is J2; C = J2",
+          model({
+            variables: {
+              C: parameter(expr.var("J2")),
+            },
+          }),
+        );
+      });
+
+      it("should scale variable when there's multiple conversion factors", () => {
+        expectCompilesTo(
+          "A = 5; A is B / conv; B is C / conv; C is D / conv",
+          model({
+            variables: {
+              D: parameter(
+                expr.mul(
+                  expr.num(5),
+                  expr.mul(
+                    expr.mul(expr.var("conv"), expr.var("conv")),
+                    expr.var("conv"),
+                  ),
+                ),
+              ),
+            },
+          }),
+        );
+
+        expectCompilesTo(
+          "A = 5; A is B / conv; B is C / conv; C is D / conv; E = C; F = B",
+          model({
+            variables: {
+              D: parameter(
+                expr.mul(
+                  expr.num(5),
+                  expr.mul(
+                    expr.mul(expr.var("conv"), expr.var("conv")),
+                    expr.var("conv"),
+                  ),
+                ),
+              ),
+              E: parameter(expr.div(expr.var("D"), expr.var("conv"))),
+              F: parameter(
+                expr.div(
+                  expr.var("D"),
+                  expr.mul(expr.var("conv"), expr.var("conv")),
+                ),
+              ),
+            },
+          }),
+        );
+      });
+
+      it("should scale event assignments when using old name", () => {
+        expectCompilesTo(
+          "E: at time > 5: A = 3; A is B / conv",
+          model({
+            events: {
+              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+                B: expr.mul(expr.num(3), expr.var("conv")),
+              }),
+            },
+          }),
+        );
+      });
+
+      it("should not scale event assignments when using new name", () => {
+        expectCompilesTo(
+          "E: at time > 5: B = 3; A is B / conv",
+          model({
+            events: {
+              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+                B: expr.num(3),
+              }),
+            },
+          }),
+        );
+      });
+
+      it("should scale reactant stoichiometries", () => {
+        expectCompilesTo(
+          "J: n A + n B -> C; k1; A is A2 / conv",
+          model({
+            reactions: {
+              J: reaction(
+                {
+                  A2: expr.mul(expr.var("n"), expr.var("conv")),
+                  B: expr.var("n"),
+                },
+                { C: 1 },
+                expr.var("k1"),
+              ),
+            },
+          }),
+        );
+      });
+
+      it("should scale product stoichiometries", () => {
+        expectCompilesTo(
+          "J: n A + n B -> n C; k1; C is C2 / conv",
+          model({
+            reactions: {
+              J: reaction(
+                { A: expr.var("n"), B: expr.var("n") },
+                { C2: expr.mul(expr.var("n"), expr.var("conv")) },
+                expr.var("k1"),
+              ),
+            },
+          }),
+        );
+      });
     });
   });
 

@@ -260,6 +260,7 @@ type ObjectWithModelInfo = [
   model: AntimonyModel,
   name: string | number,
   obj: AntimonyConcreteObject,
+  conversionFactors: AntimonyReference[] | undefined,
 ];
 
 // This one doesn't point to a model so name can't be a number
@@ -277,9 +278,20 @@ const resolveObjectWithModelInfo = (
   object: AntimonyObject,
   containingModel: AntimonyModel,
 ): ObjectWithModelInfo => {
-  return object?.kind === "renameLink"
-    ? resolveReferenceWithModelInfo(rootModel, object.to)
-    : [containingModel, object.name, object];
+  if (object.kind === "renameLink") {
+    const [gotModel, gotName, gotObject, gotConversionFactors] =
+      resolveReferenceWithModelInfo(rootModel, object.to);
+    if (object.conversionFactor && gotConversionFactors) {
+      gotConversionFactors.push(object.conversionFactor);
+      return [gotModel, gotName, gotObject, gotConversionFactors];
+    } else if (object.conversionFactor) {
+      return [gotModel, gotName, gotObject, [object.conversionFactor]];
+    } else {
+      return [gotModel, gotName, gotObject, gotConversionFactors];
+    }
+  } else {
+    return [containingModel, object.name, object, undefined];
+  }
 };
 
 export class BadReferenceError extends Error {
@@ -331,13 +343,13 @@ export const resolveReference = (
   rootModel: AntimonyModel,
   reference: AntimonyReference,
   startModel?: AntimonyModel,
-): AntimonyConcreteObject => {
-  const [_model, _name, object] = resolveReferenceWithModelInfo(
-    rootModel,
-    reference,
-    startModel,
-  );
-  return object;
+): [
+  object: AntimonyConcreteObject,
+  conversionFactors: AntimonyReference[] | undefined,
+] => {
+  const [_model, _name, object, conversionFactor] =
+    resolveReferenceWithModelInfo(rootModel, reference, startModel);
+  return [object, conversionFactor];
 };
 
 const createReference = (
@@ -615,7 +627,7 @@ export class BuildAntimonyListener implements AntimonyListener {
           rootModel,
           current,
           parent,
-        ) as ModelObjectWithModelInfo;
+        ) as unknown as ModelObjectWithModelInfo;
       }
 
       let got: AntimonyObject | undefined =
@@ -643,7 +655,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       rootModel,
       current,
       parent,
-    ) as ModelObjectWithModelInfo;
+    ) as unknown as ModelObjectWithModelInfo;
   }
 
   #resolveVariable(
@@ -1005,7 +1017,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         }
       } else if (object.kind === "event") {
         if (formula) {
-          object.trigger = this.#createFormula(formula, target);
+          object.trigger = this.#createFormula(formula);
         } else {
           object.trigger = undefined;
         }
@@ -1106,11 +1118,8 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of reactants) {
-          const reactant = resolveReference(
-            activeModel,
-            term.reference,
-          ) as AntimonyVariable;
-          reactant.compartment = compartment;
+          const [reactant, _] = resolveReference(activeModel, term.reference);
+          (reactant as AntimonyVariable).compartment = compartment;
         }
       }
     }
@@ -1120,11 +1129,8 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of products) {
-          const product = resolveReference(
-            activeModel,
-            term.reference,
-          ) as AntimonyVariable;
-          product.compartment = compartment;
+          const [product, _] = resolveReference(activeModel, term.reference);
+          (product as AntimonyVariable).compartment = compartment;
         }
       }
     }

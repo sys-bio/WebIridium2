@@ -105,7 +105,6 @@ annotationItem     : IS #annotationIs
 string             : STRING | LONG_STRING;
 
 unitDeclaration    : UNIT NAME ('=' unitFormula)?;
-// TODO: merge with normal formula? but i think having it separate is more clear.
 unitFormula        : '(' unitFormula ')' #unitGroup
                    | NUMBER unit=NAME? #unitNumber
                    | NAME #unitName

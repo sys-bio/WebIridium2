@@ -119,6 +119,20 @@ export const rateVariable = <T = unknown>(
   };
 };
 
+export const assignmentVariable = <T = unknown>(
+  assignment: IridiumExpression<T>,
+  metadata?: T,
+): DslVariable => {
+  return {
+    value: {
+      kind: "assignment",
+      assignment,
+    },
+    hasSubstanceOnly: false,
+    metadata: metadata,
+  };
+};
+
 export const reaction = <T = unknown>(
   reactants: { [name: string]: number | IridiumExpression<T> },
   products: { [name: string]: number | IridiumExpression<T> },

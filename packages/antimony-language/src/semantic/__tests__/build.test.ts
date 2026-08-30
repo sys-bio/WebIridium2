@@ -19,7 +19,6 @@ import defaultModel from "@/assets/default.ant?raw";
 import { ParserRuleContext } from "antlr4ts";
 import { SemanticError } from "../../errors.ts";
 import { DEFAULT_MODEL_NAME } from "../BuildAntimonyListener.ts";
-import { rename } from "fs";
 
 /**
  * Strip parse contexts only to their text value. Otherwise
@@ -1313,36 +1312,6 @@ describe("renaming", () => {
     );
   });
 
-  describe("conversion factors", () => {
-    it("should add conversion factor to rename link", () => {
-      expectModel(
-        "A is B / c",
-        model({
-          A: renameLink("B", "c"),
-          B: parameter(),
-          c: parameter(),
-        }),
-      );
-      expectModel(
-        "A * c is B",
-        model({
-          A: renameLink("B", "c"),
-          B: parameter(),
-          c: parameter(),
-        }),
-      );
-    });
-
-    it("should error when renaming to itself with conversion factor", () => {
-      expect(() => buildAntimonyDocument("A * conv is A")).toThrowError(
-        SemanticError,
-      );
-      expect(() => buildAntimonyDocument("A is A / conv")).toThrowError(
-        SemanticError,
-      );
-    });
-  });
-
   it("should throw error when trying to rename model", () => {
     expect(() => {
       buildAntimonyDocument(
@@ -1412,6 +1381,36 @@ describe("renaming", () => {
           "E: at time > 3: A = 3; J: A + B -> C; k1; E is J",
         );
       }).toThrowError(SemanticError);
+    });
+  });
+
+  describe("with conversion factors", () => {
+    it("should add conversion factor to rename link", () => {
+      expectModel(
+        "A is B / c",
+        model({
+          A: renameLink("B", "c"),
+          B: parameter(),
+          c: parameter(),
+        }),
+      );
+      expectModel(
+        "A * c is B",
+        model({
+          A: renameLink("B", "c"),
+          B: parameter(),
+          c: parameter(),
+        }),
+      );
+    });
+
+    it("should error when renaming to itself with conversion factor", () => {
+      expect(() => buildAntimonyDocument("A * conv is A")).toThrowError(
+        SemanticError,
+      );
+      expect(() => buildAntimonyDocument("A is A / conv")).toThrowError(
+        SemanticError,
+      );
     });
   });
 });

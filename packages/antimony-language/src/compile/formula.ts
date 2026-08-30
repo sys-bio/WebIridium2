@@ -19,35 +19,109 @@ import {
 } from "../grammar";
 import type { IridiumExpression } from "iridium-simulator";
 import type { Metadata } from "./metadata";
+import type { AntimonyReference } from "../semantic/document";
+import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
 
-export type ResolveVariableFn = (variable: VariableContext) => string;
+export type ResolveVariableFn = (
+  variable: AntimonyReference,
+  ctx?: VariableContext,
+) => [
+  name: string,
+  conversionFactorExpr: IridiumExpression<Metadata> | undefined,
+];
+
+const wrapConversionFactorExpr = (
+  expr: IridiumExpression<Metadata>,
+  factorExpr: IridiumExpression<Metadata> | undefined,
+  isRead = false,
+): IridiumExpression<Metadata> => {
+  if (factorExpr) {
+    return {
+      kind: "binary",
+      op: isRead ? "div" : "mul",
+      left: expr,
+      right: factorExpr,
+      metadata: expr.metadata,
+    };
+  } else {
+    return expr;
+  }
+};
+
+export const compileConversionFactors = (
+  factors: AntimonyReference[],
+  resolveVariable: ResolveVariableFn,
+): IridiumExpression<Metadata> => {
+  let current: IridiumExpression<Metadata> | undefined;
+  for (let i = 0; i < factors.length; i++) {
+    const [name, factorFactors] = resolveVariable(factors[i]);
+
+    if (!current) {
+      current = { kind: "variable", name };
+    } else {
+      current = {
+        kind: "binary",
+        op: "mul",
+        left: current,
+        right: {
+          kind: "variable",
+          name,
+        },
+      };
+    }
+
+    if (factorFactors) {
+      current = wrapConversionFactorExpr(current, factorFactors);
+    }
+  }
+  return current!;
+};
 
 export const compileFormula = (
   formula: FormulaContext,
   resolveVariable: ResolveVariableFn,
+  conversionFactorExpr: IridiumExpression<Metadata> | undefined,
 ): IridiumExpression<Metadata> => {
   const formulaListener = new FormulaCompilerListener(resolveVariable);
   ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
-  return formulaListener.getResult();
+
+  return wrapConversionFactorExpr(
+    formulaListener.getResult(),
+    conversionFactorExpr,
+  );
 };
 
 export const compileStoichiometry = (
   stoichiometry: StoichiometryContext,
   resolveVariable: ResolveVariableFn,
+  conversionFactorExpr: IridiumExpression<Metadata> | undefined,
 ): IridiumExpression<Metadata> => {
   const number = stoichiometry.NUMBER();
   if (number !== undefined) {
-    return {
-      kind: "number",
-      value: Number(stoichiometry.text), // we do the whole thing since there might be an additional '-' before the NUMBER token
-      metadata: { tree: stoichiometry },
-    };
+    return wrapConversionFactorExpr(
+      {
+        kind: "number",
+        value: Number(stoichiometry.text), // we do the whole thing since there might be an additional '-' before the NUMBER token
+        metadata: { tree: stoichiometry },
+      },
+      conversionFactorExpr,
+    );
   } else {
-    return {
-      kind: "variable",
-      name: resolveVariable(stoichiometry.variable()!),
-      metadata: { tree: stoichiometry },
-    };
+    const [name, variableConversionFactor] = resolveVariable(
+      getReferenceFromVariable(stoichiometry.variable()!),
+    );
+
+    return wrapConversionFactorExpr(
+      wrapConversionFactorExpr(
+        {
+          kind: "variable",
+          name,
+          metadata: { tree: stoichiometry },
+        },
+        variableConversionFactor,
+      ),
+      conversionFactorExpr,
+    );
   }
 };
 
@@ -95,11 +169,20 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitVar(ctx: VarContext): void {
-    this.#stack.push({
-      kind: "variable",
-      name: this.#resolveVariable(ctx.variable()),
-      metadata: { tree: ctx },
-    });
+    const [name, conversionFactorExpr] = this.#resolveVariable(
+      getReferenceFromVariable(ctx.variable()),
+    );
+    this.#stack.push(
+      wrapConversionFactorExpr(
+        {
+          kind: "variable",
+          name: name,
+          metadata: { tree: ctx },
+        },
+        conversionFactorExpr,
+        true,
+      ),
+    );
   }
 
   exitPositive(_ctx: PositiveContext): void {
@@ -186,7 +269,11 @@ class FormulaCompilerListener implements AntimonyListener {
         right: {
           kind: "binary",
           op: op,
-          left: compileFormula(leftCtx.formula(1), this.#resolveVariable),
+          left: compileFormula(
+            leftCtx.formula(1),
+            this.#resolveVariable,
+            undefined,
+          ),
           right: right,
           metadata: { tree: leftCtx },
         },

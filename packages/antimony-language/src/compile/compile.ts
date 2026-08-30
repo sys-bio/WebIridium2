@@ -17,10 +17,12 @@ import type {
   AntimonyModel,
   AntimonyObject,
   AntimonyReaction,
+  AntimonyReference,
   AntimonyStoichiometry,
   AntimonyVariable,
 } from "../semantic/document";
 import {
+  compileConversionFactors,
   compileFormula as compileFormulaOriginal,
   compileStoichiometry as compileStoichiometryOriginal,
 } from "./formula";
@@ -28,10 +30,7 @@ import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
 import { FormulaContext, NameContext, VariableContext } from "../grammar";
 import { buildAntimonyDocument } from "../semantic/semantic";
-import {
-  getReferenceFromVariable,
-  resolveReference,
-} from "../semantic/BuildAntimonyListener";
+import { resolveReference } from "../semantic/BuildAntimonyListener";
 import { isBuiltinName } from "../semantic/builtins";
 
 const INVALID_BOOLEAN_MESSAGE =
@@ -293,32 +292,38 @@ const compileModel = (
   // since the callback only accepts one parameter.
   let resolveScope = model;
 
-  const resolveVariable = (variable: VariableContext): string => {
-    const reference = getReferenceFromVariable(variable);
+  const resolveVariable = (
+    reference: AntimonyReference,
+    ctx?: VariableContext,
+  ): [string, IridiumExpression<Metadata> | undefined] => {
     if (reference.length > 1) {
       throw new CompileError(
         "You cannot refer to subvariables within a math expression.",
-        { tree: variable },
+        { tree: ctx },
       );
     }
 
     if (typeof reference[0] === "string") {
       if (isBuiltinName(reference[0])) {
-        return reference[0];
+        return [reference[0], undefined];
       } else if (document.functions.has(reference[0])) {
         throw new CompileError(
           `${reference[0]} is a function and cannot be used as a variable.`,
-          { tree: variable },
+          { tree: ctx },
         );
       }
     }
 
-    const object = resolveReference(model, reference, resolveScope);
+    const [object, conversionFactors] = resolveReference(
+      model,
+      reference,
+      resolveScope,
+    );
 
     if (object.kind !== "variable" && object.kind !== "reaction") {
       throw new CompileError(
         `${object.name} is a ${object.kind} and cannot be used in a math expression.`,
-        { tree: variable },
+        { tree: ctx },
       );
     }
 
@@ -326,7 +331,14 @@ const compileModel = (
       throw GOT_DELETED_SYMBOL;
     }
 
-    return builder.getNameOf(object);
+    if (conversionFactors) {
+      return [
+        builder.getNameOf(object),
+        compileConversionFactors(conversionFactors, resolveVariable),
+      ];
+    } else {
+      return [builder.getNameOf(object), undefined];
+    }
   };
 
   /**
@@ -335,44 +347,92 @@ const compileModel = (
    */
   const compileFormulaInModel = (
     formula: AntimonyFormula,
+    conversionFactors?: AntimonyReference[],
   ): IridiumExpression<Metadata> | undefined => {
+    const prevScope = resolveScope;
+
+    let conversionFactorExpr: IridiumExpression<Metadata> | undefined;
+    if (conversionFactors) {
+      conversionFactorExpr = compileConversionFactors(
+        conversionFactors,
+        resolveVariable,
+      );
+    } else if (formula.target) {
+      const [_, targetConversionFactors] = resolveReference(
+        model,
+        formula.target,
+      );
+      if (targetConversionFactors) {
+        conversionFactorExpr = compileConversionFactors(
+          targetConversionFactors,
+          resolveVariable,
+        );
+      }
+    }
+
     if (formula.scope) {
-      resolveScope = resolveReference(model, formula.scope) as AntimonyModel;
+      resolveScope = resolveReference(model, formula.scope)[0] as AntimonyModel;
     } else {
       resolveScope = model;
     }
 
     try {
-      return compileFormulaOriginal(formula.ctx, resolveVariable);
+      return compileFormulaOriginal(
+        formula.ctx,
+        resolveVariable,
+        conversionFactorExpr,
+      );
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
       }
 
       throw err;
+    } finally {
+      resolveScope = prevScope;
     }
   };
 
   const compileStoichiometryInModel = (
     stoichiometry: AntimonyStoichiometry,
+    conversionFactors: AntimonyReference[] | undefined,
   ): IridiumExpression<Metadata> | undefined => {
+    const prevScope = resolveScope;
+
+    let conversionFactorExpr: IridiumExpression<Metadata> | undefined =
+      conversionFactors &&
+      compileConversionFactors(conversionFactors, resolveVariable);
     if (stoichiometry.scope) {
       resolveScope = resolveReference(
         model,
         stoichiometry.scope,
-      ) as AntimonyModel;
+      )[0] as AntimonyModel;
     } else {
       resolveScope = model;
     }
 
     try {
-      return compileStoichiometryOriginal(stoichiometry.ctx, resolveVariable);
+      if (conversionFactors) {
+        return compileStoichiometryOriginal(
+          stoichiometry.ctx,
+          resolveVariable,
+          conversionFactorExpr,
+        );
+      } else {
+        return compileStoichiometryOriginal(
+          stoichiometry.ctx,
+          resolveVariable,
+          undefined,
+        );
+      }
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
       }
 
       throw err;
+    } finally {
+      resolveScope = prevScope;
     }
   };
 
@@ -392,7 +452,10 @@ const compileModel = (
     const reactants: IridiumReactionTerm<Metadata>[] = [];
     for (const reactant of reaction.reactants) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(model, reactant.reference);
+      const [variable, conversionFactor] = resolveReference(
+        model,
+        reactant.reference,
+      );
       if (
         variable.kind === "variable" &&
         (variable.isConst || variable.isDeleted)
@@ -403,7 +466,10 @@ const compileModel = (
       reactants.push({
         name: builder.getNameOf(variable),
         stoichiometry: (reactant.stoichiometry &&
-          compileStoichiometryInModel(reactant.stoichiometry)) || {
+          compileStoichiometryInModel(
+            reactant.stoichiometry,
+            conversionFactor,
+          )) || {
           kind: "number",
           value: 1,
         },
@@ -413,7 +479,10 @@ const compileModel = (
     const products: IridiumReactionTerm<Metadata>[] = [];
     for (const product of reaction.products) {
       // Ignore const since they won't be affected by the reaction.
-      const variable = resolveReference(model, product.reference);
+      const [variable, conversionFactor] = resolveReference(
+        model,
+        product.reference,
+      );
       if (
         variable.kind === "variable" &&
         (variable.isConst || variable.isDeleted)
@@ -423,7 +492,10 @@ const compileModel = (
       products.push({
         name: builder.getNameOf(variable),
         stoichiometry: (product.stoichiometry &&
-          compileStoichiometryInModel(product.stoichiometry)) || {
+          compileStoichiometryInModel(
+            product.stoichiometry,
+            conversionFactor,
+          )) || {
           kind: "number",
           value: 1,
         },
@@ -518,7 +590,7 @@ const compileModel = (
     });
 
     if (variable.compartment) {
-      const compartment = resolveReference(model, variable.compartment);
+      const [compartment, _] = resolveReference(model, variable.compartment);
       if (!("isDeleted" in compartment) || !compartment.isDeleted) {
         builder.addToCompartment(compartment, variable);
       }
@@ -535,10 +607,13 @@ const compileModel = (
     const assignments = [];
 
     for (const [reference, value] of event.assignments) {
-      const object = resolveReference(model, reference);
+      const [object, conversionFactors] = resolveReference(model, reference);
       if ("isDeleted" in object && object.isDeleted) continue;
 
-      const assignmentExpression = compileFormulaInModel(value);
+      const assignmentExpression = compileFormulaInModel(
+        value,
+        conversionFactors,
+      );
       if (!assignmentExpression) continue;
 
       assignments.push({
@@ -573,14 +648,17 @@ const compileModel = (
   }
 };
 
-const resolveFunctionScopeVariable = (variable: VariableContext): string => {
-  if (!(variable instanceof NameContext)) {
+const resolveFunctionScopeVariable = (
+  reference: AntimonyReference,
+  ctx?: VariableContext,
+): [name: string, conversionFactor: undefined] => {
+  if (reference.length > 1) {
     throw new CompileError(
       "cannot use subvariables or constants inside a function.",
-      { tree: variable },
+      { tree: ctx },
     );
   }
-  return variable.NAME().text;
+  return [reference[0] as string, undefined];
 };
 
 export const compileToIridium = (
@@ -593,7 +671,11 @@ export const compileToIridium = (
     builder.addFunction(func, {
       name: func.name,
       parameters: func.parameters,
-      body: compileFormulaOriginal(func.body, resolveFunctionScopeVariable),
+      body: compileFormulaOriginal(
+        func.body,
+        resolveFunctionScopeVariable,
+        undefined,
+      ),
     });
   }
 
