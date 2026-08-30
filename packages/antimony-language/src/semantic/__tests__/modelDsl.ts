@@ -252,7 +252,14 @@ export const event = (
   }
 };
 
-export const renameLink = (to: string | AntimonyReference) => ({
+export const renameLink = (
+  to: string | AntimonyReference,
+  conversionFactor?: string | AntimonyReference,
+) => ({
   kind: "renameLink",
   to: typeof to === "string" ? stringToReference(to) : to,
+  conversionFactor:
+    typeof conversionFactor === "string"
+      ? stringToReference(conversionFactor)
+      : conversionFactor,
 });

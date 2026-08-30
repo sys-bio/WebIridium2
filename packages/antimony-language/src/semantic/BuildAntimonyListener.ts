@@ -53,8 +53,8 @@ export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
 export const DEFAULT_MODEL_NAME = "__main";
 export const DEFAULT_IMPORT_PREFIX = "_sys";
 
-const prependScope = (
-  formula: { scope: AntimonyReference | null },
+const prependReferenceForFormula = (
+  formula: { scope: AntimonyReference | null; target?: AntimonyReference },
   prefix: string | number,
 ): void => {
   if (formula.scope) {
@@ -62,9 +62,13 @@ const prependScope = (
   } else {
     formula.scope = [prefix];
   }
+
+  if (formula.target) {
+    formula.target = [prefix, ...formula.target];
+  }
 };
 
-const prependCompartment = (
+const prependReferenceForCompartment = (
   object: { compartment: AntimonyReference | null },
   prefix: string | number,
 ): void => {
@@ -111,24 +115,27 @@ const copyAntimonyObject = (
     case "variable": {
       const copy = { ...object };
 
-      prependCompartment(copy, referencePrefix);
+      prependReferenceForCompartment(copy, referencePrefix);
 
       if (object.assignment) {
         copy.assignment = { ...object.assignment };
 
         if (copy.assignment.kind === "initial") {
           copy.assignment.initial = { ...copy.assignment.initial };
-          prependScope(copy.assignment.initial, referencePrefix);
+          prependReferenceForFormula(copy.assignment.initial, referencePrefix);
         } else if (copy.assignment.kind === "rule") {
           copy.assignment.rule = { ...copy.assignment.rule };
-          prependScope(copy.assignment.rule, referencePrefix);
+          prependReferenceForFormula(copy.assignment.rule, referencePrefix);
         } else if (copy.assignment.kind === "rate") {
           if (copy.assignment.initial) {
             copy.assignment.initial = { ...copy.assignment.initial };
-            prependScope(copy.assignment.initial, referencePrefix);
+            prependReferenceForFormula(
+              copy.assignment.initial,
+              referencePrefix,
+            );
           }
           copy.assignment.rate = { ...copy.assignment.rate };
-          prependScope(copy.assignment.rate, referencePrefix);
+          prependReferenceForFormula(copy.assignment.rate, referencePrefix);
         }
       }
 
@@ -137,11 +144,11 @@ const copyAntimonyObject = (
     case "reaction": {
       const copy = { ...object };
 
-      prependCompartment(copy, referencePrefix);
+      prependReferenceForCompartment(copy, referencePrefix);
 
       if (copy.rate) {
         copy.rate = { ...copy.rate };
-        prependScope(copy.rate, referencePrefix);
+        prependReferenceForFormula(copy.rate, referencePrefix);
       }
 
       const newReactants = [];
@@ -149,7 +156,10 @@ const copyAntimonyObject = (
         const newReactant = { ...reactant };
         if (newReactant.stoichiometry) {
           newReactant.stoichiometry = { ...newReactant.stoichiometry };
-          prependScope(newReactant.stoichiometry, referencePrefix);
+          prependReferenceForFormula(
+            newReactant.stoichiometry,
+            referencePrefix,
+          );
         }
         newReactant.reference = [referencePrefix, ...newReactant.reference];
         newReactants.push(newReactant);
@@ -161,7 +171,7 @@ const copyAntimonyObject = (
         const newProduct = { ...product };
         if (newProduct.stoichiometry) {
           newProduct.stoichiometry = { ...newProduct.stoichiometry };
-          prependScope(newProduct.stoichiometry, referencePrefix);
+          prependReferenceForFormula(newProduct.stoichiometry, referencePrefix);
         }
         newProduct.reference = [referencePrefix, ...newProduct.reference];
         newProducts.push(newProduct);
@@ -173,22 +183,22 @@ const copyAntimonyObject = (
     case "event": {
       const copy = { ...object };
 
-      prependCompartment(copy, referencePrefix);
+      prependReferenceForCompartment(copy, referencePrefix);
 
       if (copy.trigger) {
         copy.trigger = { ...copy.trigger };
-        prependScope(copy.trigger, referencePrefix);
+        prependReferenceForFormula(copy.trigger, referencePrefix);
       }
 
       if (copy.delay) {
         copy.delay = { ...copy.delay };
-        prependScope(copy.delay, referencePrefix);
+        prependReferenceForFormula(copy.delay, referencePrefix);
       }
 
       const newAssignments = new Map<AntimonyReference, AntimonyFormula>();
       for (const [reference, assignment] of copy.assignments) {
         const assignmentCopy = { ...assignment };
-        prependScope(assignmentCopy, referencePrefix);
+        prependReferenceForFormula(assignmentCopy, referencePrefix);
         newAssignments.set([referencePrefix, ...reference], assignmentCopy);
       }
       copy.assignments = newAssignments;
@@ -197,7 +207,7 @@ const copyAntimonyObject = (
       for (const [name, option] of Object.entries(copy.options)) {
         if (option) {
           const optionCopy = { ...option };
-          prependScope(optionCopy, referencePrefix);
+          prependReferenceForFormula(optionCopy, referencePrefix);
           newOptions[name] = optionCopy;
         }
       }
@@ -205,8 +215,13 @@ const copyAntimonyObject = (
 
       return copy;
     }
-    case "renameLink":
-      return { ...object, to: [referencePrefix, ...object.to] };
+    case "renameLink": {
+      const copy = { ...object, to: [referencePrefix, ...object.to] };
+      if (copy.conversionFactor) {
+        copy.conversionFactor = [referencePrefix, ...copy.conversionFactor];
+      }
+      return copy;
+    }
   }
 };
 
@@ -434,20 +449,25 @@ export class BuildAntimonyListener implements AntimonyListener {
     return this.#currentModel;
   }
 
-  #createFormula(formula: FormulaContext): AntimonyFormula;
+  #createFormula(
+    formula: FormulaContext,
+    target?: AntimonyReference,
+  ): AntimonyFormula;
   #createFormula(
     formula: FormulaContext | undefined,
+    target?: AntimonyReference,
   ): AntimonyFormula | undefined;
   #createFormula(
     formula: FormulaContext | undefined,
+    target?: AntimonyReference,
   ): AntimonyFormula | undefined {
     if (formula === undefined) return undefined;
 
     const model = this.#getActiveModel();
     if (model.parent) {
-      return { scope: createReference(model), ctx: formula };
+      return { scope: createReference(model), ctx: formula, target };
     } else {
-      return { scope: null, ctx: formula };
+      return { scope: null, ctx: formula, target };
     }
   }
 
@@ -873,23 +893,6 @@ export class BuildAntimonyListener implements AntimonyListener {
     this.#updateToDeclarationIfNecessary(ctx, variable);
   }
 
-  /*
-  TODO: fix plz
-  Not every name is necessarily a variable, e.g. annotations for reaction.
-
-  enterName(ctx: NameContext): void {
-    this.#getOrCreateVariable(ctx);
-  }
-  
-  enterSubvariable(ctx: SubvariableContext): void {
-    this.#getOrCreateVariable(ctx);
-  }
-  
-  enterConstant(ctx: ConstantContext): void {
-    this.#getOrCreateVariable(ctx);
-  }
-  */
-
   enterVar(ctx: VarContext): void {
     if (!this.#isActive) return;
 
@@ -910,6 +913,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     this.#updateToDeclarationIfNecessary(ctx, object);
 
+    const target = getReferenceFromVariable(ctx.variable());
     const formula = ctx.formula();
 
     const mod = ctx._mod?.text;
@@ -933,7 +937,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (formula) {
         object.assignment = {
           kind: "rule",
-          rule: this.#createFormula(formula),
+          rule: this.#createFormula(formula, target),
         };
       } else {
         object.assignment = undefined;
@@ -958,7 +962,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (formula) {
         object.assignment = {
           kind: "rate",
-          rate: this.#createFormula(formula),
+          rate: this.#createFormula(formula, target),
           initial: object?.assignment?.initial,
         };
       } else {
@@ -987,10 +991,10 @@ export class BuildAntimonyListener implements AntimonyListener {
           if (!object.assignment) {
             object.assignment = {
               kind: "initial",
-              initial: this.#createFormula(formula),
+              initial: this.#createFormula(formula, target),
             };
           } else {
-            object.assignment.initial = this.#createFormula(formula);
+            object.assignment.initial = this.#createFormula(formula, target);
           }
         } else {
           if (object.assignment?.kind === "rate") {
@@ -1001,13 +1005,13 @@ export class BuildAntimonyListener implements AntimonyListener {
         }
       } else if (object.kind === "event") {
         if (formula) {
-          object.trigger = this.#createFormula(formula);
+          object.trigger = this.#createFormula(formula, target);
         } else {
           object.trigger = undefined;
         }
       } else if (object.kind === "reaction") {
         if (formula) {
-          object.rate = this.#createFormula(formula);
+          object.rate = this.#createFormula(formula, target);
         } else {
           object.rate = undefined;
         }
@@ -1137,7 +1141,10 @@ export class BuildAntimonyListener implements AntimonyListener {
         compartment,
         reactants,
         products,
-        rate: this.#createFormula(ctx.formula()),
+        rate: this.#createFormula(
+          ctx.formula(),
+          createReference(parentModel, name),
+        ),
       },
       ctx,
     );
@@ -1268,9 +1275,16 @@ export class BuildAntimonyListener implements AntimonyListener {
     toName: string,
     toObject: AntimonyObject | undefined,
     ctx: ParserRuleContext,
+    conversionFactor?: AntimonyReference,
   ): void {
     // do nothing when renaming to itself
     if (fromObject === toObject) {
+      if (conversionFactor) {
+        this.#reportError(
+          `Cannot rename ${fromName} to itself with a conversion factor.`,
+          ctx,
+        );
+      }
       return;
     }
 
@@ -1318,6 +1332,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       kind: "renameLink",
       name: fromName,
       to: createReference(toModel, toName),
+      conversionFactor,
     });
   }
 
@@ -1349,6 +1364,17 @@ export class BuildAntimonyListener implements AntimonyListener {
       toCtx,
     );
 
+    let conversionFactor: AntimonyReference | undefined;
+
+    const conversionFactorCtx =
+      ctx.conversionFactorLeft() ?? ctx.conversionFactorRight();
+    if (conversionFactorCtx) {
+      this.#getOrCreateObject(conversionFactorCtx.variable(), undefined);
+      conversionFactor = getReferenceFromVariable(
+        conversionFactorCtx.variable(),
+      );
+    }
+
     this.#rename(
       fromModel,
       fromName,
@@ -1357,6 +1383,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       toName,
       toObject,
       ctx,
+      conversionFactor,
     );
   }
 

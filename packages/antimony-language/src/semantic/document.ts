@@ -46,6 +46,11 @@ export type AntimonyReference = ReadonlyArray<string | number>;
 export type AntimonyFormula = {
   scope: AntimonyReference | null;
   ctx: FormulaContext;
+  /**
+   * Optional field indicating what object the formula is applying to. Used in assignments/rate rule
+   * for handling conversion factors.
+   */
+  target?: AntimonyReference;
 };
 
 export type AntimonyStoichiometry = {
@@ -59,6 +64,8 @@ export type AntimonyModel = AntimonyObjectBase<"model"> & {
   /** These are models that were imported without a name. */
   unnamedImports: AntimonyModel[];
   exports?: AntimonyReference[];
+  timeConversionFactor?: number;
+  extentConversionFactor?: number;
 };
 
 export type AntimonyInitialAssignment = {
@@ -122,5 +129,5 @@ export type AntimonyFunction = AntimonyObjectBase<"function"> & {
 
 export type AntimonyRenameLink = AntimonyObjectBase<"renameLink"> & {
   to: AntimonyReference;
-  conversionFactor?: AntimonyReference[];
+  conversionFactor?: AntimonyReference;
 };
