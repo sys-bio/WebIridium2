@@ -119,4 +119,6 @@ unitFormula        : '(' unitFormula ')' #unitGroup
 
 inStatement : variable inCompartment;
 
-modelImport : nameLabel? NAME exportList;
+modelImport        : nameLabel? NAME exportList (',' modelImportOption)*;
+modelImportOption  : NAME '=' modelImportValue;
+modelImportValue   : variable | NUMBER;
