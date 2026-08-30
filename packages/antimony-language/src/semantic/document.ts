@@ -122,4 +122,5 @@ export type AntimonyFunction = AntimonyObjectBase<"function"> & {
 
 export type AntimonyRenameLink = AntimonyObjectBase<"renameLink"> & {
   to: AntimonyReference;
+  conversionFactor?: AntimonyReference[];
 };

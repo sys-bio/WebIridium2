@@ -323,10 +323,17 @@ describe("rename", () => {
   itShouldSucceedForAll({
     simple: "A is B",
     dot: "A.B is B.C",
+    conversionFactorLeft: "A * c is B",
+    conversionFactorLeft2: "A.B * c is B.B",
+    conversionFactorRight: "A is B / c",
+    conversionFactorRight2: "A.B is B.B / c",
   });
 
   itShouldErrorForAll({
     multiple: "A is B, C",
+    conversionFactorNumberLeft: "A * 5 is B",
+    conversionFactorNumberRight: "A is B / 5",
+    conversionFactorBoth: "A * 5 is B / 5",
   });
 });
 

@@ -85,7 +85,11 @@ eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula;
 
-rename : variable IS variable;
+rename : variable conversionFactorLeft? IS variable
+       | variable IS variable conversionFactorRight?
+       ;
+conversionFactorLeft : '*' variable;
+conversionFactorRight: '/' variable;
 
 delete : DELETE variable;
 

@@ -1,5 +1,4 @@
 // @ts-nocheck
-// @ts-nocheck
 // Generated from ./src/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 
@@ -63,6 +62,8 @@ import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { RenameContext } from "./AntimonyParser";
+import { ConversionFactorLeftContext } from "./AntimonyParser";
+import { ConversionFactorRightContext } from "./AntimonyParser";
 import { DeleteContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
@@ -518,6 +519,20 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitRename?: (ctx: RenameContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.conversionFactorLeft`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitConversionFactorLeft?: (ctx: ConversionFactorLeftContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.conversionFactorRight`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitConversionFactorRight?: (ctx: ConversionFactorRightContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.delete`.

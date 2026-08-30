@@ -1,5 +1,4 @@
 // @ts-nocheck
-// @ts-nocheck
 // Generated from ./src/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 
@@ -63,6 +62,8 @@ import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
 import { RenameContext } from "./AntimonyParser";
+import { ConversionFactorLeftContext } from "./AntimonyParser";
+import { ConversionFactorRightContext } from "./AntimonyParser";
 import { DeleteContext } from "./AntimonyParser";
 import { AnnotationContext } from "./AntimonyParser";
 import { VariableAnnotationContext } from "./AntimonyParser";
@@ -775,6 +776,28 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitRename?: (ctx: RenameContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.conversionFactorLeft`.
+	 * @param ctx the parse tree
+	 */
+	enterConversionFactorLeft?: (ctx: ConversionFactorLeftContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.conversionFactorLeft`.
+	 * @param ctx the parse tree
+	 */
+	exitConversionFactorLeft?: (ctx: ConversionFactorLeftContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.conversionFactorRight`.
+	 * @param ctx the parse tree
+	 */
+	enterConversionFactorRight?: (ctx: ConversionFactorRightContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.conversionFactorRight`.
+	 * @param ctx the parse tree
+	 */
+	exitConversionFactorRight?: (ctx: ConversionFactorRightContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.delete`.
