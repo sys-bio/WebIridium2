@@ -1,11 +1,11 @@
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker";
 import { parse } from "../parse";
-import type { AntimonyDocument } from "./model";
+import type { AntimonyDocument } from "./document";
 import { BuildAntimonyListener } from "./BuildAntimonyListener.ts";
 import type { RootContext } from "../grammar.ts";
 import type { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 
-export * from "./model.ts";
+export * from "./document.ts";
 
 /**
  * Pass in optional diagnostics parameter to switch to "diagnostics mode."

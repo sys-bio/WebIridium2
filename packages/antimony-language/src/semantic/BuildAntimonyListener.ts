@@ -38,7 +38,7 @@ import {
   type AntimonyConcreteObject,
   type AntimonyFormula,
   type AntimonyStoichiometry,
-} from "./model";
+} from "./document";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
 type DeclarationState = {

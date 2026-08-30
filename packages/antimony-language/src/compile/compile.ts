@@ -19,7 +19,7 @@ import type {
   AntimonyReaction,
   AntimonyStoichiometry,
   AntimonyVariable,
-} from "../semantic/model";
+} from "../semantic/document";
 import {
   compileFormula as compileFormulaOriginal,
   compileStoichiometry as compileStoichiometryOriginal,

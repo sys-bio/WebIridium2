@@ -1,9 +1,9 @@
 /**
- * Simple DSL for expressing partial models as represented in semantic/model.ts.
+ * Simple DSL for expressing partial models as represented in semantic/document.ts.
  * Meant to be used for testing with expect().toMatchObject.
  */
 
-import type { AntimonyReference } from "../model";
+import type { AntimonyReference } from "../document";
 
 export type TestModel = {
   kind: "model";
