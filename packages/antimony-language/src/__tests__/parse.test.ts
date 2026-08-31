@@ -309,6 +309,7 @@ describe("model import", () => {
     named: "M: A()",
     namedDot: "M: A(B.D)",
     compartment: "M in C: A()",
+
     option: "M(), extentconv = 5",
     options: "M(), extentconv = 5, timeconv = 10",
     optionWithNameLabel: "A: M(), extentconv = 10",
@@ -319,6 +320,8 @@ describe("model import", () => {
     optionSubvariable: "M(), extentconv = A.M",
     optionConstantVariable: "M(), extentconv = $M",
     optionUnknown: "M(), unknown = 4.5",
+    optionConstant: "M(), extentconv = $A",
+    optionConstantSubvariable: "M(), extentconv = $A.Test",
   });
 
   itShouldErrorForAll({
@@ -327,6 +330,7 @@ describe("model import", () => {
     extraComma2: "A(B.C,)",
     dotMissing: "A(B.)",
     optionExtraComma: "A(), extentconv = 5,",
+    optionSubvariable: "A(), extentconv.test = 5,",
   });
 });
 

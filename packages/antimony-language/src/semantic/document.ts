@@ -43,6 +43,8 @@ export type AntimonyConcreteObject = Exclude<
  */
 export type AntimonyReference = ReadonlyArray<string | number>;
 
+export type AntimonyConversionFactor = AntimonyReference | number;
+
 export type AntimonyFormula = {
   scope: AntimonyReference | null;
   ctx: FormulaContext;
@@ -64,8 +66,8 @@ export type AntimonyModel = AntimonyObjectBase<"model"> & {
   /** These are models that were imported without a name. */
   unnamedImports: AntimonyModel[];
   exports?: AntimonyReference[];
-  timeConversionFactor?: number;
-  extentConversionFactor?: number;
+  timeConversionFactor?: AntimonyConversionFactor;
+  extentConversionFactor?: AntimonyConversionFactor;
 };
 
 export type AntimonyInitialAssignment = {
@@ -129,5 +131,7 @@ export type AntimonyFunction = AntimonyObjectBase<"function"> & {
 
 export type AntimonyRenameLink = AntimonyObjectBase<"renameLink"> & {
   to: AntimonyReference;
+  // We are not using AntimonyConversionFactor for this because the original Antimony
+  // does not allow numbers for 'is'.
   conversionFactor?: AntimonyReference;
 };

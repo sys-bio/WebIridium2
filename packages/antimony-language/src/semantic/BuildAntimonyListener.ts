@@ -110,6 +110,20 @@ const copyAntimonyObject = (
         copy.unnamedImports.push(submodelCopy);
       }
 
+      if (Array.isArray(copy.timeConversionFactor)) {
+        copy.timeConversionFactor = [
+          referencePrefix,
+          ...copy.timeConversionFactor,
+        ];
+      }
+
+      if (Array.isArray(copy.extentConversionFactor)) {
+        copy.extentConversionFactor = [
+          referencePrefix,
+          ...copy.extentConversionFactor,
+        ];
+      }
+
       return copy;
     }
     case "variable": {
@@ -1450,6 +1464,32 @@ export class BuildAntimonyListener implements AntimonyListener {
       copiedModel.name = importName;
       referenceHead = importName;
       parentModel.objects.set(importName, copiedModel);
+    }
+
+    for (const optionCtx of ctx.modelImportOption()) {
+      const optionName = optionCtx.NAME().text;
+      const optionValueCtx = optionCtx.modelImportValue();
+      let optionValue: number | AntimonyReference;
+      if (optionValueCtx.NUMBER()) {
+        optionValue = Number(optionValueCtx.NUMBER()!.text);
+      } else {
+        const variableCtx = optionValueCtx.variable();
+        if (!variableCtx) continue;
+        this.#getOrCreateObject(variableCtx, undefined);
+        optionValue = getReferenceFromVariable(variableCtx);
+      }
+
+      if (optionName === "timeconv") {
+        copiedModel.timeConversionFactor = optionValue;
+      } else if (optionName === "extentconv") {
+        copiedModel.extentConversionFactor = optionValue;
+      } else {
+        this.#reportError(
+          `Unknown model import option: ${optionName}. The options are 'timeconv' and 'extentconv'.`,
+          optionCtx,
+        );
+        continue;
+      }
     }
 
     const importListCtx = ctx.exportList();

@@ -1211,6 +1211,90 @@ describe("model imports", () => {
       }).toThrowError(SemanticError);
     });
   });
+
+  describe("with options", () => {
+    it("should add numbers", () => {
+      expectModel(
+        "model test; A = 5; end; sub: test(), timeconv=20.5, extentconv=10",
+        model({
+          sub: model(
+            {
+              A: parameter("5"),
+            },
+            [],
+            undefined,
+            {
+              timeconv: 20.5,
+              extentconv: 10,
+            },
+          ),
+        }),
+      );
+    });
+
+    it("should add variables", () => {
+      expectModel(
+        "model test; A = 5; end; sub0: test(); sub: test(), timeconv=A, extentconv=sub0.A",
+        model({
+          sub0: model({
+            A: parameter("5"),
+          }),
+          sub: model(
+            {
+              A: parameter("5"),
+            },
+            [],
+            undefined,
+            {
+              timeconv: "A",
+              extentconv: "sub0.A",
+            },
+          ),
+        }),
+      );
+    });
+
+    it("should add with submodels", () => {
+      expectModel(
+        "model test; A = 5; end; model test2; sub: test(), timeconv=A, extentconv=B; end; sub: test2(), timeconv=A, extentconv=B",
+        model({
+          A: parameter(),
+          B: parameter(),
+          sub: model(
+            {
+              A: parameter(),
+              B: parameter(),
+              sub: model(
+                {
+                  A: parameter("5"),
+                },
+                [],
+                undefined,
+                {
+                  timeconv: "sub.A",
+                  extentconv: "sub.B",
+                },
+              ),
+            },
+            [],
+            undefined,
+            {
+              timeconv: "A",
+              extentconv: "B",
+            },
+          ),
+        }),
+      );
+    });
+
+    it("should error with unknown option", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          "model test; A = 5; end; sub: test(), unknown = 5",
+        );
+      }).toThrowError(SemanticError);
+    });
+  });
 });
 
 describe("renaming", () => {

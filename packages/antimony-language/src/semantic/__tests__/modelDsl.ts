@@ -10,12 +10,15 @@ export type TestModel = {
   objects: Record<string, any>;
   unnamedImports?: any[];
   exports?: (string | number)[][];
+  timeConversionFactor?: number | AntimonyReference;
+  extentConversionFactor?: number | AntimonyReference;
 };
 
 export const model = (
   objects: Record<string, any>,
   unnamedImports?: any[],
   exports?: string[],
+  extra?: { timeconv?: number | string; extentconv?: number | string },
 ): TestModel => {
   for (const [name, object] of Object.entries(objects)) {
     // eslint-disable-next-line
@@ -26,11 +29,27 @@ export const model = (
     kind: "model",
     objects,
   };
+
   if (unnamedImports) {
     model.unnamedImports = unnamedImports;
   }
+
   if (exports) {
     model.exports = exports.map((v) => stringToReference(v));
+  }
+
+  if (extra) {
+    if (typeof extra.timeconv === "number") {
+      model.timeConversionFactor = extra.timeconv;
+    } else if (typeof extra.timeconv === "string") {
+      model.timeConversionFactor = stringToReference(extra.timeconv);
+    }
+
+    if (typeof extra.extentconv === "number") {
+      model.extentConversionFactor = extra.extentconv;
+    } else if (typeof extra.extentconv === "string") {
+      model.extentConversionFactor = stringToReference(extra.extentconv);
+    }
   }
 
   return model;
