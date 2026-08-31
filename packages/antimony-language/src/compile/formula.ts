@@ -24,9 +24,10 @@ import type {
   AntimonyReference,
 } from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
+import { CompileError } from "../errors";
 
-export type ResolveVariableFn = (
-  variable: AntimonyReference,
+export type ResolveReferenceFn = (
+  reference: AntimonyReference,
   ctx?: VariableContext,
 ) => [
   name: string,
@@ -53,7 +54,7 @@ export const wrapConversionFactorExpr = (
 
 export const compileConversionFactors = (
   factors: AntimonyConversionFactor[],
-  resolveVariable: ResolveVariableFn,
+  resolveReference: ResolveReferenceFn,
 ): IridiumExpression<Metadata> => {
   let current: IridiumExpression<Metadata> | undefined;
   for (let i = 0; i < factors.length; i++) {
@@ -76,7 +77,7 @@ export const compileConversionFactors = (
         };
       }
     } else {
-      const [name, factorFactors] = resolveVariable(factor);
+      const [name, factorFactors] = resolveReference(factor);
 
       if (!current) {
         current = { kind: "variable", name };
@@ -102,48 +103,37 @@ export const compileConversionFactors = (
 
 export const compileFormula = (
   formula: FormulaContext,
-  resolveVariable: ResolveVariableFn,
-  conversionFactorExpr: IridiumExpression<Metadata> | undefined,
+  resolveReference: ResolveReferenceFn,
 ): IridiumExpression<Metadata> => {
-  const formulaListener = new FormulaCompilerListener(resolveVariable);
+  const formulaListener = new FormulaCompilerListener(resolveReference);
   ParseTreeWalker.DEFAULT.walk(formulaListener as ParseTreeListener, formula);
 
-  return wrapConversionFactorExpr(
-    formulaListener.getResult(),
-    conversionFactorExpr,
-  );
+  return formulaListener.getResult();
 };
 
 export const compileStoichiometry = (
   stoichiometry: StoichiometryContext,
-  resolveVariable: ResolveVariableFn,
-  conversionFactorExpr: IridiumExpression<Metadata> | undefined,
+  resolveReference: ResolveReferenceFn,
 ): IridiumExpression<Metadata> => {
   const number = stoichiometry.NUMBER();
   if (number !== undefined) {
-    return wrapConversionFactorExpr(
-      {
-        kind: "number",
-        value: Number(stoichiometry.text), // we do the whole thing since there might be an additional '-' before the NUMBER token
-        metadata: { tree: stoichiometry },
-      },
-      conversionFactorExpr,
-    );
+    return {
+      kind: "number",
+      value: Number(stoichiometry.text), // we do the whole thing since there might be an additional '-' before the NUMBER token
+      metadata: { tree: stoichiometry },
+    };
   } else {
-    const [name, variableConversionFactor] = resolveVariable(
+    const [name, variableConversionFactor] = resolveReference(
       getReferenceFromVariable(stoichiometry.variable()!),
     );
 
     return wrapConversionFactorExpr(
-      wrapConversionFactorExpr(
-        {
-          kind: "variable",
-          name,
-          metadata: { tree: stoichiometry },
-        },
-        variableConversionFactor,
-      ),
-      conversionFactorExpr,
+      {
+        kind: "variable",
+        name,
+        metadata: { tree: stoichiometry },
+      },
+      variableConversionFactor,
     );
   }
 };
@@ -154,11 +144,11 @@ const unreachable = (message: string): never => {
 
 class FormulaCompilerListener implements AntimonyListener {
   #stack: IridiumExpression<Metadata>[];
-  #resolveVariable: ResolveVariableFn;
+  #resolveVariable: ResolveReferenceFn;
 
-  constructor(resolveVariable: ResolveVariableFn) {
+  constructor(resolveReference: ResolveReferenceFn) {
     this.#stack = [];
-    this.#resolveVariable = resolveVariable;
+    this.#resolveVariable = resolveReference;
   }
 
   getResult(): IridiumExpression<Metadata> {
@@ -192,9 +182,17 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitVar(ctx: VarContext): void {
-    const [name, conversionFactorExpr] = this.#resolveVariable(
-      getReferenceFromVariable(ctx.variable()),
-    );
+    const reference = getReferenceFromVariable(ctx.variable());
+
+    if (reference.length > 1) {
+      throw new CompileError(
+        "cannot use subvariables or constants inside a function.",
+        { tree: ctx },
+      );
+    }
+
+    const [name, conversionFactorExpr] = this.#resolveVariable(reference);
+
     this.#stack.push(
       wrapConversionFactorExpr(
         {

@@ -14,19 +14,14 @@ const UNSUPPORTED_TAGS = [
   "FastReaction",
   "CSymbolDelay",
   "RandomEventExecution",
+  "comp:ExternalModelDefinition",
 
   // NEED TO TEST SEPARATELY (not fully converted by libantimony)
   "ConversionFactors",
   "HasOnlySubstanceUnits",
   "NoMathML",
 ];
-const WIP_TAGS = [
-  "CSymbolRateOf",
-  // "comp:ConversionFactor",
-  // "comp:TimeConversionFactor",
-  "comp:ExtentConversionFactor",
-  "comp:ExternalModelDefinition",
-];
+const WIP_TAGS = ["CSymbolRateOf"];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
   // libantimony adds an underscore at the end. Expected output expects them

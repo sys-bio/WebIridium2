@@ -1,5 +1,6 @@
 import {
   compile as compileIridium,
+  prettyIridiumExpressionToString,
   type IridiumModel,
   type IridiumReaction,
   type IridiumVariable,
@@ -308,13 +309,6 @@ const compileModel = (
     reference: AntimonyReference,
     ctx?: VariableContext,
   ): [string, IridiumExpression<Metadata> | undefined] => {
-    if (reference.length > 1) {
-      throw new CompileError(
-        "You cannot refer to subvariables within a math expression.",
-        { tree: ctx },
-      );
-    }
-
     if (typeof reference[0] === "string") {
       if (isBuiltinName(reference[0])) {
         if (reference[0] === TIME_NAME && resolveTimeConversions) {
@@ -458,6 +452,7 @@ const compileModel = (
         model,
         formula.target,
       );
+
       if (targetConversionFactors) {
         conversionFactorExpr = compileConversionFactorsInModel(
           targetConversionFactors,
@@ -501,9 +496,8 @@ const compileModel = (
     }
 
     try {
-      let result = compileFormulaOriginal(
-        formula.ctx,
-        resolveVariable,
+      let result = wrapConversionFactorExpr(
+        compileFormulaOriginal(formula.ctx, resolveVariable),
         conversionFactorExpr,
       );
 
@@ -518,8 +512,8 @@ const compileModel = (
         result = wrapConversionFactorExpr(
           result,
           compileConversionFactorsInModel(timeConversion),
-          // Time conversion operates the other way for read operations.
-          !isRate,
+          // Time conversion operates needs to divide for rate operations.
+          isRate,
         );
       }
 
@@ -554,19 +548,10 @@ const compileModel = (
     }
 
     try {
-      if (conversionFactors) {
-        return compileStoichiometryOriginal(
-          stoichiometry.ctx,
-          resolveVariable,
-          conversionFactorExpr,
-        );
-      } else {
-        return compileStoichiometryOriginal(
-          stoichiometry.ctx,
-          resolveVariable,
-          undefined,
-        );
-      }
+      return wrapConversionFactorExpr(
+        compileStoichiometryOriginal(stoichiometry.ctx, resolveVariable),
+        conversionFactorExpr,
+      );
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
@@ -810,14 +795,8 @@ const compileModel = (
 
 const resolveFunctionScopeVariable = (
   reference: AntimonyReference,
-  ctx?: VariableContext,
+  _ctx?: VariableContext,
 ): [name: string, conversionFactor: undefined] => {
-  if (reference.length > 1) {
-    throw new CompileError(
-      "cannot use subvariables or constants inside a function.",
-      { tree: ctx },
-    );
-  }
   return [reference[0] as string, undefined];
 };
 
@@ -831,11 +810,7 @@ export const compileToIridium = (
     builder.addFunction(func, {
       name: func.name,
       parameters: func.parameters,
-      body: compileFormulaOriginal(
-        func.body,
-        resolveFunctionScopeVariable,
-        undefined,
-      ),
+      body: compileFormulaOriginal(func.body, resolveFunctionScopeVariable),
     });
   }
 

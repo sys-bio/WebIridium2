@@ -185,6 +185,8 @@ export const getReferencedFunctions = (
                   left: pieceExpression,
                   right: conditionExpression,
                 };
+
+                referenced.add(AND_RESERVED_NAME);
               } else {
                 pieceExpression = conditionExpression;
               }

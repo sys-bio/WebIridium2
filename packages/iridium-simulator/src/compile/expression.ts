@@ -125,16 +125,10 @@ export const emitExpression = (
     },
     visitCall: (expr) => {
       if (expr.name === PIECEWISE_NAME) {
+        const hasFallback = expr.args.length % 2 === 1;
         if (expr.args.length === 0) {
           throw new CompileError(
             "Piecewise require at least one argument.",
-            expr.metadata,
-          );
-        }
-
-        if (expr.args.length % 2 === 0) {
-          throw new CompileError(
-            "You must provide a fallback case.",
             expr.metadata,
           );
         }
@@ -179,14 +173,18 @@ export const emitExpression = (
             emitter.emitByte(OpCode.else);
           }
 
-          visitExpression(expr.args[expr.args.length - 1], visitor);
+          if (hasFallback) {
+            visitExpression(expr.args[expr.args.length - 1], visitor);
+          } else {
+            emitter.emitF64ConstOp(0);
+          }
 
-          for (i = 0; i + 2 < expr.args.length; i += 2) {
+          for (i = 0; i + 1 < expr.args.length; i += 2) {
             emitter.emitByte(OpCode.end);
           }
         } else {
           let i = 0;
-          for (; i + 2 < expr.args.length; i += 2) {
+          for (; i + 1 < expr.args.length; i += 2) {
             const branch = expr.args[i];
             const condition = expr.args[i + 1];
 
@@ -203,9 +201,13 @@ export const emitExpression = (
             emitter.emitByte(OpCode.else);
           }
 
-          visitExpression(expr.args[expr.args.length - 1], visitor);
+          if (hasFallback) {
+            visitExpression(expr.args[expr.args.length - 1], visitor);
+          } else {
+            emitter.emitF64ConstOp(0);
+          }
 
-          for (i = 0; i + 2 < expr.args.length; i += 2) {
+          for (i = 0; i + 1 < expr.args.length; i += 2) {
             emitter.emitByte(OpCode.end);
           }
         }

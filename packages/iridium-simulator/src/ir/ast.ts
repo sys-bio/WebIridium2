@@ -127,3 +127,36 @@ export const visitExpression = <T, Metadata = unknown>(
     throw new Error("Unknown expression kind");
   }
 };
+
+export const prettyIridiumExpressionToString = (
+  expr: IridiumExpression,
+): string => {
+  switch (expr.kind) {
+    case "number":
+      return expr.value.toString();
+    case "variable":
+      return expr.name;
+    case "unary":
+      return (
+        "(" + expr.op + " " + prettyIridiumExpressionToString(expr.expr) + ")"
+      );
+    case "binary":
+      return (
+        "(" +
+        expr.op +
+        " " +
+        prettyIridiumExpressionToString(expr.left) +
+        " " +
+        prettyIridiumExpressionToString(expr.right) +
+        ")"
+      );
+    case "call":
+      return (
+        "(" +
+        expr.name +
+        " " +
+        expr.args.map(prettyIridiumExpressionToString).join(" ") +
+        ")"
+      );
+  }
+};
