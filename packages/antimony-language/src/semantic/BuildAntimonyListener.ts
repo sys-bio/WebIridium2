@@ -38,6 +38,7 @@ import {
   type AntimonyConcreteObject,
   type AntimonyFormula,
   type AntimonyStoichiometry,
+  type AntimonyConversionFactor,
 } from "./document";
 import { isBuiltinName, builtinEventOptions } from "./builtins";
 
@@ -274,7 +275,7 @@ type ObjectWithModelInfo = [
   model: AntimonyModel,
   name: string | number,
   obj: AntimonyConcreteObject,
-  conversionFactors: AntimonyReference[] | undefined,
+  conversionFactors: AntimonyConversionFactor[] | undefined,
 ];
 
 // This one doesn't point to a model so name can't be a number
@@ -315,7 +316,7 @@ export class BadReferenceError extends Error {
   }
 }
 
-const resolveReferenceWithModelInfo = (
+export const resolveReferenceWithModelInfo = (
   rootModel: AntimonyModel,
   reference: AntimonyReference,
   startModel?: AntimonyModel,
@@ -359,7 +360,7 @@ export const resolveReference = (
   startModel?: AntimonyModel,
 ): [
   object: AntimonyConcreteObject,
-  conversionFactors: AntimonyReference[] | undefined,
+  conversionFactors: AntimonyConversionFactor[] | undefined,
 ] => {
   const [_model, _name, object, conversionFactor] =
     resolveReferenceWithModelInfo(rootModel, reference, startModel);

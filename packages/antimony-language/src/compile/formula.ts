@@ -19,7 +19,10 @@ import {
 } from "../grammar";
 import type { IridiumExpression } from "iridium-simulator";
 import type { Metadata } from "./metadata";
-import type { AntimonyReference } from "../semantic/document";
+import type {
+  AntimonyConversionFactor,
+  AntimonyReference,
+} from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
 
 export type ResolveVariableFn = (
@@ -30,7 +33,7 @@ export type ResolveVariableFn = (
   conversionFactorExpr: IridiumExpression<Metadata> | undefined,
 ];
 
-const wrapConversionFactorExpr = (
+export const wrapConversionFactorExpr = (
   expr: IridiumExpression<Metadata>,
   factorExpr: IridiumExpression<Metadata> | undefined,
   isRead = false,
@@ -49,29 +52,49 @@ const wrapConversionFactorExpr = (
 };
 
 export const compileConversionFactors = (
-  factors: AntimonyReference[],
+  factors: AntimonyConversionFactor[],
   resolveVariable: ResolveVariableFn,
 ): IridiumExpression<Metadata> => {
   let current: IridiumExpression<Metadata> | undefined;
   for (let i = 0; i < factors.length; i++) {
-    const [name, factorFactors] = resolveVariable(factors[i]);
-
-    if (!current) {
-      current = { kind: "variable", name };
+    const factor = factors[i];
+    if (typeof factor === "number") {
+      if (!current) {
+        current = {
+          kind: "number",
+          value: factor,
+        };
+      } else {
+        current = {
+          kind: "binary",
+          op: "mul",
+          left: current,
+          right: {
+            kind: "number",
+            value: factor,
+          },
+        };
+      }
     } else {
-      current = {
-        kind: "binary",
-        op: "mul",
-        left: current,
-        right: {
-          kind: "variable",
-          name,
-        },
-      };
-    }
+      const [name, factorFactors] = resolveVariable(factor);
 
-    if (factorFactors) {
-      current = wrapConversionFactorExpr(current, factorFactors);
+      if (!current) {
+        current = { kind: "variable", name };
+      } else {
+        current = {
+          kind: "binary",
+          op: "mul",
+          left: current,
+          right: {
+            kind: "variable",
+            name,
+          },
+        };
+      }
+
+      if (factorFactors) {
+        current = wrapConversionFactorExpr(current, factorFactors);
+      }
     }
   }
   return current!;

@@ -11,6 +11,7 @@ import {
   type IridiumFunction,
 } from "iridium-simulator";
 import type {
+  AntimonyConversionFactor,
   AntimonyDocument,
   AntimonyEvent,
   AntimonyFormula,
@@ -22,16 +23,20 @@ import type {
   AntimonyVariable,
 } from "../semantic/document";
 import {
-  compileConversionFactors,
+  compileConversionFactors as compileConversionFactorsOriginal,
   compileFormula as compileFormulaOriginal,
   compileStoichiometry as compileStoichiometryOriginal,
+  wrapConversionFactorExpr,
 } from "./formula";
 import type { Metadata } from "./metadata";
 import { CompileError, CompileInvariantError } from "../errors";
 import { FormulaContext, NameContext, VariableContext } from "../grammar";
 import { buildAntimonyDocument } from "../semantic/semantic";
-import { resolveReference } from "../semantic/BuildAntimonyListener";
-import { isBuiltinName } from "../semantic/builtins";
+import {
+  resolveReference,
+  resolveReferenceWithModelInfo,
+} from "../semantic/BuildAntimonyListener";
+import { isBuiltinName, TIME_NAME } from "../semantic/builtins";
 
 const INVALID_BOOLEAN_MESSAGE =
   "You can only use the values `true` or `false` here.";
@@ -288,9 +293,16 @@ const compileModel = (
 ): void => {
   const { variables, reactions, events } = flattenModel(model, builder);
 
-  // We use this variable as a sort of "second" side-channel argument to resolveVariable.
+  // We use these variables as an sort of "additional" side-channel argument to resolveVariable.
   // since the callback only accepts one parameter.
   let resolveScope = model;
+  let resolveTimeConversions: AntimonyConversionFactor[] | undefined =
+    undefined;
+
+  // Forward declare this
+  let compileConversionFactorsInModel: (
+    factors: AntimonyConversionFactor[],
+  ) => IridiumExpression<Metadata> | undefined;
 
   const resolveVariable = (
     reference: AntimonyReference,
@@ -305,6 +317,12 @@ const compileModel = (
 
     if (typeof reference[0] === "string") {
       if (isBuiltinName(reference[0])) {
+        if (reference[0] === TIME_NAME && resolveTimeConversions) {
+          return [
+            reference[0],
+            compileConversionFactorsInModel(resolveTimeConversions),
+          ];
+        }
         return [reference[0], undefined];
       } else if (document.functions.has(reference[0])) {
         throw new CompileError(
@@ -314,11 +332,8 @@ const compileModel = (
       }
     }
 
-    const [object, conversionFactors] = resolveReference(
-      model,
-      reference,
-      resolveScope,
-    );
+    const [objectModel, _name, object, conversionFactors] =
+      resolveReferenceWithModelInfo(model, reference, resolveScope);
 
     if (object.kind !== "variable" && object.kind !== "reaction") {
       throw new CompileError(
@@ -331,41 +346,121 @@ const compileModel = (
       throw GOT_DELETED_SYMBOL;
     }
 
+    let conversionFactorsExpr: IridiumExpression<Metadata> | undefined;
     if (conversionFactors) {
-      return [
-        builder.getNameOf(object),
-        compileConversionFactors(conversionFactors, resolveVariable),
-      ];
-    } else {
-      return [builder.getNameOf(object), undefined];
+      conversionFactorsExpr =
+        compileConversionFactorsInModel(conversionFactors);
+    }
+
+    // we need to apply the opposite conversion factors
+    if (object.kind === "reaction") {
+      let objectTimeConversions: AntimonyConversionFactor[] | undefined;
+      let objectExtentConversions: AntimonyConversionFactor[] | undefined;
+      let current: AntimonyModel | undefined = objectModel;
+      while (current) {
+        if (current.timeConversionFactor) {
+          if (objectTimeConversions) {
+            objectTimeConversions.push(current.timeConversionFactor);
+          } else {
+            objectTimeConversions = [current.timeConversionFactor];
+          }
+        }
+
+        if (current.extentConversionFactor) {
+          if (objectExtentConversions) {
+            objectExtentConversions.push(current.extentConversionFactor);
+          } else {
+            objectExtentConversions = [current.extentConversionFactor];
+          }
+        }
+
+        current = objectModel.parent;
+      }
+
+      if (objectTimeConversions) {
+        const expr = compileConversionFactorsInModel(objectTimeConversions);
+        if (conversionFactorsExpr) {
+          conversionFactorsExpr = wrapConversionFactorExpr(
+            conversionFactorsExpr,
+            expr,
+            true,
+          );
+        } else {
+          conversionFactorsExpr = expr;
+        }
+      }
+
+      if (objectExtentConversions) {
+        const expr = compileConversionFactorsInModel(objectExtentConversions);
+        if (conversionFactorsExpr) {
+          conversionFactorsExpr = wrapConversionFactorExpr(
+            conversionFactorsExpr,
+            expr,
+            false,
+          );
+        } else {
+          conversionFactorsExpr = expr;
+        }
+      }
+    }
+
+    return [builder.getNameOf(object), conversionFactorsExpr];
+  };
+
+  compileConversionFactorsInModel = (
+    factors: AntimonyConversionFactor[],
+  ): IridiumExpression<Metadata> | undefined => {
+    const prevScope = resolveScope;
+    const prevTimeConversions = resolveTimeConversions;
+
+    resolveScope = model;
+    resolveTimeConversions = undefined;
+
+    try {
+      return compileConversionFactorsOriginal(factors, resolveVariable);
+    } catch (err) {
+      if (err === GOT_DELETED_SYMBOL) {
+        return undefined;
+      }
+
+      throw err;
+    } finally {
+      resolveScope = prevScope;
+      resolveTimeConversions = prevTimeConversions;
     }
   };
 
   /**
    * Returns a FormulaContext compiled to an IridiumExpression. Returns undefined if the formula
    * should be deleted (can happen if it contains a deleted variable).
+   *
+   * @param formula - The formula to compile
+   * @param conversionFactors - Any conversion factors to apply. If present, this will take precedent over the formula.target for conversion factors.
+   * @param useTimeConversion - Whether to apply the time conversion factor to the final result.
+   * @param useExtentConversion - Whether to apply the extent conversion factor to the final result.
+   * @param isRate - whether the formula is being compiled for a rate law or rate rule
    */
   const compileFormulaInModel = (
     formula: AntimonyFormula,
-    conversionFactors?: AntimonyReference[],
+    conversionFactors?: AntimonyConversionFactor[],
+    useTimeConversion = false,
+    useExtentConversion = false,
+    isRate = false,
   ): IridiumExpression<Metadata> | undefined => {
     const prevScope = resolveScope;
+    const prevTimeConversions = resolveTimeConversions;
 
     let conversionFactorExpr: IridiumExpression<Metadata> | undefined;
     if (conversionFactors) {
-      conversionFactorExpr = compileConversionFactors(
-        conversionFactors,
-        resolveVariable,
-      );
+      conversionFactorExpr = compileConversionFactorsInModel(conversionFactors);
     } else if (formula.target) {
       const [_, targetConversionFactors] = resolveReference(
         model,
         formula.target,
       );
       if (targetConversionFactors) {
-        conversionFactorExpr = compileConversionFactors(
+        conversionFactorExpr = compileConversionFactorsInModel(
           targetConversionFactors,
-          resolveVariable,
         );
       }
     }
@@ -376,12 +471,59 @@ const compileModel = (
       resolveScope = model;
     }
 
+    let timeConversion: AntimonyConversionFactor[] | undefined;
+    let extentConversion: AntimonyConversionFactor[] | undefined;
+
+    if (formula.scope) {
+      let current: AntimonyModel | undefined = resolveScope;
+      while (current) {
+        // we always need to calculate the time conversion since it might be read IN the formula
+        if (current.timeConversionFactor) {
+          if (!timeConversion) {
+            timeConversion = [current.timeConversionFactor];
+          } else {
+            timeConversion.push(current.timeConversionFactor);
+          }
+        }
+
+        if (useExtentConversion && current.extentConversionFactor) {
+          if (!extentConversion) {
+            extentConversion = [current.extentConversionFactor];
+          } else {
+            extentConversion.push(current.extentConversionFactor);
+          }
+        }
+
+        current = current.parent;
+      }
+
+      resolveTimeConversions = timeConversion;
+    }
+
     try {
-      return compileFormulaOriginal(
+      let result = compileFormulaOriginal(
         formula.ctx,
         resolveVariable,
         conversionFactorExpr,
       );
+
+      if (useExtentConversion && extentConversion) {
+        result = wrapConversionFactorExpr(
+          result,
+          compileConversionFactorsInModel(extentConversion),
+        );
+      }
+
+      if (useTimeConversion && timeConversion) {
+        result = wrapConversionFactorExpr(
+          result,
+          compileConversionFactorsInModel(timeConversion),
+          // Time conversion operates the other way for read operations.
+          !isRate,
+        );
+      }
+
+      return result;
     } catch (err) {
       if (err === GOT_DELETED_SYMBOL) {
         return undefined;
@@ -390,18 +532,18 @@ const compileModel = (
       throw err;
     } finally {
       resolveScope = prevScope;
+      resolveTimeConversions = prevTimeConversions;
     }
   };
 
   const compileStoichiometryInModel = (
     stoichiometry: AntimonyStoichiometry,
-    conversionFactors: AntimonyReference[] | undefined,
+    conversionFactors: AntimonyConversionFactor[] | undefined,
   ): IridiumExpression<Metadata> | undefined => {
     const prevScope = resolveScope;
 
     let conversionFactorExpr: IridiumExpression<Metadata> | undefined =
-      conversionFactors &&
-      compileConversionFactors(conversionFactors, resolveVariable);
+      conversionFactors && compileConversionFactorsInModel(conversionFactors);
     if (stoichiometry.scope) {
       resolveScope = resolveReference(
         model,
@@ -441,7 +583,13 @@ const compileModel = (
     let rate: IridiumExpression<Metadata>;
 
     if (reaction.rate) {
-      rate = compileFormulaInModel(reaction.rate) ?? {
+      rate = compileFormulaInModel(
+        reaction.rate,
+        undefined,
+        true,
+        true,
+        true,
+      ) ?? {
         kind: "number",
         value: 0,
       };
@@ -561,7 +709,13 @@ const compileModel = (
         };
       }
     } else if (variable.assignment?.kind === "rate") {
-      const rateExpression = compileFormulaInModel(variable.assignment.rate);
+      const rateExpression = compileFormulaInModel(
+        variable.assignment.rate,
+        undefined,
+        true,
+        false,
+        true,
+      );
       if (!rateExpression) {
         value = {
           kind: "initial",
@@ -637,7 +791,13 @@ const compileModel = (
     };
 
     if (event.delay) {
-      iridiumEvent.delay = compileFormulaInModel(event.delay);
+      iridiumEvent.delay = compileFormulaInModel(
+        event.delay,
+        undefined,
+        true,
+        false,
+        false,
+      );
     }
 
     if (event.options.priority) {

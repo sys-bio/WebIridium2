@@ -22,8 +22,8 @@ const UNSUPPORTED_TAGS = [
 ];
 const WIP_TAGS = [
   "CSymbolRateOf",
-  "comp:ConversionFactor",
-  "comp:TimeConversionFactor",
+  // "comp:ConversionFactor",
+  // "comp:TimeConversionFactor",
   "comp:ExtentConversionFactor",
   "comp:ExternalModelDefinition",
 ];
