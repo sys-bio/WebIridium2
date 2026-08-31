@@ -78,7 +78,7 @@ const simulationResults = import.meta.glob("./sbmlTestSuite/*.csv", {
 
 for (const [fileName, code] of Object.entries(simulationFiles)) {
   const modelName = fileName.replace(".ant", "");
-  const modelNumber = parseInt(modelName.match(/\d+/)?.[0]!)!;
+  const modelNumber = parseInt(modelName.match(/\d+/)![0]);
   const tags = parseTags(code as string);
   if (
     UNSUPPORTED_TAGS.some((t) => tags.includes(t)) ||
@@ -152,12 +152,7 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
     await appendResult({
       number: modelNumber,
       pass: passed ? "pass" : "fail",
-      error:
-        error instanceof Error
-          ? error.message
-          : error
-            ? String(error)
-            : "unknown",
+      error: error instanceof Error ? error.message : "unknown",
       timestamp: new Date().toISOString(),
     });
 

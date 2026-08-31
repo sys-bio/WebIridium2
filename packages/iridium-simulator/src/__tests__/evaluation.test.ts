@@ -1,69 +1,51 @@
 import { describe, expect, it } from "vitest";
-import { deriveModels } from "antimony-language/semantic";
 import { CompileModelError } from "../compile/errors.ts";
 import {
   evaluateInitialValues,
   getAssignmentOrder,
 } from "../compile/evaluate.ts";
 import { Compilation } from "../compile/Compilation.ts";
+import type { IridiumExpression } from "../ir/ast.ts";
+import { assignmentVariable, expr, parameter, model } from "../ir/dsl.ts";
 
-const evaluateModel = (code: string) => {
-  const models = deriveModels(code);
-  return evaluateInitialValues(new Compilation(models));
+const evaluateModel = (modelOptions: Parameters<typeof model>[0]) => {
+  return evaluateInitialValues(new Compilation(model(modelOptions)));
 };
 
-const getAssignmentOrderFromCode = (
-  code: string,
-  options?: { allowSelfCycle?: boolean },
+const getAssignmentOrderFromExprs = (
+  assignments: Record<string, IridiumExpression>,
 ): string[] => {
-  const models = deriveModels(code);
-  const model = new Compilation(models);
-  return getAssignmentOrder(
-    new Map(
-      Array.from(model.variables.values())
-        .filter((v) => v.assignment?.kind !== "rule")
-        .map((v) => [
-          v.name,
-          v.assignment?.kind !== "rule" ? v.assignment?.initial : undefined,
-        ]),
-    ),
-    options,
-  );
+  return getAssignmentOrder(new Map(Object.entries(assignments)));
 };
 
 describe("evaluation order", () => {
   it("should produce a dependency-ordered assignment list", () => {
-    expect(getAssignmentOrderFromCode("A = B + 1; B = C + 2; C = 3")).toEqual([
-      "C",
-      "B",
-      "A",
-    ]);
+    expect(
+      getAssignmentOrderFromExprs({
+        A: expr.add(expr.var("B"), expr.num(1)),
+        B: expr.add(expr.var("C"), expr.num(2)),
+        C: expr.num(3),
+      }),
+    ).toEqual(["C", "B", "A"]);
   });
 
   it("should not allow self-cycles when not permitted", () => {
-    expect(() => getAssignmentOrderFromCode("A = A + 5")).toThrow(
-      CompileModelError,
-    );
-  });
-
-  it("should allow self-cycles when permitted", () => {
-    expect(
-      getAssignmentOrderFromCode("A = A + 5; B = 5", { allowSelfCycle: true }),
-    ).toEqual(["A", "B"]);
-  });
-
-  it("should not allow cycles even with self-cycles", () => {
     expect(() =>
-      getAssignmentOrderFromCode("A = A + B; B = A + 5", {
-        allowSelfCycle: true,
-      }),
+      getAssignmentOrderFromExprs({ A: expr.add(expr.var("A"), expr.num(5)) }),
     ).toThrow(CompileModelError);
   });
 
-  it("should evaluate initial values in the correct topological order", () => {
-    const initialValues = evaluateModel(
-      "C = A + 1; B = C + 2; A = 1; D = A + B + C",
-    );
+  it("should evaluate initial values in the correct topological order", async () => {
+    const initialValues = await evaluateModel({
+      variables: {
+        A: parameter(expr.num(1)),
+        B: parameter(expr.add(expr.var("C"), expr.num(2))),
+        C: parameter(expr.add(expr.var("A"), expr.num(1))),
+        D: parameter(
+          expr.add(expr.var("A"), expr.add(expr.var("B"), expr.var("C"))),
+        ),
+      },
+    });
 
     expect(initialValues.get("A")).toBe(1);
     expect(initialValues.get("C")).toBe(2);
@@ -71,31 +53,48 @@ describe("evaluation order", () => {
     expect(initialValues.get("D")).toBe(7);
   });
 
-  it("should not include assignment rules in initial values", () => {
-    const initialValues = evaluateModel(
-      "C = A + 1; B = C + 2; A = 1; Total := A + B + C",
-    );
+  it("should include assignment rules in initial values", async () => {
+    const initialValues = await evaluateModel({
+      variables: {
+        A: parameter(expr.num(1)),
+        B: parameter(expr.add(expr.var("C"), expr.num(2))),
+        C: parameter(expr.add(expr.var("A"), expr.num(1))),
+        Total: assignmentVariable(
+          expr.add(expr.var("A"), expr.add(expr.var("B"), expr.var("C"))),
+        ),
+      },
+    });
 
     expect(initialValues.get("A")).toBe(1);
     expect(initialValues.get("C")).toBe(2);
     expect(initialValues.get("B")).toBe(4);
-    expect(initialValues.get("Total")).toBeUndefined();
+    expect(initialValues.get("Total")).toBe(7);
   });
 
-  it("should throw CompileError for cyclic assignments", () => {
-    expect(() => evaluateModel("A = B + 1; B = A + 1")).toThrow(
-      CompileModelError,
-    );
-  });
-
-  it("should throw CompileError for cyclic assignments big", () => {
+  it("should throw CompileModelError for cyclic assignments", () => {
     expect(() =>
-      evaluateModel(`
-      A = B + 1; B = C + 1; C = D + 1;
-      D = E + F;
-      E = G + 1; F = G + 1;
-      G = A + 1
-    `),
+      evaluateModel({
+        variables: {
+          A: parameter(expr.add(expr.var("B"), expr.num(1))),
+          B: parameter(expr.add(expr.var("A"), expr.num(1))),
+        },
+      }),
+    ).toThrow(CompileModelError);
+  });
+
+  it("should throw CompileModelError for cyclic assignments", () => {
+    expect(() =>
+      evaluateModel({
+        variables: {
+          A: parameter(expr.add(expr.var("B"), expr.num(1))),
+          B: parameter(expr.add(expr.var("C"), expr.num(1))),
+          C: parameter(expr.add(expr.var("D"), expr.num(1))),
+          D: parameter(expr.add(expr.var("E"), expr.var("F"))),
+          E: parameter(expr.add(expr.var("G"), expr.num(1))),
+          F: parameter(expr.add(expr.var("G"), expr.num(1))),
+          G: parameter(expr.add(expr.var("A"), expr.num(1))),
+        },
+      }),
     ).toThrow(CompileModelError);
   });
 });

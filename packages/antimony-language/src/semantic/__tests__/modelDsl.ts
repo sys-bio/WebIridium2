@@ -3,6 +3,8 @@
  * Meant to be used for testing with expect().toMatchObject.
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
+
 import type { AntimonyReference } from "../document";
 
 export type TestModel = {
@@ -25,7 +27,7 @@ export const model = (
     object.name = name;
   }
 
-  let model: TestModel = {
+  const model: TestModel = {
     kind: "model",
     objects,
   };
@@ -54,8 +56,6 @@ export const model = (
 
   return model;
 };
-
-/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
 
 type FuncWithModifiers<
   Func extends (this: {}, ...args: any[]) => any,
@@ -94,8 +94,6 @@ const funcWithModifiers = <
   };
   return new Proxy(function () {}, proxy);
 };
-
-/* eslint-enable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-empty-object-type */
 
 type VariableState = {
   const?: boolean;
@@ -145,7 +143,6 @@ const createVariableFunc = (kind: string) => {
       rate?: string,
     ): typeof antimonyObjectProto {
       if (formulaOrRule) {
-        // eslint-disable-next-line
         return Object.assign(Object.create(antimonyObjectProto), {
           kind: "variable",
           variableKind: kind,
@@ -170,7 +167,6 @@ const createVariableFunc = (kind: string) => {
         });
       }
 
-      // eslint-disable-next-line
       return Object.assign(Object.create(antimonyObjectProto), {
         kind: "variable",
         variableKind: kind,

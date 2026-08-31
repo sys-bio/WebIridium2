@@ -282,7 +282,7 @@ describe("in statement", () => {
 describe("function definition", () => {
   itShouldSucceedForAll({
     oneParam: "function a(b)b end",
-    whitespace: "function a(b)\n\n\n\t\t   b\t\t\n\n\ end",
+    whitespace: "function a(b)\n\n\n\t\t   b\t\t\n\n end",
     noParam: "function a() 5 end",
     semicolons: "function a(b);b;end",
     threeParam: "function a(b,d,e) b+d+e end",

@@ -260,7 +260,6 @@ const getReferencedVariables = (expression: IridiumExpression): Set<string> => {
  */
 export const getAssignmentOrder = (
   assignments: Map<string, IridiumExpression>,
-  { allowSelfCycle = false } = {},
 ): string[] => {
   const graph: Record<string, Set<string>> = {};
   const inDegrees: Record<string, number> = {};
@@ -272,8 +271,6 @@ export const getAssignmentOrder = (
 
   for (const [name, assignment] of assignments) {
     for (const neighbor of getReferencedVariables(assignment)) {
-      if (allowSelfCycle && neighbor === name) continue;
-
       if (Object.hasOwn(graph, neighbor)) {
         inDegrees[name] += 1;
         graph[neighbor].add(name);

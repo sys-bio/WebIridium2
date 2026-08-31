@@ -239,7 +239,7 @@ class FormulaCompilerListener implements AntimonyListener {
             ? "div"
             : ctx._op.text === "%"
               ? "mod"
-              : unreachable(`Unknown operator: ${ctx._op}`),
+              : unreachable(`Unknown operator: ${ctx._op.text}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
@@ -254,7 +254,7 @@ class FormulaCompilerListener implements AntimonyListener {
           ? "add"
           : ctx._op.text === "-"
             ? "sub"
-            : unreachable(`Unknown operator: ${ctx._op}`),
+            : unreachable(`Unknown operator: ${ctx._op.text}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },
@@ -278,7 +278,7 @@ class FormulaCompilerListener implements AntimonyListener {
                 ? "eq"
                 : ctx._op.text === "!="
                   ? "neq"
-                  : unreachable(`Unknown operator: ${ctx._op}`);
+                  : unreachable(`Unknown operator: ${ctx._op.text}`);
 
     // convert a < b < c == d into a < b && b < c && c == d
     const leftCtx = ctx.formula(0);
@@ -290,11 +290,7 @@ class FormulaCompilerListener implements AntimonyListener {
         right: {
           kind: "binary",
           op: op,
-          left: compileFormula(
-            leftCtx.formula(1),
-            this.#resolveVariable,
-            undefined,
-          ),
+          left: compileFormula(leftCtx.formula(1), this.#resolveVariable),
           right: right,
           metadata: { tree: leftCtx },
         },
@@ -328,7 +324,7 @@ class FormulaCompilerListener implements AntimonyListener {
           ? "and"
           : ctx._op.text === "||"
             ? "or"
-            : unreachable(`Unknown operator: ${ctx._op}`),
+            : unreachable(`Unknown operator: ${ctx._op.text}`),
       right: this.#stack.pop()!,
       left: this.#stack.pop()!,
       metadata: { tree: ctx },

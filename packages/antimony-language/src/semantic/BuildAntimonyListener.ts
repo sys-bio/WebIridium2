@@ -118,14 +118,20 @@ const copyAntimonyObject = (
         copy.unnamedImports.push(submodelCopy);
       }
 
-      if (Array.isArray(copy.timeConversionFactor)) {
+      if (
+        copy.timeConversionFactor &&
+        typeof copy.timeConversionFactor !== "number"
+      ) {
         copy.timeConversionFactor = [
           referencePrefix,
           ...copy.timeConversionFactor,
         ];
       }
 
-      if (Array.isArray(copy.extentConversionFactor)) {
+      if (
+        copy.extentConversionFactor &&
+        typeof copy.extentConversionFactor !== "number"
+      ) {
         copy.extentConversionFactor = [
           referencePrefix,
           ...copy.extentConversionFactor,
@@ -265,7 +271,7 @@ export const getReferenceFromVariable = (
     } else if (current instanceof ConstantContext) {
       current = current.variable();
     } else {
-      throw new Error(`Unknown variable type: ${variable}.`);
+      throw new Error(`Unknown variable type: ${variable.text}.`);
     }
   }
 
@@ -338,7 +344,7 @@ export const resolveReferenceWithModelInfo = (
       );
     }
 
-    let got: AntimonyObject | undefined =
+    const got: AntimonyObject | undefined =
       typeof name === "number"
         ? current.unnamedImports[name]
         : current.objects.get(name);
@@ -652,7 +658,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         ) as unknown as ModelObjectWithModelInfo;
       }
 
-      let got: AntimonyObject | undefined =
+      const got: AntimonyObject | undefined =
         typeof name === "number"
           ? current.unnamedImports[name]
           : current.objects.get(name);
@@ -707,10 +713,12 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
     }
 
-    let [model, name, object] = this.#resolveVariable(
+    const [model, name, gotObject] = this.#resolveVariable(
       this.#getActiveModel(),
       variableCtx,
     );
+
+    let object = gotObject;
 
     if (isBuiltinName(name)) {
       return undefined;
@@ -1115,17 +1123,16 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const nameLabelCtx = ctx.nameLabel();
-    let { reference, compartment } = this.#getOrDefaultReference(
-      nameLabelCtx,
-      "_J",
-    );
+    const { reference, compartment: gotCompartment } =
+      this.#getOrDefaultReference(nameLabelCtx, "_J");
+    let compartment = gotCompartment;
 
     const activeModel = this.#getActiveModel();
     const [parentModel, name, _existing] = this.#resolveReferenceForAssignment(
       activeModel,
       reference,
       nameLabelCtx ?? ctx,
-    ) as ModelObjectWithModelInfo;
+    );
 
     const compartmentCtx = ctx.inCompartment();
     if (compartmentCtx) {
@@ -1232,7 +1239,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       this.#getActiveModel(),
       reference,
       nameLabelCtx ?? ctx,
-    ) as ModelObjectWithModelInfo;
+    );
 
     this.#setObject(
       parentModel,
@@ -1436,7 +1443,7 @@ export class BuildAntimonyListener implements AntimonyListener {
           this.#getActiveModel(),
           importReference,
           nameLabelCtx,
-        ) as ModelObjectWithModelInfo;
+        );
     } else {
       parentModel = this.#getActiveModel();
     }

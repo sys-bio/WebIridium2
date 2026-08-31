@@ -8,9 +8,9 @@ import { LibSbmlSimSimulator } from "../simulation/LibSbmlSimSimulator.ts";
 import { testModels } from "./testModels.ts";
 
 const simulators: Record<string, new () => Simulator> = {
-  // copasi: CopasiSimulator,
+  copasi: CopasiSimulator,
   iridium: IridiumSimulator,
-  // libsbmlsim: LibSbmlSimSimulator,
+  libsbmlsim: LibSbmlSimSimulator,
 };
 
 const simulatorModels: Record<string, Record<string, string>> = {

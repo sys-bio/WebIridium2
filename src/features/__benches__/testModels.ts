@@ -11,5 +11,5 @@ export const testModels = {
   "steve medium": steveMedium,
   "firczuk large": firczukLarge,
   "smallbone xlarge": smallboneXlarge,
-  // "pi small": piSmall,
+  "pi small": piSmall,
 };

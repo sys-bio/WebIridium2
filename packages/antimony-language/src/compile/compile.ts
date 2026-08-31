@@ -1,6 +1,5 @@
 import {
   compile as compileIridium,
-  prettyIridiumExpressionToString,
   type IridiumModel,
   type IridiumReaction,
   type IridiumVariable,
@@ -177,16 +176,16 @@ class IrBuilder {
   ): void {
     const containerName = this.getNameOf(containerSource);
     const containedName = this.getNameOf(containedSource);
-    let containerArray = this.#compartments.get(containerName);
-    if (!containerArray) {
-      const containedArray = [containedName];
+    let containedArray = this.#compartments.get(containerName);
+    if (!containedArray) {
+      containedArray = [containedName];
       this.#compartments.set(containerName, containedArray);
       this.#ir.compartments.push({
         containerVariable: containerName,
         containedVariables: containedArray,
       });
     } else {
-      containerArray.push(containedName);
+      containedArray.push(containedName);
     }
   }
 
@@ -300,11 +299,6 @@ const compileModel = (
   let resolveTimeConversions: AntimonyConversionFactor[] | undefined =
     undefined;
 
-  // Forward declare this
-  let compileConversionFactorsInModel: (
-    factors: AntimonyConversionFactor[],
-  ) => IridiumExpression<Metadata> | undefined;
-
   const resolveVariable = (
     reference: AntimonyReference,
     ctx?: VariableContext,
@@ -337,6 +331,7 @@ const compileModel = (
     }
 
     if (object.isDeleted) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- used for special control flow
       throw GOT_DELETED_SYMBOL;
     }
 
@@ -401,7 +396,7 @@ const compileModel = (
     return [builder.getNameOf(object), conversionFactorsExpr];
   };
 
-  compileConversionFactorsInModel = (
+  const compileConversionFactorsInModel = (
     factors: AntimonyConversionFactor[],
   ): IridiumExpression<Metadata> | undefined => {
     const prevScope = resolveScope;
@@ -536,7 +531,7 @@ const compileModel = (
   ): IridiumExpression<Metadata> | undefined => {
     const prevScope = resolveScope;
 
-    let conversionFactorExpr: IridiumExpression<Metadata> | undefined =
+    const conversionFactorExpr: IridiumExpression<Metadata> | undefined =
       conversionFactors && compileConversionFactorsInModel(conversionFactors);
     if (stoichiometry.scope) {
       resolveScope = resolveReference(
