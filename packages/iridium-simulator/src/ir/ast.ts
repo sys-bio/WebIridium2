@@ -8,6 +8,11 @@ export type IridiumExpressionVariable<Metadata = unknown> = {
   name: string;
   metadata?: Metadata;
 };
+export type IridiumExpressionRateOf<Metadata = unknown> = {
+  kind: "rateOf";
+  name: string;
+  metadata?: Metadata;
+};
 export type IridiumBinaryOperator =
   | "add"
   | "sub"
@@ -47,6 +52,7 @@ export type IridiumExpressionCall<Metadata = unknown> = {
 export type IridiumExpression<Metadata = unknown> =
   | IridiumExpressionNumber<Metadata>
   | IridiumExpressionVariable<Metadata>
+  | IridiumExpressionRateOf<Metadata>
   | IridiumExpressionBinary<Metadata>
   | IridiumExpressionUnary<Metadata>
   | IridiumExpressionCall<Metadata>;
@@ -57,6 +63,9 @@ export type IridiumExpressionListener<Metadata = unknown> = {
 
   beforeVariable?: (variable: IridiumExpressionVariable<Metadata>) => void;
   afterVariable?: (variable: IridiumExpressionVariable<Metadata>) => void;
+
+  beforeRateOf?: (rateOf: IridiumExpressionRateOf<Metadata>) => void;
+  afterRateOf?: (rateOf: IridiumExpressionRateOf<Metadata>) => void;
 
   beforeBinary?: (binary: IridiumExpressionBinary<Metadata>) => void;
   afterBinary?: (binary: IridiumExpressionBinary<Metadata>) => void;
@@ -78,6 +87,9 @@ export const walkExpression = <T>(
   } else if (expr.kind === "variable") {
     listener?.beforeVariable?.(expr);
     listener?.afterVariable?.(expr);
+  } else if (expr.kind === "rateOf") {
+    listener?.beforeRateOf?.(expr);
+    listener?.afterRateOf?.(expr);
   } else if (expr.kind === "binary") {
     listener?.beforeBinary?.(expr);
     walkExpression(expr.left, listener);
@@ -99,6 +111,7 @@ export const walkExpression = <T>(
 export type IridiumExpressionVisitor<T, Metadata = unknown> = {
   visitNumber?: (number: IridiumExpressionNumber<Metadata>) => T;
   visitVariable?: (variable: IridiumExpressionVariable<Metadata>) => T;
+  visitRateOf?: (rateOf: IridiumExpressionRateOf<Metadata>) => T;
   visitBinary?: (binary: IridiumExpressionBinary<Metadata>) => T;
   visitUnary?: (unary: IridiumExpressionUnary<Metadata>) => T;
   visitCall?: (call: IridiumExpressionCall<Metadata>) => T;
@@ -114,6 +127,9 @@ export const visitExpression = <T, Metadata = unknown>(
   } else if (expr.kind === "variable") {
     if (!visitor.visitVariable) throw new Error("Missing visitVariable");
     return visitor.visitVariable(expr);
+  } else if (expr.kind === "rateOf") {
+    if (!visitor.visitRateOf) throw new Error("Missing visitRateOf");
+    return visitor.visitRateOf(expr);
   } else if (expr.kind === "binary") {
     if (!visitor.visitBinary) throw new Error("Missing visitBinary");
     return visitor.visitBinary(expr);
@@ -136,6 +152,8 @@ export const prettyIridiumExpressionToString = (
       return expr.value.toString();
     case "variable":
       return expr.name;
+    case "rateOf":
+      return expr.name + "'";
     case "unary":
       return (
         "(" + expr.op + " " + prettyIridiumExpressionToString(expr.expr) + ")"

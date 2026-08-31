@@ -213,6 +213,11 @@ export const expr = {
     name,
     metadata,
   }),
+  rateOf: <T = unknown>(name: string, metadata?: T): IridiumExpression<T> => ({
+    kind: "rateOf",
+    name,
+    metadata,
+  }),
   add: <T = unknown>(
     left: IridiumExpression<T>,
     right: IridiumExpression<T>,
