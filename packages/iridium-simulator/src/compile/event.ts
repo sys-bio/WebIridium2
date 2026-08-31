@@ -29,7 +29,7 @@ import {
 import { emitComparisonOperator, emitExpression } from "./expression.ts";
 import type { IridiumEvent, IridiumEventAssignment } from "../ir/model.ts";
 import type { RuntimeEvent, RuntimePieceEvent } from "../runtime/model.ts";
-import { builtinConstants } from "antimony-language/semantic/builtins";
+import { builtinConstants } from "../runtime/builtins.ts";
 
 const ROOTS_PARAMS = [
   ValType.f64,

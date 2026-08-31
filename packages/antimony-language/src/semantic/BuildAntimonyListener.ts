@@ -40,7 +40,7 @@ import {
   type AntimonyStoichiometry,
   type AntimonyConversionFactor,
 } from "./document";
-import { isBuiltinName, builtinEventOptions } from "./builtins";
+import { isBuiltinName } from "./builtins";
 
 type DeclarationState = {
   kind?: VariableKind;
@@ -53,6 +53,13 @@ const ALLOWED_DECLARATIONS = new Set<VariableKind>(["species", "compartment"]);
 export const DEFAULT_COMPARTMENT_NAME = "default_compartment";
 export const DEFAULT_MODEL_NAME = "__main";
 export const DEFAULT_IMPORT_PREFIX = "_sys";
+
+export const builtinEventOptions = [
+  "t0",
+  "priority",
+  "fromTrigger",
+  "persistent",
+];
 
 const prependReferenceForFormula = (
   formula: { scope: AntimonyReference | null; target?: AntimonyReference },

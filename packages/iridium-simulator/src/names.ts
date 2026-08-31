@@ -8,7 +8,7 @@ export const ROOTS_NAME = "roots";
 export const CHECK_ROOTS_NAME = "checkRoots";
 export const UPDATE_CONDITIONS_NAME = "updateConditions";
 
-export { TIME_NAME } from "antimony-language/semantic/builtins";
+export { TIME_NAME } from "./runtime/builtins.ts";
 
 export const CORE_NAMESPACE = "core";
 export const MEMORY_IMPORT_NAME = "mem";

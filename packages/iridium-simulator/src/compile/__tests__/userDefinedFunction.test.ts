@@ -1,4 +1,4 @@
-import { CompileInvariantError } from "antimony-language/errors";
+import { CompileInvariantError } from "../errors";
 import { describe, it, expect } from "vitest";
 import { checkNoRecursiveCalls } from "../userDefinedFunction";
 import { expr, func } from "../../ir/dsl";

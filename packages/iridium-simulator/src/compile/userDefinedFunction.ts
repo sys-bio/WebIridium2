@@ -1,4 +1,3 @@
-import { CompileInvariantError } from "antimony-language/errors";
 import { walkExpression } from "../ir/ast";
 import type { IridiumFunction } from "../ir/model";
 import { OpCode, ValType } from "./codes";
@@ -7,6 +6,7 @@ import { emitExpression } from "./expression";
 import type { WasmFunction } from "./functions";
 import { FunctionScope } from "./scope";
 import { LocalsSymbolTable, type FunctionTable } from "./symbolTables";
+import { CompileInvariantError } from "./errors";
 
 export const compileAllUserDefinedFunctions = (
   functions: IridiumFunction[],

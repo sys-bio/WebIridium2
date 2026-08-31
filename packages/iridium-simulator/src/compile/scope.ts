@@ -4,7 +4,7 @@ import type { FunctionTable, LocalsSymbolTable } from "./symbolTables";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
-import { builtinConstants } from "antimony-language/semantic/builtins";
+import { builtinConstants } from "../runtime/builtins.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import type { IridiumExpressionVariable } from "../ir/ast";
 

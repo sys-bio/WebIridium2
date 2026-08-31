@@ -16,10 +16,9 @@ import {
   predefinedFuncDefs,
   type InlineFunction,
 } from "./functions";
-import { CompileError } from "./errors";
+import { CompileError, CompileInvariantError } from "./errors";
 import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
-import { CompileInvariantError } from "antimony-language/errors";
 import type { Compilation } from "./Compilation";
 
 export const emitComparisonOperator = (emitter: Emitter, op: string): void => {

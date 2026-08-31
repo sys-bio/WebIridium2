@@ -1,7 +1,7 @@
 import type {
   BuiltinFunctionName,
   builtinFunctions,
-} from "antimony-language/semantic/builtins";
+} from "../runtime/builtins.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
 import { LocalsSymbolTable, type FunctionTable } from "./symbolTables.ts";
