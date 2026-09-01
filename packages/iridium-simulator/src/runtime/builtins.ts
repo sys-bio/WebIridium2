@@ -1,4 +1,5 @@
 export const TIME_NAME = "time";
+export const RATE_OF_NAME = "rateOf";
 
 export const isBuiltinName = (name: string): boolean => {
   return (

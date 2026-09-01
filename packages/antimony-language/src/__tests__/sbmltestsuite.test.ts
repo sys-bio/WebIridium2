@@ -19,9 +19,10 @@ const UNSUPPORTED_TAGS = [
   // NEED TO TEST SEPARATELY (not fully converted by libantimony)
   "ConversionFactors",
   "HasOnlySubstanceUnits",
-  "NoMathML",
+  // "NoMathML",
 ];
-const WIP_TAGS = ["CSymbolRateOf"];
+// Any tags here will show up yellow in the plotSbmlResults plot.
+const WIP_TAGS: string[] = [];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
   // libantimony adds an underscore at the end. Expected output expects them

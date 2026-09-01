@@ -69,6 +69,9 @@ export const emitExpression = (
     visitVariable: (expr) => {
       scope.emitLoadVariable(emitter, expr);
     },
+    visitRateOf: (expr) => {
+      scope.emitLoadRate(emitter, expr);
+    },
     visitUnary: ({ op, expr }) => {
       visitExpression(expr, visitor);
 

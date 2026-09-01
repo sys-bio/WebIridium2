@@ -6,10 +6,15 @@ import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
 import { builtinConstants } from "../runtime/builtins.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-import type { IridiumExpressionVariable } from "../ir/ast";
+import type {
+  IridiumExpressionRateOf,
+  IridiumExpressionVariable,
+} from "../ir/ast";
+import { emitExpression } from "./expression.ts";
 
 export interface Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void;
+  emitLoadRate(emitter: Emitter, expr: IridiumExpressionRateOf): void;
   emitCallOp(emitter: Emitter, name: string): void;
 }
 
@@ -50,19 +55,6 @@ export class GlobalScope implements Scope {
     } else if (Object.hasOwn(builtinConstants, name)) {
       emitter.emitByte(OpCode.f64const);
       emitter.emitFloat64(builtinConstants[name].value);
-    } else if (this.#compilation.pTable.has(name)) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(this.localsTable.getParam(P_PARAM));
-
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint(MEM_ALIGNMENT);
-      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
-
-      const variable = this.#compilation.variables.get(name);
-      const compartment = this.#compilation.compartments.get(name);
-      if (!variable?.hasSubstanceOnly && compartment) {
-        this.emitConvertToConcentration(emitter, compartment.name);
-      }
     } else if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(Y_PARAM));
@@ -76,6 +68,83 @@ export class GlobalScope implements Scope {
       if (!variable?.hasSubstanceOnly && compartment) {
         this.emitConvertToConcentration(emitter, compartment.name);
       }
+    } else if (this.#compilation.pTable.has(name)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(P_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+
+      const variable = this.#compilation.variables.get(name);
+      const compartment = this.#compilation.compartments.get(name);
+      if (!variable?.hasSubstanceOnly && compartment) {
+        this.emitConvertToConcentration(emitter, compartment.name);
+      }
+    } else {
+      return false;
+    }
+
+    return true;
+  }
+
+  emitLoadRateFromName(emitter: Emitter, name: string): boolean {
+    if (name === TIME_NAME) {
+      // TODO: no idea if this is right
+      emitter.emitF64ConstOp(1);
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(T_PARAM));
+    } else if (Object.hasOwn(builtinConstants, name)) {
+      // TODO: does the spec allow this
+      emitter.emitF64ConstOp(0);
+    } else if (this.#compilation.pTable.has(name)) {
+      const variable = this.#compilation.variables.get(name);
+
+      if (
+        variable &&
+        variable.value.kind !== "rate" &&
+        variable.value.kind !== "reaction"
+      ) {
+        // too hard to find he rateOf this
+        if (variable.value.kind === "assignment") {
+          return false;
+        }
+
+        emitter.emitF64ConstOp(0);
+        return true;
+      }
+
+      const compartment = this.#compilation.compartments.get(name);
+      if (variable && !variable.hasSubstanceOnly && compartment) {
+        // if the compartment has its own rate, we need to recalculate everything
+        if (compartment.value.kind === "rate") {
+          if (variable.value.kind === "rate") {
+            emitExpression(variable.value.rate, emitter, this, {
+              compilation: this.#compilation,
+            });
+            return true;
+          } else {
+            throw new Error(
+              "TODO: handle rateOf with reaction variable inside changing compartment",
+            );
+          }
+        } else if (compartment.value.kind === "reaction") {
+          throw new Error(
+            "TODO: handle rateOf with variable inside compartment with reaction",
+          );
+        }
+      }
+
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(P_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+
+      if (!variable?.hasSubstanceOnly && compartment) {
+        this.emitConvertToConcentration(emitter, compartment.name);
+      }
     } else {
       return false;
     }
@@ -86,6 +155,12 @@ export class GlobalScope implements Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
     if (!this.emitLoadVariableFromName(emitter, expr.name)) {
       throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
+    }
+  }
+
+  emitLoadRate(emitter: Emitter, expr: IridiumExpressionRateOf): void {
+    if (!this.emitLoadRateFromName(emitter, expr.name)) {
+      throw new CompileError(`No rateOf: ${expr.name}`, expr.metadata);
     }
   }
 
@@ -120,6 +195,10 @@ export class FunctionScope implements Scope {
     } else {
       throw new CompileError(`Unbound name: ${expr.name}.`, expr.metadata);
     }
+  }
+
+  emitLoadRate(_emitter: Emitter, expr: IridiumExpressionRateOf): void {
+    throw new CompileError("rateOf not allowed function body.", expr);
   }
 
   emitCallOp(emitter: Emitter, name: string): void {

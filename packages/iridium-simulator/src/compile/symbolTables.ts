@@ -12,6 +12,10 @@ export class IndexSymbolTable {
     this.#map = new Map();
   }
 
+  get size() {
+    return this.#map.size;
+  }
+
   /**
    * Gets index for item.
    * @throws - if item is not found

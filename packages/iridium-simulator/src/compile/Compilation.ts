@@ -8,6 +8,9 @@ import type {
 import { IndexSymbolTable } from "./symbolTables";
 import { CompileInvariantError, CompileModelError } from "./errors";
 import type { IridiumExpression } from "../ir/ast";
+import { AssignmentGraph } from "./graph";
+import { expr } from "../ir/dsl";
+import { tryEvaluateStoichiometry } from "./evaluate";
 
 /**
  * Coordinating object for a compilation pass, maintaining relevant state.
@@ -19,6 +22,9 @@ export class Compilation {
   reactions: Map<string, IridiumReaction>;
   events: Map<string, IridiumEvent>;
   functions: Map<string, IridiumFunction>;
+
+  /** Assignment graph for non-initial values. */
+  assignmentGraph: AssignmentGraph;
 
   yVars: string[];
   pVars: string[];
@@ -87,6 +93,12 @@ export class Compilation {
     for (const reaction of model.reactions) {
       this.pTable.add(reaction.name);
     }
+    // we actually add the yVars to pTable to represent the ydot
+    for (const name of this.yVars) {
+      this.pTable.add(name);
+    }
+
+    this.assignmentGraph = createAssignmentsGraphFromCompilation(this);
   }
 
   addPiecewisePiece(
@@ -156,3 +168,177 @@ export class Compilation {
     }
   }
 }
+
+export const createAssignmentsGraphFromCompilation = (
+  { yTable, pTable, variables, reactions, compartments }: Compilation,
+  isForInitialValues?: boolean,
+): AssignmentGraph => {
+  const yAssignments = new Map<string, IridiumExpression>();
+  const ydotAssignments = new Map<string, IridiumExpression>();
+  const pAssignments = new Map<string, IridiumExpression>();
+
+  // collect stoichiometry matrix
+
+  const involvedReactions: Map<
+    string,
+    Map<string, IridiumExpression>
+  > = new Map();
+
+  const mergeMapWithAdd = (
+    map: Map<string, IridiumExpression>,
+    name: string,
+    expr: IridiumExpression,
+  ) => {
+    if (map.has(name)) {
+      map.set(name, {
+        kind: "binary",
+        op: "add",
+        left: map.get(name)!,
+        right: expr,
+      });
+    } else {
+      map.set(name, expr);
+    }
+  };
+
+  for (const reaction of reactions.values()) {
+    for (const reactant of reaction.reactants) {
+      const reactantMap = involvedReactions.get(reactant.name);
+      const stoichExpr: IridiumExpression = {
+        kind: "unary",
+        op: "neg",
+        expr: reactant.stoichiometry,
+      };
+      if (reactantMap) {
+        mergeMapWithAdd(reactantMap, reaction.name, stoichExpr);
+      } else {
+        involvedReactions.set(
+          reactant.name,
+          new Map([[reaction.name, stoichExpr]]),
+        );
+      }
+    }
+
+    for (const product of reaction.products) {
+      const productMap = involvedReactions.get(product.name);
+      if (productMap) {
+        mergeMapWithAdd(productMap, reaction.name, product.stoichiometry);
+      } else {
+        involvedReactions.set(
+          product.name,
+          new Map([[reaction.name, product.stoichiometry]]),
+        );
+      }
+    }
+  }
+
+  // state assignments
+
+  for (const reaction of reactions.values()) {
+    pAssignments.set(reaction.name, reaction.rate);
+  }
+
+  const addInitialValue = (
+    assignmentTable: Map<string, IridiumExpression>,
+    variable: IridiumVariable,
+  ): void => {
+    const compartment = compartments.get(variable.name);
+    if (isForInitialValues && "initial" in variable.value) {
+      if (!isForInitialValues && !variable.hasSubstanceOnly && compartment) {
+        assignmentTable.set(
+          variable.name,
+          expr.mul(variable.value.initial, expr.var(compartment.name)),
+        );
+      } else {
+        assignmentTable.set(variable.name, variable.value.initial);
+      }
+    }
+  };
+
+  for (const variable of variables.values()) {
+    switch (variable.value.kind) {
+      case "initial":
+        addInitialValue(pAssignments, variable);
+        break;
+      case "rate": {
+        addInitialValue(yAssignments, variable);
+
+        const compartment = compartments.get(variable.name);
+        let assignment = variable.value.rate;
+        if (!isForInitialValues && !variable.hasSubstanceOnly && compartment) {
+          assignment = expr.mul(assignment, expr.var(compartment.name));
+          // NOTE: We are failing to account for the scenario where the COMPARTMENT has an assignment rule since that would
+          //       require differentiating the volume which is not fun.
+          if (
+            compartment.value.kind === "rate" ||
+            compartment.value.kind === "reaction"
+          ) {
+            // do product rule: d/dt (x * y) = x * dy/dt + y * dx/dt
+            assignment = expr.add(
+              assignment,
+              expr.mul(expr.rateOf(compartment.name), expr.var(variable.name)),
+            );
+          }
+        }
+        ydotAssignments.set(variable.name, assignment);
+        break;
+      }
+      case "assignment": {
+        const compartment = compartments.get(variable.name);
+        if (!isForInitialValues && !variable.hasSubstanceOnly && compartment) {
+          pAssignments.set(
+            variable.name,
+            expr.mul(variable.value.assignment, expr.var(compartment.name)),
+          );
+        } else {
+          pAssignments.set(variable.name, variable.value.assignment);
+        }
+        break;
+      }
+      case "reaction": {
+        addInitialValue(yAssignments, variable);
+
+        const reactions = involvedReactions.get(variable.name);
+
+        if (reactions) {
+          const terms: IridiumExpression[] = [];
+          for (const [reaction, stoichExpr] of reactions) {
+            const constStoich = tryEvaluateStoichiometry(stoichExpr);
+            if (constStoich === 0) continue;
+
+            if (constStoich === null) {
+              // can't be evaluated at compile-time, manually evaluate at runtime
+              terms.push(expr.mul(expr.var(reaction), stoichExpr));
+            } else if (constStoich === -1) {
+              terms.push(expr.neg(expr.var(reaction)));
+            } else if (constStoich !== 1) {
+              terms.push(expr.mul(expr.var(reaction), expr.num(constStoich)));
+            } else {
+              terms.push(expr.var(reaction));
+            }
+          }
+
+          ydotAssignments.set(
+            variable.name,
+            terms.reduce<IridiumExpression | undefined>(
+              (acc, current) => (acc ? expr.add(current, acc) : current),
+              undefined,
+            ) ?? expr.num(0),
+          );
+        } else {
+          ydotAssignments.set(variable.name, expr.num(0));
+        }
+
+        break;
+      }
+    }
+  }
+
+  return new AssignmentGraph(
+    yTable,
+    pTable,
+    yAssignments,
+    ydotAssignments,
+    pAssignments,
+  );
+};

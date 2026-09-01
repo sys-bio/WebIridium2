@@ -16,7 +16,7 @@ import {
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
-import defaultModel from "../../__tests__/results/example_firczuk_large.ant?raw";
+import defaultModel from "../../__tests__/results/default.ant?raw";
 import { writeFileSync } from "node:fs";
 
 // enable this to write a `defaultModel.wasm` file wherever you are.
@@ -221,6 +221,30 @@ describe("ir", () => {
           B: parameter(0),
         }),
       );
+    });
+
+    describe("rateOf", () => {
+      it("should compile to rateOf node", () => {
+        expectCompilesTo(
+          "A = 5 * rateOf(B)",
+          variables({
+            A: parameter(expr.mul(expr.num(5), expr.rateOf("B"))),
+            B: parameter(0),
+          }),
+        );
+      });
+
+      it("should error when called with more than one argument", () => {
+        expect(() => {
+          compileToIr("A = rateOf(B, C)");
+        }).toThrowError(CompileError);
+      });
+
+      it("should error when called with non-variable argument", () => {
+        expect(() => {
+          compileToIr("A = rateOf(5)");
+        }).toThrowError(CompileError);
+      });
     });
   });
 

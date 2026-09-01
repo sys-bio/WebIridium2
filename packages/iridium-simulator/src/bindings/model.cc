@@ -100,7 +100,7 @@ Model::Model(
         y_ = N_VNew_Serial(y.size(), ctx_);
     }
 
-    p_.resize(original_p_.size() + num_reactions_);
+    p_.resize(original_p_.size() + num_reactions_ + original_y_.size());
     dummy_y_dot_ = new double[NV_LENGTH_S(y_)];
     abs_tol_v_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx_);
 
@@ -520,10 +520,10 @@ void Model::RecordToOutputArray(double time) {
     std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_y_.size(), output_array_ + start);
     std::copy(
         p_.data(),
-        p_.data() + p_.size(),
+        p_.data() + p_.size() - original_y_.size(),
         output_array_ + start + original_y_.size()
     );
-    output_array_[start + original_y_.size() + p_.size()] = time;
+    output_array_[start + original_y_.size() + p_.size() - original_y_.size()] = time;
 
     convert_to_concentrations_fn_(
         output_array_ + start,

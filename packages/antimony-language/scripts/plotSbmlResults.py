@@ -52,8 +52,8 @@ def build_matrices(results):
 def plot_heatmap(pass_arr, max_number, figsize=(10, 10)):
     """Display an interactive grid: green=pass, red=fail, gray=padding."""
     # grid size (square-ish)
-    cols = int(math.ceil(math.sqrt(max_number)))
-    rows = int(math.ceil(max_number / cols))
+    cols = int(48)
+    rows = int(math.ceil(max_number / 48))
 
     # Build grid values: 0=empty, 1=fail, 2=pass
     pass_grid = [[0 for _ in range(cols)] for _ in range(rows)]
@@ -70,7 +70,7 @@ def plot_heatmap(pass_arr, max_number, figsize=(10, 10)):
 
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_title(f"SBML Test Results: grid {rows}x{cols}")
+    ax.set_title(f"SBML Test Results: grid {cols}x{rows}")
 
     # grid lines
     for x in range(cols + 1):

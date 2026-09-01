@@ -25,6 +25,7 @@ import type {
 } from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
 import { CompileError } from "../errors";
+import { RATE_OF_NAME } from "../../../iridium-simulator/src/runtime/builtins";
 
 export type ResolveReferenceFn = (
   reference: AntimonyReference,
@@ -156,6 +157,7 @@ class FormulaCompilerListener implements AntimonyListener {
   }
 
   exitFunctionCall(ctx: FunctionCallContext): void {
+    const name = ctx.NAME().text;
     const count = ctx.argumentList()?.formula()?.length ?? 0;
     const args: IridiumExpression<Metadata>[] = [];
 
@@ -165,10 +167,25 @@ class FormulaCompilerListener implements AntimonyListener {
 
     args.reverse();
 
+    if (name === RATE_OF_NAME) {
+      if (args.length !== 1 || args[0].kind !== "variable") {
+        throw new CompileError(
+          `${RATE_OF_NAME} must be called with an object ID as its only argument.`,
+          { tree: ctx },
+        );
+      } else {
+        this.#stack.push({
+          kind: "rateOf",
+          name: args[0].name,
+        });
+        return;
+      }
+    }
+
     this.#stack.push({
       kind: "call",
-      args: args,
-      name: ctx.NAME().text,
+      args,
+      name,
       metadata: { tree: ctx },
     });
   }
