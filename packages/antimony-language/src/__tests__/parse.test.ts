@@ -189,6 +189,8 @@ describe("event", () => {
     option2: "at dog > 5, t0=true, p3=2: dog = 6",
     delayWithOption: "at 5 after dog > 5, t0=true, p3=2: dog = 6",
     delayWithOption2: "at 5 after dog > 5, t0=false: dog = 6",
+    noValue: "at time > 5: A =;",
+    noValueMultiple: "at time > 5: A =, B=;",
   });
 });
 

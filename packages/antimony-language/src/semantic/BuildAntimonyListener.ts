@@ -1210,9 +1210,12 @@ export class BuildAntimonyListener implements AntimonyListener {
         continue;
       }
 
+      const formula = assignment.formula();
+      if (!formula) continue;
+
       assignments.set(
         getReferenceFromVariable(assignment.variable()),
-        this.#createFormula(assignment.formula()),
+        this.#createFormula(formula),
       );
     }
 

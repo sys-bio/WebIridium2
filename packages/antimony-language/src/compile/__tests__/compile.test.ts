@@ -487,6 +487,22 @@ describe("ir", () => {
           }),
         );
       });
+
+      it("should ignore empty assignments", () => {
+        expectCompilesToExact(
+          "E: at time > 5: A =, B = 5",
+          model({
+            variables: {
+              B: parameter(0),
+            },
+            events: {
+              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+                B: expr.num(5),
+              }),
+            },
+          }),
+        );
+      });
     });
   });
 

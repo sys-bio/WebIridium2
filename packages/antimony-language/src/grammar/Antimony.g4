@@ -83,7 +83,7 @@ event            : nameLabel? AT trigger=formula eventOptions? ':' eventAssignme
 eventOptions     : (',' eventOption)+;
 eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
-eventAssignment  : variable '=' formula;
+eventAssignment  : variable '=' formula?;
 
 rename : variable conversionFactorLeft? IS variable
        | variable IS variable conversionFactorRight?

@@ -581,6 +581,17 @@ describe("events", () => {
     );
   });
 
+  it("should ignore empty assignments", () => {
+    expectModel(
+      "at time > 5: A =, B = 4;",
+      model({
+        _E0: event("time>5", {
+          B: "4",
+        }),
+      }),
+    );
+  });
+
   it("should error for invalid option", () => {
     expect(() => {
       buildAntimonyDocument("at 5, t = false: A = 0");

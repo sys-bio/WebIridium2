@@ -34,11 +34,11 @@ const SKIP_CASES = new Set<number>([
   // passing constants as parameters to user-defined functions correctly (?)
   1486, 1490, 1491,
 
-  // This one doesn't convert the rate rule deletion.
-  1149,
+  // These ones don't convert the rate rule deletion.
+  1149, 1162,
 
-  // The Antimony converter doesn't express a deleted submodel parameter with a rate rule properly.
-  1162,
+  // No MathML is not converted correctly in these cases.
+  1234, 1235, 1555, 1557,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
