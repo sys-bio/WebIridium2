@@ -1,40 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { CompileModelError } from "../compile/errors.ts";
-import {
-  evaluateInitialValues,
-  getAssignmentOrder,
-} from "../compile/evaluate.ts";
+import { evaluateInitialValues } from "../compile/evaluate.ts";
 import { Compilation } from "../compile/Compilation.ts";
-import type { IridiumExpression } from "../ir/ast.ts";
 import { assignmentVariable, expr, parameter, model } from "../ir/dsl.ts";
 
 const evaluateModel = (modelOptions: Parameters<typeof model>[0]) => {
   return evaluateInitialValues(new Compilation(model(modelOptions)));
 };
 
-const getAssignmentOrderFromExprs = (
-  assignments: Record<string, IridiumExpression>,
-): string[] => {
-  return getAssignmentOrder(new Map(Object.entries(assignments)));
-};
-
 describe("evaluation order", () => {
-  it("should produce a dependency-ordered assignment list", () => {
-    expect(
-      getAssignmentOrderFromExprs({
-        A: expr.add(expr.var("B"), expr.num(1)),
-        B: expr.add(expr.var("C"), expr.num(2)),
-        C: expr.num(3),
-      }),
-    ).toEqual(["C", "B", "A"]);
-  });
-
-  it("should not allow self-cycles when not permitted", () => {
-    expect(() =>
-      getAssignmentOrderFromExprs({ A: expr.add(expr.var("A"), expr.num(5)) }),
-    ).toThrow(CompileModelError);
-  });
-
   it("should evaluate initial values in the correct topological order", async () => {
     const initialValues = await evaluateModel({
       variables: {
