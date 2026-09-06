@@ -1,10 +1,10 @@
-import { P_PARAM, Y_PARAM } from "../names";
-import { OpCode, ValType } from "./codes";
-import type { Compilation } from "./Compilation";
-import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-import Emitter from "./Emitter";
-import { CompileInvariantError } from "./errors";
-import { LocalsSymbolTable } from "./symbolTables";
+import { P_PARAM, Y_PARAM } from "../../names";
+import { OpCode, ValType } from "../codes";
+import type { Compilation } from "../Compilation";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "../constants";
+import Emitter from "../Emitter";
+import { CompileInvariantError } from "../errors";
+import { LocalsSymbolTable } from "../symbolTables";
 
 export const CONVERT_PARAMS = [ValType.i32, ValType.i32];
 export const CONVERT_RESULTS: ValType[] = [];

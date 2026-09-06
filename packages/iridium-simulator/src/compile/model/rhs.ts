@@ -1,12 +1,12 @@
-import { ValType, OpCode } from "./codes";
-import Emitter from "./Emitter";
-import { FunctionTable, LocalsSymbolTable } from "./symbolTables.ts";
-import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
-import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../names";
-import type { Compilation } from "./Compilation.ts";
-import { GlobalScope } from "./scope.ts";
-import { emitExpression } from "./expression.ts";
-import type { Name } from "./graph.ts";
+import { ValType, OpCode } from "../codes";
+import Emitter from "../Emitter";
+import { FunctionTable, LocalsSymbolTable } from "../symbolTables.ts";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "../constants";
+import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../../names";
+import type { Compilation } from "../Compilation.ts";
+import { GlobalScope } from "../scope.ts";
+import { emitExpression } from "../expression.ts";
+import type { Name } from "../graph.ts";
 
 const YDOT_PTR_PARAM = "ydot[]";
 

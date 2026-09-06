@@ -25,7 +25,8 @@ export type RuntimePieceEvent = {
   numRoots: number;
 };
 
-export type RuntimeModel = {
+export type CvodeRuntimeModel = {
+  kind: "cvode";
   y: RuntimeVariable[];
   p: RuntimeVariable[];
   /** Name of reactions. */
@@ -34,3 +35,10 @@ export type RuntimeModel = {
   wasmModule: WebAssembly.Module;
   funcImports: string[];
 };
+
+export type IdaRuntimeModel = Omit<CvodeRuntimeModel, "kind"> & {
+  kind: "ida";
+  algebraicVariablesStartIndex: number;
+};
+
+export type RuntimeModel = CvodeRuntimeModel | IdaRuntimeModel;

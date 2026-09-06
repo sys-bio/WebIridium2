@@ -2,10 +2,10 @@ import {
   FunctionTable,
   IndexSymbolTable,
   LocalsSymbolTable,
-} from "./symbolTables.ts";
-import { OpCode, ValType } from "./codes";
-import Emitter from "./Emitter";
-import { CompileError, CompileInvariantError } from "./errors";
+} from "../symbolTables.ts";
+import { OpCode, ValType } from "../codes";
+import Emitter from "../Emitter";
+import { CompileError, CompileInvariantError } from "../errors";
 import {
   ROOTS_NAME,
   CHECK_ROOTS_NAME,
@@ -16,20 +16,20 @@ import {
   generateSymbol,
   UPDATE_CONDITIONS_NAME,
   EVENTS_PARAM,
-} from "../names";
-import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "./constants";
-import type { WasmFunction } from "./functions";
-import type { Compilation } from "./Compilation.ts";
-import { GlobalScope } from "./scope.ts";
+} from "../../names";
+import { MEM_ALIGNMENT, SIZEOF_DOUBLE, SIZEOF_INT } from "../constants";
+import type { WasmFunction } from "../functions";
+import type { Compilation } from "../Compilation.ts";
+import { GlobalScope } from "../scope.ts";
 import {
   visitExpression,
   type IridiumExpression,
   type IridiumExpressionVisitor,
-} from "../ir/ast.ts";
-import { emitComparisonOperator, emitExpression } from "./expression.ts";
-import type { IridiumEvent, IridiumEventAssignment } from "../ir/model.ts";
-import type { RuntimeEvent, RuntimePieceEvent } from "../runtime/model.ts";
-import { builtinConstants } from "../runtime/builtins.ts";
+} from "../../ir/ast.ts";
+import { emitComparisonOperator, emitExpression } from "../expression.ts";
+import type { IridiumEvent, IridiumEventAssignment } from "../../ir/model.ts";
+import type { RuntimeEvent, RuntimePieceEvent } from "../../runtime/model.ts";
+import { builtinConstants } from "../../runtime/builtins.ts";
 
 const ROOTS_PARAMS = [
   ValType.f64,

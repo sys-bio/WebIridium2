@@ -10,7 +10,6 @@ import {
   type RuntimeModel,
   type IridiumFunction,
   type IridiumAlgebraicRule,
-  walkExpression,
 } from "iridium-simulator";
 import type {
   AntimonyAlgebraicRule,

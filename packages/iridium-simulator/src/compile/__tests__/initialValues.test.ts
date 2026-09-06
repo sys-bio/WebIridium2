@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { CompileModelError } from "../compile/errors.ts";
-import { evaluateInitialValues } from "../compile/evaluate.ts";
-import { Compilation } from "../compile/Compilation.ts";
-import { assignmentVariable, expr, parameter, model } from "../ir/dsl.ts";
+import { CompileModelError } from "../../compile/errors.ts";
+import { Compilation } from "../../compile/Compilation.ts";
+import { assignmentVariable, expr, parameter, model } from "../../ir/dsl.ts";
+import { evaluateInitialValues } from "../initialValues.ts";
 
 const evaluateModel = (modelOptions: Parameters<typeof model>[0]) => {
   return evaluateInitialValues(new Compilation(model(modelOptions)));

@@ -10,10 +10,7 @@ import {
   Y_PARAM,
 } from "../names.ts";
 import { CompileModelError } from "./errors.ts";
-import {
-  Compilation,
-  createAssignmentsGraphFromCompilation,
-} from "./Compilation.ts";
+import { Compilation } from "./Compilation.ts";
 import {
   visitExpression,
   type IridiumExpression,
@@ -33,7 +30,11 @@ import Emitter from "./Emitter.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants.ts";
 import { WASM_PAGE_SIZE } from "./wasm.ts";
 import { compileAllUserDefinedFunctions } from "./userDefinedFunction.ts";
-import type { Assignment, Name } from "./graph.ts";
+import {
+  createAssignmentsGraphFromCompilation,
+  type Assignment,
+  type Name,
+} from "./graph.ts";
 
 /**
  * Evaluates the initial values of a model in a topological order, setting default

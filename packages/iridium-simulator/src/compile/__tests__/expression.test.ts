@@ -23,6 +23,7 @@ const expectCompile = (
       },
     ],
     reactions: [],
+    algebraicRules: [],
     compartments: [],
     functions: [],
   });

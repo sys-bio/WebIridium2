@@ -17,7 +17,10 @@ export type ImportedFunction = {
 
 export type CompiledFunction = {
   kind: "compile";
-  /** If a function is exported it is not accessible by Antimony code. */
+  /**
+   * If a function is exported it is not accessible by Antimony code, but
+   * is accessible from the WASM module.
+   */
   isExported: boolean;
   name: string;
   params: ValType[];

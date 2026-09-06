@@ -1,7 +1,7 @@
 import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { FunctionTable, TypeTable } from "./symbolTables.ts";
-import { evaluateInitialValues } from "./evaluate";
+import { evaluateInitialValues } from "./initialValues.ts";
 import {
   CONVERT_TO_CONCENTRATIONS_NAME,
   CONVERT_TO_AMOUNTS_NAME,
@@ -11,8 +11,8 @@ import {
   RHS_NAME,
   CONVERT_RESET_NAME,
 } from "../names";
-import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./rhs";
-import { compileEvents } from "./event";
+import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./model/rhs";
+import { compileEvents } from "./model/event";
 import {
   predefinedFuncDefs,
   POW_RESERVED_NAME,
@@ -30,7 +30,7 @@ import {
   compileConvert,
   CONVERT_PARAMS,
   CONVERT_RESULTS,
-} from "./convertConcentration.ts";
+} from "./model/convertConcentration.ts";
 import type { IridiumModel } from "../ir/model.ts";
 import {
   walkExpression,
@@ -133,6 +133,7 @@ export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
   const initialValues = await evaluateInitialValues(compilation);
 
   return {
+    kind: "cvode",
     y: compilation.yVars.map((name) => ({
       name,
       initialValue: initialValues.get(name) ?? 0,
