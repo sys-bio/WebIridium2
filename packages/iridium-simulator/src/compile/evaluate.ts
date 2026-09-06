@@ -56,7 +56,8 @@ export const evaluateInitialValues = async (
     if (
       variable.value.kind === "initial" ||
       variable.value.kind === "reaction" ||
-      variable.value.kind === "rate"
+      variable.value.kind === "rate" ||
+      variable.value.kind === "assignment"
     ) {
       relevantNames.push({ kind: "name", name: variable.name });
     }

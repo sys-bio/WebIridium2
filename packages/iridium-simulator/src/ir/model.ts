@@ -4,6 +4,7 @@ export type IridiumModel<Metadata = unknown> = {
   variables: IridiumVariable<Metadata>[];
   compartments: IridiumCompartment[];
   reactions: IridiumReaction<Metadata>[];
+  algebraicRules: IridiumAlgebraicRule<Metadata>[];
   events: IridiumEvent<Metadata>[];
   functions: IridiumFunction<Metadata>[];
 };
@@ -17,7 +18,8 @@ export type IridiumVariableValue<Metadata = unknown> =
       initial: IridiumExpression<Metadata>;
       rate: IridiumExpression<Metadata>;
     }
-  | { kind: "assignment"; assignment: IridiumExpression<Metadata> };
+  | { kind: "assignment"; assignment: IridiumExpression<Metadata> }
+  | { kind: "algebraic" };
 
 export type IridiumVariable<Metadata = unknown> = {
   name: string;
@@ -42,6 +44,12 @@ export type IridiumReaction<Metadata = unknown> = {
   reactants: IridiumReactionTerm<Metadata>[];
   products: IridiumReactionTerm<Metadata>[];
   rate: IridiumExpression<Metadata>;
+  metadata?: Metadata;
+};
+
+export type IridiumAlgebraicRule<Metadata = unknown> = {
+  name: string;
+  expression: IridiumExpression<Metadata>;
   metadata?: Metadata;
 };
 

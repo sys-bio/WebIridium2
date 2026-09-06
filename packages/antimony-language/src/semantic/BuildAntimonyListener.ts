@@ -2,6 +2,7 @@ import { SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import { ParserRuleContext } from "antlr4ts";
 import {
+  AlgebraicRuleContext,
   AssignmentContext,
   ConstantContext,
   DeclarationContext,
@@ -206,6 +207,12 @@ const copyAntimonyObject = (
       }
       copy.products = newProducts;
 
+      return copy;
+    }
+    case "algebraicRule": {
+      const copy = { ...object };
+      copy.formula = { ...copy.formula };
+      prependReferenceForFormula(copy.formula, referencePrefix);
       return copy;
     }
     case "event": {
@@ -1256,6 +1263,31 @@ export class BuildAntimonyListener implements AntimonyListener {
         trigger: this.#createFormula(ctx._trigger),
         delay: this.#createFormula(ctx._delay),
         options: options,
+      },
+      ctx,
+    );
+  }
+
+  enterAlgebraicRule(ctx: AlgebraicRuleContext): void {
+    if (!this.#isActive) return;
+
+    const nameLabelCtx = ctx.nameLabel();
+    const { reference } = this.#getOrDefaultReference(nameLabelCtx, "_alg");
+    const [parentModel, name] = this.#resolveReferenceForAssignment(
+      this.#getActiveModel(),
+      reference,
+      nameLabelCtx ?? ctx,
+    );
+
+    this.#setObject(
+      parentModel,
+      name,
+      {
+        kind: "algebraicRule",
+        name: name,
+        isDeleted: false,
+        constant: Number(ctx.NUMBER().text),
+        formula: this.#createFormula(ctx.formula()),
       },
       ctx,
     );

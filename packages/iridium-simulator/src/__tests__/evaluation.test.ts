@@ -45,30 +45,32 @@ describe("evaluation order", () => {
     expect(initialValues.get("Total")).toBe(7);
   });
 
-  it("should throw CompileModelError for cyclic assignments", () => {
-    expect(() =>
-      evaluateModel({
-        variables: {
-          A: parameter(expr.add(expr.var("B"), expr.num(1))),
-          B: parameter(expr.add(expr.var("A"), expr.num(1))),
-        },
-      }),
-    ).toThrow(CompileModelError);
+  it("should throw CompileModelError for cyclic assignments", async () => {
+    await expect(
+      async () =>
+        await evaluateModel({
+          variables: {
+            A: parameter(expr.add(expr.var("B"), expr.num(1))),
+            B: parameter(expr.add(expr.var("A"), expr.num(1))),
+          },
+        }),
+    ).rejects.toThrow(CompileModelError);
   });
 
-  it("should throw CompileModelError for cyclic assignments", () => {
-    expect(() =>
-      evaluateModel({
-        variables: {
-          A: parameter(expr.add(expr.var("B"), expr.num(1))),
-          B: parameter(expr.add(expr.var("C"), expr.num(1))),
-          C: parameter(expr.add(expr.var("D"), expr.num(1))),
-          D: parameter(expr.add(expr.var("E"), expr.var("F"))),
-          E: parameter(expr.add(expr.var("G"), expr.num(1))),
-          F: parameter(expr.add(expr.var("G"), expr.num(1))),
-          G: parameter(expr.add(expr.var("A"), expr.num(1))),
-        },
-      }),
-    ).toThrow(CompileModelError);
+  it("should throw CompileModelError for cyclic assignments", async () => {
+    await expect(
+      async () =>
+        await evaluateModel({
+          variables: {
+            A: parameter(expr.add(expr.var("B"), expr.num(1))),
+            B: parameter(expr.add(expr.var("C"), expr.num(1))),
+            C: parameter(expr.add(expr.var("D"), expr.num(1))),
+            D: parameter(expr.add(expr.var("E"), expr.var("F"))),
+            E: parameter(expr.add(expr.var("G"), expr.num(1))),
+            F: parameter(expr.add(expr.var("G"), expr.num(1))),
+            G: parameter(expr.add(expr.var("A"), expr.num(1))),
+          },
+        }),
+    ).rejects.toThrow(CompileModelError);
   });
 });

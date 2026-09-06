@@ -194,6 +194,18 @@ describe("event", () => {
   });
 });
 
+describe("algebraic rule", () => {
+  itShouldErrorForAll({
+    dot: ". = A + B",
+  });
+
+  itShouldSucceedForAll({
+    basic: "5 = A + B",
+    decimal: "5.5 = A + B",
+    scientific: "5e+5 = A + B",
+  });
+});
+
 describe("declaration", () => {
   itShouldErrorForAll({
     plainName: "a",

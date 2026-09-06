@@ -24,6 +24,7 @@ export type AntimonyObject =
   | AntimonyVariable
   | AntimonyEvent
   | AntimonyReaction
+  | AntimonyAlgebraicRule
   | AntimonyFunction
   | AntimonyRenameLink;
 
@@ -121,6 +122,12 @@ export type AntimonyReaction = AntimonyObjectBase<"reaction"> &
     reactants: AntimonyReactionTerm[];
     products: AntimonyReactionTerm[];
     rate?: AntimonyFormula;
+  };
+
+export type AntimonyAlgebraicRule = AntimonyObjectBase<"algebraicRule"> &
+  AntimonyDeleteable & {
+    constant: number;
+    formula: AntimonyFormula;
   };
 
 export type AntimonyFunction = AntimonyObjectBase<"function"> & {

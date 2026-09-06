@@ -11,6 +11,7 @@ statement : reaction
           | declaration
           | modelImport
           | event
+          | algebraicRule
           | annotation
           | unitDeclaration
           | inStatement
@@ -84,6 +85,8 @@ eventOptions     : (',' eventOption)+;
 eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula?;
+
+algebraicRule    : nameLabel? NUMBER '=' formula;
 
 rename : variable conversionFactorLeft? IS variable
        | variable IS variable conversionFactorRight?

@@ -61,6 +61,7 @@ import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { AlgebraicRuleContext } from "./AntimonyParser";
 import { RenameContext } from "./AntimonyParser";
 import { ConversionFactorLeftContext } from "./AntimonyParser";
 import { ConversionFactorRightContext } from "./AntimonyParser";
@@ -767,6 +768,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEventAssignment?: (ctx: EventAssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.algebraicRule`.
+	 * @param ctx the parse tree
+	 */
+	enterAlgebraicRule?: (ctx: AlgebraicRuleContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.algebraicRule`.
+	 * @param ctx the parse tree
+	 */
+	exitAlgebraicRule?: (ctx: AlgebraicRuleContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.rename`.

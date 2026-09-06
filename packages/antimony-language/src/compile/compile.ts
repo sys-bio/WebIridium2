@@ -9,8 +9,11 @@ import {
   type IridiumReactionTerm,
   type RuntimeModel,
   type IridiumFunction,
+  type IridiumAlgebraicRule,
+  walkExpression,
 } from "iridium-simulator";
 import type {
+  AntimonyAlgebraicRule,
   AntimonyConversionFactor,
   AntimonyDocument,
   AntimonyEvent,
@@ -68,6 +71,7 @@ const evaluateBoolean = (formula: FormulaContext): boolean => {
 type IridiumNameable =
   | IridiumVariable
   | IridiumReaction
+  | IridiumAlgebraicRule
   | IridiumEvent
   | IridiumFunction;
 
@@ -90,6 +94,7 @@ class IrBuilder {
       variables: [],
       compartments: [],
       reactions: [],
+      algebraicRules: [],
       events: [],
       functions: [],
     };
@@ -162,6 +167,14 @@ class IrBuilder {
     this.#ir.reactions.push(reaction);
   }
 
+  addAlgebraicRule(
+    source: AntimonyObject,
+    rule: Omit<IridiumAlgebraicRule<Metadata>, "name">,
+  ): void {
+    this.#setName(rule, this.getNameOf(source));
+    this.#ir.algebraicRules.push(rule);
+  }
+
   addEvent(
     source: AntimonyObject,
     event: Omit<IridiumEvent<Metadata>, "name">,
@@ -216,10 +229,12 @@ const flattenModel = (
 ): {
   variables: AntimonyVariable[];
   reactions: AntimonyReaction[];
+  algebraicRules: AntimonyAlgebraicRule[];
   events: AntimonyEvent[];
 } => {
   const variables: AntimonyVariable[] = [];
   const reactions: AntimonyReaction[] = [];
+  const algebraicRules: AntimonyAlgebraicRule[] = [];
   const events: AntimonyEvent[] = [];
 
   const modelStack = [root];
@@ -252,6 +267,10 @@ const flattenModel = (
           builder.addSource(object);
           reactions.push(object);
           break;
+        case "algebraicRule":
+          builder.addSource(object);
+          algebraicRules.push(object);
+          break;
         case "event":
           builder.addSource(object);
           events.push(object);
@@ -273,7 +292,7 @@ const flattenModel = (
     }
   }
 
-  return { variables, reactions, events };
+  return { variables, reactions, algebraicRules, events };
 };
 
 const GOT_DELETED_SYMBOL = Symbol("GOT_DELETED");
@@ -291,13 +310,17 @@ const compileModel = (
   builder: IrBuilder,
   document: AntimonyDocument,
 ): void => {
-  const { variables, reactions, events } = flattenModel(model, builder);
+  const { variables, reactions, algebraicRules, events } = flattenModel(
+    model,
+    builder,
+  );
 
   // We use these variables as an sort of "additional" side-channel argument to resolveVariable.
-  // since the callback only accepts one parameter.
+  // since the callback only accepts one parameter. Very messy, probably need to refactor...
   let resolveScope = model;
   let resolveTimeConversions: AntimonyConversionFactor[] | undefined =
     undefined;
+  let resolveIsForAlgebraicRule = false;
 
   const resolveVariable = (
     reference: AntimonyReference,
@@ -391,6 +414,11 @@ const compileModel = (
           conversionFactorsExpr = expr;
         }
       }
+    }
+
+    // for algebraic rules, we need to add it to the set
+    if (resolveIsForAlgebraicRule && object.kind === "variable") {
+      algebraicRuleInvolvedVariables.add(object);
     }
 
     return [builder.getNameOf(object), conversionFactorsExpr];
@@ -559,6 +587,7 @@ const compileModel = (
   };
 
   const reactionInvolvedVariables = new Set<AntimonyObject>();
+
   for (const reaction of reactions) {
     let rate: IridiumExpression<Metadata>;
 
@@ -635,6 +664,31 @@ const compileModel = (
       products,
       rate,
     });
+  }
+
+  const algebraicRuleInvolvedVariables = new Set<AntimonyObject>();
+
+  for (const rule of algebraicRules) {
+    resolveIsForAlgebraicRule = true;
+    let expression = compileFormulaInModel(rule.formula);
+    resolveIsForAlgebraicRule = false;
+
+    if (!expression) continue;
+
+    if (rule.constant !== 0) {
+      expression = {
+        kind: "binary",
+        op: "sub",
+        left: expression,
+        right: {
+          kind: "number",
+          value: rule.constant,
+        },
+        metadata: { tree: rule.formula.ctx },
+      };
+    }
+
+    builder.addAlgebraicRule(rule, { expression });
   }
 
   for (const variable of variables) {
@@ -714,6 +768,8 @@ const compileModel = (
           rate: rateExpression,
         };
       }
+    } else if (algebraicRuleInvolvedVariables.has(variable)) {
+      value = { kind: "algebraic" };
     } else {
       value = { kind: "initial", initial: defaultValue };
     }

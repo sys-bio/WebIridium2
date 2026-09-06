@@ -12,6 +12,8 @@ import {
   func,
   rateVariable,
   assignmentVariable,
+  algebraicRule,
+  algebraicVariable,
 } from "iridium-simulator/dsl";
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
@@ -493,6 +495,7 @@ describe("ir", () => {
           "E: at time > 5: A =, B = 5",
           model({
             variables: {
+              A: parameter(0),
               B: parameter(0),
             },
             events: {
@@ -503,6 +506,91 @@ describe("ir", () => {
           }),
         );
       });
+    });
+  });
+
+  describe("algebraic rules", () => {
+    it("should compile", () => {
+      expectCompilesTo(
+        "A = 5; 0 = A + B",
+        model({
+          variables: {
+            A: parameter(5),
+            B: algebraicVariable(),
+          },
+          algebraicRules: {
+            _alg0: algebraicRule(expr.add(expr.var("A"), expr.var("B"))),
+          },
+        }),
+      );
+    });
+
+    it("should compile with variables of all types", () => {
+      expectCompilesTo(
+        "A = 5; B '= 5; -> C; k1; D := 5; 0 = A + B + C + D + E + F",
+        model({
+          variables: {
+            A: parameter(5),
+            B: rateVariable(expr.num(0), expr.num(5)),
+            C: species(0),
+            k1: parameter(0),
+            D: assignmentVariable(expr.num(5)),
+            E: algebraicVariable(),
+            F: algebraicVariable(),
+          },
+          algebraicRules: {
+            _alg0: algebraicRule(
+              expr.add(
+                expr.add(
+                  expr.add(
+                    expr.add(
+                      expr.add(expr.var("A"), expr.var("B")),
+                      expr.var("C"),
+                    ),
+                    expr.var("D"),
+                  ),
+                  expr.var("E"),
+                ),
+                expr.var("F"),
+              ),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should compile the constant", () => {
+      expectCompilesTo(
+        "5 = A + B; A = 5",
+        model({
+          variables: {
+            A: parameter(5),
+            B: algebraicVariable(),
+          },
+          algebraicRules: {
+            _alg0: algebraicRule(
+              expr.sub(expr.add(expr.var("A"), expr.var("B")), expr.num(5)),
+            ),
+          },
+        }),
+      );
+    });
+
+    it("should compile the name", () => {
+      expectCompilesTo(
+        "R: 5 = A + B; B = 5",
+        model({
+          variables: {
+            A: algebraicVariable(),
+            B: parameter(5),
+          },
+          algebraicRules: {
+            R: algebraicRule(
+              expr.sub(expr.add(expr.var("A"), expr.var("B")), expr.num(5)),
+            ),
+          },
+        }),
+      );
     });
   });
 
@@ -1295,6 +1383,18 @@ describe("ir", () => {
             sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
               sub__B: expr.num(10),
             }),
+          },
+        }),
+      );
+    });
+
+    // NOTE: original Antimony does not do this and instead produces invalid SBML which errors
+    it("should delete submodel algebraic rule if expression contains deleted subvaraible", () => {
+      expectCompilesToExact(
+        "model test; 0 = A + B; end; sub: test(); delete sub.A",
+        model({
+          variables: {
+            sub__B: parameter(0),
           },
         }),
       );

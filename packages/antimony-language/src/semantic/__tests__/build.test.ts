@@ -13,6 +13,7 @@ import {
   type TestModel,
   event,
   renameLink,
+  algebraicRule,
 } from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
@@ -622,6 +623,35 @@ describe("events", () => {
     expect(() => {
       buildAntimonyDocument("J: A + B -> C; k1; J: at time > 5: A = 5");
     }).toThrowError(SemanticError);
+  });
+});
+
+describe("algebraic rules", () => {
+  it("should process algebraic rules", () => {
+    expectModel(
+      "0 = A+B",
+      model({
+        _alg0: algebraicRule(0, "A+B"),
+      }),
+    );
+  });
+
+  it("should use algebraic rule constant lhs", () => {
+    expectModel(
+      "35.9 = A+B",
+      model({
+        _alg0: algebraicRule(35.9, "A+B"),
+      }),
+    );
+  });
+
+  it("should use algebraic rule provided name", () => {
+    expectModel(
+      "A: 35.9 = A+B",
+      model({
+        A: algebraicRule(35.9, "A+B"),
+      }),
+    );
   });
 });
 

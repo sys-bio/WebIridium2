@@ -61,6 +61,7 @@ import { EventOptionsContext } from "./AntimonyParser";
 import { EventOptionContext } from "./AntimonyParser";
 import { EventAssignmentsContext } from "./AntimonyParser";
 import { EventAssignmentContext } from "./AntimonyParser";
+import { AlgebraicRuleContext } from "./AntimonyParser";
 import { RenameContext } from "./AntimonyParser";
 import { ConversionFactorLeftContext } from "./AntimonyParser";
 import { ConversionFactorRightContext } from "./AntimonyParser";
@@ -514,6 +515,13 @@ export interface AntimonyVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEventAssignment?: (ctx: EventAssignmentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `AntimonyParser.algebraicRule`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitAlgebraicRule?: (ctx: AlgebraicRuleContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `AntimonyParser.rename`.

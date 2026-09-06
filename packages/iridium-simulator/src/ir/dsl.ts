@@ -5,11 +5,13 @@ import type {
   IridiumReaction,
   IridiumReactionTerm,
   IridiumFunction,
+  IridiumAlgebraicRule,
 } from "./model";
 import type { IridiumExpression } from "./ast";
 
 export type DslVariable = Omit<IridiumVariable, "name">;
 export type DslReaction = Omit<IridiumReaction, "name">;
+export type DslAlgebraicRule = Omit<IridiumAlgebraicRule, "name">;
 export type DslEvent = Omit<IridiumEvent, "name">;
 export type DslFunction = Omit<IridiumFunction, "name">;
 export type DslExpression = IridiumExpression;
@@ -18,6 +20,7 @@ export const model = (parts: {
   variables?: { [name: string]: DslVariable };
   compartments?: { [name: string]: string[] };
   reactions?: { [name: string]: DslReaction };
+  algebraicRules?: { [name: string]: DslAlgebraicRule };
   events?: { [name: string]: DslEvent };
   functions?: { [name: string]: DslFunction };
 }): IridiumModel => {
@@ -38,6 +41,13 @@ export const model = (parts: {
       name,
       ...data,
     })),
+
+    algebraicRules: Object.entries(parts?.algebraicRules ?? {}).map(
+      ([name, data]) => ({
+        name,
+        ...data,
+      }),
+    ),
 
     events: Object.entries(parts?.events ?? {}).map(([name, data]) => ({
       name,
@@ -133,6 +143,14 @@ export const assignmentVariable = <T = unknown>(
   };
 };
 
+export const algebraicVariable = <T = unknown>(metadata?: T): DslVariable => {
+  return {
+    value: { kind: "algebraic" },
+    hasSubstanceOnly: false,
+    metadata: metadata,
+  };
+};
+
 export const reaction = <T = unknown>(
   reactants: { [name: string]: number | IridiumExpression<T> },
   products: { [name: string]: number | IridiumExpression<T> },
@@ -168,6 +186,13 @@ export const reaction = <T = unknown>(
     rate: rate,
     metadata: metadata,
   };
+};
+
+export const algebraicRule = <T = unknown>(
+  expression: IridiumExpression<T>,
+  metadata?: T,
+): DslAlgebraicRule => {
+  return { expression, metadata };
 };
 
 export const event = <T = unknown>(

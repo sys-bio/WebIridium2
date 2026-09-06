@@ -267,6 +267,16 @@ export const event = (
   }
 };
 
+export const algebraicRule = (
+  constant: number,
+  formula: string,
+): typeof antimonyObjectProto =>
+  Object.assign(Object.create(antimonyObjectProto), {
+    kind: "algebraicRule",
+    constant: constant,
+    formula: { ctx: { text: formula } },
+  });
+
 export const renameLink = (
   to: string | AntimonyReference,
   conversionFactor?: string | AntimonyReference,
