@@ -2,13 +2,17 @@ import { ValType, OpCode } from "../codes";
 import Emitter from "../Emitter";
 import { FunctionTable, LocalsSymbolTable } from "../symbolTables.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "../constants";
-import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../../names";
+import {
+  EVENTS_PARAM,
+  P_PARAM,
+  T_PARAM,
+  Y_PARAM,
+  YDOT_PARAM,
+} from "../../names";
 import type { Compilation } from "../Compilation.ts";
 import { GlobalScope } from "../scope.ts";
 import { emitExpression } from "../expression.ts";
 import type { Name } from "../graph.ts";
-
-const YDOT_PTR_PARAM = "ydot[]";
 
 export const RHS_PARAMS: ValType[] = [
   ValType.f64,
@@ -30,7 +34,7 @@ export const compileRhs = (
   const localsTable = new LocalsSymbolTable([
     T_PARAM,
     Y_PARAM,
-    YDOT_PTR_PARAM,
+    YDOT_PARAM,
     P_PARAM,
     EVENTS_PARAM,
   ]);
@@ -66,7 +70,7 @@ export const compileRhs = (
         break;
       case "rate":
         emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
+        emitter.emitUint(localsTable.getParam(YDOT_PARAM));
         emitExpression(expression, emitter, scope, { compilation });
         emitter.emitByte(OpCode.f64store);
         emitter.emitUint(MEM_ALIGNMENT);

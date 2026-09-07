@@ -173,7 +173,6 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
 
         Integrate(target_time);
 
-        // dumb hack to update p values like above
         UpdateP(time_);
 
         RecordToOutputArray(time_);

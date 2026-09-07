@@ -22,7 +22,7 @@ const UNSUPPORTED_TAGS = [
   // "NoMathML",
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
-const WIP_TAGS: string[] = [];
+const WIP_TAGS: string[] = ["NoMathML"];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
   // libantimony adds an underscore at the end. Expected output expects them

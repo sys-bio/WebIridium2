@@ -17,6 +17,7 @@ export const IMPORT_NAMESPACE = "js";
 
 export const T_PARAM = "t";
 export const Y_PARAM = "y[]";
+export const YDOT_PARAM = "ydot[]";
 export const P_PARAM = "p[]";
 export const EVENTS_PARAM = "events[]";
 

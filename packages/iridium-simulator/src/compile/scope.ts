@@ -1,7 +1,14 @@
 import type { Compilation } from "./Compilation";
 import { CompileError, CompileInvariantError } from "./errors";
 import type { FunctionTable, LocalsSymbolTable } from "./symbolTables";
-import { EVENTS_PARAM, P_PARAM, T_PARAM, TIME_NAME, Y_PARAM } from "../names";
+import {
+  EVENTS_PARAM,
+  P_PARAM,
+  T_PARAM,
+  TIME_NAME,
+  Y_PARAM,
+  YDOT_PARAM,
+} from "../names";
 import type Emitter from "./Emitter";
 import { OpCode } from "./codes";
 import { builtinConstants } from "../runtime/builtins.ts";
@@ -97,7 +104,7 @@ export class GlobalScope implements Scope {
     } else if (Object.hasOwn(builtinConstants, name)) {
       // TODO: does the spec allow this
       emitter.emitF64ConstOp(0);
-    } else if (this.#compilation.pTable.has(name)) {
+    } else {
       const variable = this.#compilation.variables.get(name);
 
       if (
@@ -135,18 +142,27 @@ export class GlobalScope implements Scope {
         }
       }
 
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(this.localsTable.getParam(P_PARAM));
+      // In the RHS, the rateOf will be stored in the ydot param.
+      // In updateP, the rateOf will be stored in the p param.
+      if (this.localsTable.hasParam(YDOT_PARAM)) {
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint(this.localsTable.getParam(YDOT_PARAM));
 
-      emitter.emitByte(OpCode.f64load);
-      emitter.emitUint(MEM_ALIGNMENT);
-      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+        emitter.emitByte(OpCode.f64load);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
+      } else {
+        emitter.emitByte(OpCode.localget);
+        emitter.emitUint(this.localsTable.getParam(P_PARAM));
+
+        emitter.emitByte(OpCode.f64load);
+        emitter.emitUint(MEM_ALIGNMENT);
+        emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+      }
 
       if (!variable?.hasSubstanceOnly && compartment) {
         this.emitConvertToConcentration(emitter, compartment.name);
       }
-    } else {
-      return false;
     }
 
     return true;
