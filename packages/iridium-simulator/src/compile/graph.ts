@@ -340,6 +340,7 @@ export const createAssignmentsGraphFromCompilation = (
   for (const variable of variables.values()) {
     switch (variable.value.kind) {
       case "initial":
+      case "algebraic":
         addInitialValue(pAssignments, variable);
         break;
       case "rate": {

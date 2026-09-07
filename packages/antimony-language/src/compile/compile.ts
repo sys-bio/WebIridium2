@@ -695,7 +695,11 @@ const compileModel = (
       variable.variableKind === "compartment"
         ? COMPARTMENT_DEFAULT
         : SPECIES_DEFAULT;
-    let value: IridiumVariableValue<Metadata> | undefined;
+    let value: IridiumVariableValue<Metadata>;
+    // if the variable is going to be set with an initial value, this determines what "kind" its value will be
+    const initialKind = algebraicRuleInvolvedVariables.has(variable)
+      ? "algebraic"
+      : "initial";
 
     if (reactionInvolvedVariables.has(variable)) {
       if (
@@ -722,7 +726,7 @@ const compileModel = (
       };
     } else if (variable.assignment?.kind === "initial") {
       value = {
-        kind: "initial",
+        kind: initialKind,
         initial:
           compileFormulaInModel(variable.assignment.initial) ?? defaultValue,
       };
@@ -732,7 +736,7 @@ const compileModel = (
       );
       if (!assignmentExpression) {
         value = {
-          kind: "initial",
+          kind: initialKind,
           initial: defaultValue,
         };
       } else {
@@ -751,7 +755,7 @@ const compileModel = (
       );
       if (!rateExpression) {
         value = {
-          kind: "initial",
+          kind: initialKind,
           initial:
             (variable.assignment.initial &&
               compileFormulaInModel(variable.assignment.initial)) ??
@@ -767,10 +771,11 @@ const compileModel = (
           rate: rateExpression,
         };
       }
-    } else if (algebraicRuleInvolvedVariables.has(variable)) {
-      value = { kind: "algebraic" };
     } else {
-      value = { kind: "initial", initial: defaultValue };
+      value = {
+        kind: initialKind,
+        initial: defaultValue,
+      };
     }
 
     builder.addVariable(variable, {

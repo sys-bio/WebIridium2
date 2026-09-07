@@ -146,6 +146,8 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     // Update tolerances using scaling factor
     UpdateTolerances();
 
+    UpdateAfterDiscontinuity();
+
     InitializeOutputArray(num_points);
 
     if (event_params_.has_value()) {
@@ -184,6 +186,10 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     return Float64Array(
         emscripten::val(emscripten::typed_memory_view(num_points * num_variables(), output_array_))
     );
+}
+
+void Model::UpdateAfterDiscontinuity() {
+    // do nothing
 }
 
 void Model::HandleRoots(double time, N_Vector y, double *gout) {
@@ -364,6 +370,8 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
     ((SetAssignmentsFn*)info->set_assignments_fn)(NV_DATA_S(y_), p_.data(), invocation.y_values.data(), invocation.p_values.data());
 
     UpdateP(time_);
+
+    UpdateAfterDiscontinuity();
 
     UpdateEvents();
 

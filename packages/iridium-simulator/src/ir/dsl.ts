@@ -143,9 +143,15 @@ export const assignmentVariable = <T = unknown>(
   };
 };
 
-export const algebraicVariable = <T = unknown>(metadata?: T): DslVariable => {
+export const algebraicVariable = <T = unknown>(
+  initial: number | IridiumExpression<T>,
+  metadata?: T,
+): DslVariable => {
   return {
-    value: { kind: "algebraic" },
+    value: {
+      kind: "algebraic",
+      initial: typeof initial === "number" ? expr.num(initial) : initial,
+    },
     hasSubstanceOnly: false,
     metadata: metadata,
   };

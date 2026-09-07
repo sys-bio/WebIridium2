@@ -1,4 +1,5 @@
 import type {
+  IridiumAlgebraicRule,
   IridiumEvent,
   IridiumFunction,
   IridiumModel,
@@ -23,6 +24,7 @@ export class Compilation {
   reactions: Map<string, IridiumReaction>;
   events: Map<string, IridiumEvent>;
   functions: Map<string, IridiumFunction>;
+  algebraicRules: IridiumAlgebraicRule[];
 
   /** Assignment graph for non-initial values. */
   assignmentGraph: AssignmentGraph;
@@ -50,6 +52,7 @@ export class Compilation {
     this.reactions = new Map(model.reactions.map((r) => [r.name, r]));
     this.events = new Map(model.events.map((e) => [e.name, e]));
     this.functions = new Map(model.functions.map((e) => [e.name, e]));
+    this.algebraicRules = model.algebraicRules;
 
     this.piecewisePieces = new Map();
 
@@ -100,6 +103,10 @@ export class Compilation {
     }
 
     this.assignmentGraph = createAssignmentsGraphFromCompilation(this);
+  }
+
+  get hasAlgebraicRules(): boolean {
+    return this.algebraicRules.length > 0;
   }
 
   addPiecewisePiece(

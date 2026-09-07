@@ -31,6 +31,9 @@ export interface Model extends ClassHandle {
 export interface CvodeModel extends Model {
 }
 
+export interface IdaModel extends Model {
+}
+
 export interface DoubleVector extends ClassHandle, Iterable<number> {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
@@ -80,6 +83,9 @@ interface EmbindModule {
   Model: {};
   CvodeModel: {
     new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number, _4: number, _5: number, _6: number, _7: number, _8?: EventParams): CvodeModel;
+  };
+  IdaModel: {
+    new(_0: DoubleVector, _1: DoubleVector, _2: number, _3: number, _4: number, _5: number, _6: number, _7: number, _8: number, _9?: EventParams): IdaModel;
   };
   DoubleVector: {
     new(): DoubleVector;

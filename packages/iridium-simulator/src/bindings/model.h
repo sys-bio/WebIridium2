@@ -74,6 +74,11 @@ protected:
 
     virtual void Integrate(double target_time) = 0;
 
+    // Optional method derived classes can implement to update themselves
+    // after a discontinuity such as an event invocation.
+    // Default implementation does nothing.
+    virtual void UpdateAfterDiscontinuity();
+
     // Applies any pending events, reinits CVODE if necessary.
     void RunPendingEventInvocations();
 

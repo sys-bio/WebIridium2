@@ -19,7 +19,7 @@ export type IridiumVariableValue<Metadata = unknown> =
       rate: IridiumExpression<Metadata>;
     }
   | { kind: "assignment"; assignment: IridiumExpression<Metadata> }
-  | { kind: "algebraic" };
+  | { kind: "algebraic"; initial: IridiumExpression<Metadata> };
 
 export type IridiumVariable<Metadata = unknown> = {
   name: string;

@@ -515,8 +515,8 @@ describe("ir", () => {
         "A = 5; 0 = A + B",
         model({
           variables: {
-            A: parameter(5),
-            B: algebraicVariable(),
+            A: algebraicVariable(5),
+            B: algebraicVariable(0),
           },
           algebraicRules: {
             _alg0: algebraicRule(expr.add(expr.var("A"), expr.var("B"))),
@@ -530,13 +530,13 @@ describe("ir", () => {
         "A = 5; B '= 5; -> C; k1; D := 5; 0 = A + B + C + D + E + F",
         model({
           variables: {
-            A: parameter(5),
+            A: algebraicVariable(5),
             B: rateVariable(expr.num(0), expr.num(5)),
             C: species(0),
             k1: parameter(0),
             D: assignmentVariable(expr.num(5)),
-            E: algebraicVariable(),
-            F: algebraicVariable(),
+            E: algebraicVariable(0),
+            F: algebraicVariable(0),
           },
           algebraicRules: {
             _alg0: algebraicRule(
@@ -564,8 +564,8 @@ describe("ir", () => {
         "5 = A + B; A = 5",
         model({
           variables: {
-            A: parameter(5),
-            B: algebraicVariable(),
+            A: algebraicVariable(5),
+            B: algebraicVariable(0),
           },
           algebraicRules: {
             _alg0: algebraicRule(
@@ -581,8 +581,8 @@ describe("ir", () => {
         "R: 5 = A + B; B = 5",
         model({
           variables: {
-            A: algebraicVariable(),
-            B: parameter(5),
+            A: algebraicVariable(0),
+            B: algebraicVariable(5),
           },
           algebraicRules: {
             R: algebraicRule(
@@ -1416,6 +1416,18 @@ describe("ir", () => {
               { sub__C: 3 },
               expr.var("sub__k1"),
             ),
+          },
+        }),
+      );
+    });
+
+    it("should reset an assignment-determined variable to algebraic if its assignment contains a variable that was deleted", () => {
+      expectCompilesToExact(
+        "model test; A := B + 5; 0 = A + C; end; sub: test(); delete sub.B",
+        model({
+          variables: {
+            sub__A: algebraicVariable(0),
+            sub__C: algebraicVariable(0),
           },
         }),
       );

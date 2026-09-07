@@ -15,6 +15,7 @@
 
 #include "model.h"
 #include "cvode_model.h"
+#include "ida_model.h"
 #include "event.h"
 
 EMSCRIPTEN_BINDINGS(cvodeBindings) {
@@ -30,6 +31,9 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
     
     emscripten::class_<CvodeModel, emscripten::base<Model>>("CvodeModel")
         .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(emscripten::allow_raw_pointers());
+    
+    emscripten::class_<IdaModel, emscripten::base<Model>>("IdaModel")
+        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(emscripten::allow_raw_pointers());
     
     emscripten::value_object<EventInfo>("EventInfo")
         .field("is_for_piecewise", &EventInfo::is_for_piecewise)
