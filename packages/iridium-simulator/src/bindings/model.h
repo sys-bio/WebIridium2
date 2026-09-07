@@ -1,23 +1,19 @@
 #pragma once
 
-#include <cstdint>
-#include <optional>
 #include <vector>
+#include <optional>
+#include <cstdint>
 
 #include <emscripten/val.h>
-#include "sundials/sundials_linearsolver.h"
-#include "sundials/sundials_matrix.h"
-#include "sundials/sundials_nonlinearsolver.h"
-#include "sundials/sundials_types.h"
+
 #include "sundials/sundials_nvector.h"
 
 #include "event.h"
 #include "wasm.h"
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array)
+EMSCRIPTEN_DECLARE_VAL_TYPE(Float64Array);
 
-using RHSFunc = int(double t, double y[], double ydot[], double p[], WasmBool events[]);
-
+using UpdatePFunc = void(double time, double y[], double p[], WasmBool events[]);
 using ConvertFunc = void(double y[], double p[]);
 
 struct EventParams {
@@ -29,23 +25,18 @@ struct EventParams {
 
 class Model {
 public:
-    // Parameters:
-    //  - y: Vector of values to integrate
-    //  - p: Vector of values accessible to the RHS but not integrated
-    //  - num_reactions: Number of reactions in the model
-    //  - rhs: the RHS function
     Model(
         std::vector<double> y,
         std::vector<double> p,
         int num_reactions,
-        uintptr_t rhs,
+        uintptr_t update_p,
         uintptr_t convert_to_amounts,
         uintptr_t convert_from_amounts,
         uintptr_t convert_reset,
         std::optional<EventParams> event_params
     );
 
-    ~Model();
+    virtual ~Model();
 
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
@@ -70,13 +61,56 @@ public:
 
     void SetRelativeTolerance(double value);
 
-    // WARNING: The returned array will be invalidated the next time you call Simulate.
     Float64Array SimulateTimeCourse(double start_time, double end_time, int num_points);
 
-    void DumpStats();
+    virtual void DumpStats() = 0;
+
+protected:
+    virtual void InitIntegrator(int num_roots) = 0;
+
+    virtual void ReinitIntegrator() = 0;
+
+    virtual void UpdateTolerances() = 0;
+
+    virtual void Integrate(double target_time) = 0;
+
+    // Applies any pending events, reinits CVODE if necessary.
+    void RunPendingEventInvocations();
+
+    void HandleRoots(double time, N_Vector y, double *gout);
+
+    void HandleRootsFound();
+
+    bool HasEmptyY() const { return original_y_.size() == 0; }
+
+    std::vector<double> original_y_;
+    std::vector<double> original_p_;
+    int num_reactions_;
+
+    // Tolerances should be set by the wrapper.
+
+    // "absolute tolerance adjustment factor"
+    // When we initialize the tolerances, we scale each variable by this number.
+    // If the variable is initially 0, we just set it directly to this.
+    // This seems to be a sufficient heuristic for most cases, and is what roadrunner does.
+    double abs_tol_factor_ = 1;
+    double rel_tol_ = 1;
+    N_Vector abs_tol_v_;
+
+    double time_;
+    N_Vector y_;
+    std::vector<double> p_;
+
+    // the state of each condition (multiple conditions can make up one event)
+    std::vector<WasmBool> conditions_state_;
+    // the output vector for CVodeGetRootInfo (re-use to save allocations)
+    std::vector<int> roots_found_;
+    std::vector<WasmBool> current_triggered_events_;
+
+    EventQueue event_queue_;
 
 private:
-    void Integrate(double target_time);
+    void UpdateP(double time);
 
     // Enqueues any events as indicated by the event swap buffer.
     void EnqueueEventsFromSwap();
@@ -91,9 +125,6 @@ private:
     // Creates an invocation of an event to the event queue.
     void EnqueueEvent(const EventInfo &info);
 
-    // Applies any pending events, reinits CVODE if necessary.
-    void RunPendingEventInvocations();
-
     // Runs an instance of an event invocation.
     void RunEventInvocation(const EventInvocation &invocation);
 
@@ -101,57 +132,21 @@ private:
 
     void RecordToOutputArray(double time);
 
-    SUNContext ctx_;
-    void *cvode_mem_;
-    SUNMatrix matrix_;
-    SUNNonlinearSolver non_lin_solver_;
-    SUNLinearSolver linear_solver_;
-
-    std::vector<double> original_y_;
-    std::vector<double> original_p_;
-    int num_reactions_;
-
-    RHSFunc *rhs_fn_;
     ConvertFunc *convert_to_amounts_fn_;
     ConvertFunc *convert_to_concentrations_fn_;
     ConvertFunc *convert_reset_fn_;
+    UpdatePFunc *update_p_fn_;
     RootsFn *roots_fn_;
 
     bool has_init_ = false;
-
     double *output_array_ = nullptr; // row-major
     int current_output_row_ = -1;
 
     std::optional<EventParams> event_params_;
     int num_roots_;
 
-    // Tolerances should be set by the wrapper
-    // "absolute tolerance adjustment factor"
-    // When we initialize the tolerances, we scale each variable by this number.
-    // If the variable is initially 0, we just set it directly to this.
-    // This seems to be a sufficient heuristic for most cases, and is what roadrunner does.
-    double abs_tol_factor_ = 1;
-    double rel_tol_ = 1;
-    N_Vector abs_tol_v_;
-
-    /* Simulation state (needs to be reset) */
-    double time_;
-    N_Vector y_;
-    // lazy hack so we can call RHS for its side effects without reallocating
-    // a fake ydot array each time
-    double *dummy_y_dot_;
-    // Concatentating [ boundary species | parameters | reaction rates]
-    // Everything after the parameters is just for recording. It should NOT be set.
-    std::vector<double> p_;
-    EventQueue event_queue_;
-    std::vector<WasmBool> current_triggered_events_;
-    std::vector<int> roots_found_;
-    std::vector<WasmBool> conditions_state_;
     // Every time we update which events are active, tell the generated function to put
     // its results here. Then we will compare this with current_triggered_events
     // and update as necessary.
     std::vector<WasmBool> events_swap_;
-
-    friend int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model);
-    friend int delegating_roots(double t, N_Vector y, double *gout, Model *model);
 };

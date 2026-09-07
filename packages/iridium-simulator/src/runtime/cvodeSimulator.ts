@@ -19,6 +19,7 @@ import {
   ROOTS_NAME,
   UPDATE_CONDITIONS_NAME,
   CONVERT_RESET_NAME,
+  UPDATE_P_NAME,
 } from "../names.ts";
 import {
   predefinedFuncDefs,
@@ -97,6 +98,9 @@ export class CvodeSimulator {
     const rhsPtr = this.#bindings.addFunction(
       instance.exports[RHS_NAME],
     ) as number;
+    const updatePPtr = this.#bindings.addFunction(
+      instance.exports[UPDATE_P_NAME],
+    ) as number;
     const convertToAmountsPtr = this.#bindings.addFunction(
       instance.exports[CONVERT_TO_AMOUNTS_NAME],
     ) as number;
@@ -110,6 +114,7 @@ export class CvodeSimulator {
     let eventParams: EventParams | undefined;
 
     funcPtrs.push(rhsPtr);
+    funcPtrs.push(updatePPtr);
     funcPtrs.push(convertToAmountsPtr);
     funcPtrs.push(convertToConcentrationsPtr);
     funcPtrs.push(convertResetPtr);
@@ -221,11 +226,12 @@ export class CvodeSimulator {
       runtimeModel,
       yIndices,
       pIndices,
-      binding: new this.#bindings.Model(
+      binding: new this.#bindings.CvodeModel(
         yVector,
         pVector,
         runtimeModel.reactions.length,
         rhsPtr,
+        updatePPtr,
         convertToAmountsPtr,
         convertToConcentrationsPtr,
         convertResetPtr,

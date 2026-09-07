@@ -39,11 +39,8 @@ export const compileRhs = (
 
   const scope = new GlobalScope(compilation, localsTable, functionTable);
 
-  emitter.emitListHeader(1);
-
-  // 1 local for RATE_TMP
-  emitter.emitUint(1);
-  emitter.emitByte(ValType.f64);
+  // no locals
+  emitter.emitListHeader(0);
 
   const assignments = assignmentGraph.getAssignmentOrder(
     compilation.yVars
@@ -68,32 +65,12 @@ export const compileRhs = (
         emitter.emitUint(SIZEOF_DOUBLE * pTable.get(name));
         break;
       case "rate":
-        emitExpression(expression, emitter, scope, { compilation });
-
-        emitter.emitByte(OpCode.localset);
-        emitter.emitUint(localsTable.getLocal(RATE_TMP));
-
-        // store it in the ydot
         emitter.emitByte(OpCode.localget);
         emitter.emitUint(localsTable.getParam(YDOT_PTR_PARAM));
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getLocal(RATE_TMP));
-
+        emitExpression(expression, emitter, scope, { compilation });
         emitter.emitByte(OpCode.f64store);
         emitter.emitUint(MEM_ALIGNMENT);
         emitter.emitUint(SIZEOF_DOUBLE * yTable.get(name));
-
-        // store it in the p
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getParam(P_PARAM));
-
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(localsTable.getLocal(RATE_TMP));
-
-        emitter.emitByte(OpCode.f64store);
-        emitter.emitUint(MEM_ALIGNMENT);
-        emitter.emitUint(SIZEOF_DOUBLE * pTable.get(name));
         break;
     }
   }

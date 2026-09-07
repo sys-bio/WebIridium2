@@ -9,15 +9,16 @@
 #include <emscripten.h>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include <optional>
 #include <sys/types.h>
+#include <vector>
 
 #include "model.h"
+#include "cvode_model.h"
 #include "event.h"
 
 EMSCRIPTEN_BINDINGS(cvodeBindings) {
     emscripten::class_<Model>("Model")
-        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(
-            emscripten::allow_raw_pointers())
         .function("num_variables", &Model::num_variables)
         .function("ResetState", &Model::ResetState)
         .function("SetYValue", &Model::SetYValue)
@@ -26,6 +27,9 @@ EMSCRIPTEN_BINDINGS(cvodeBindings) {
         .function("SetRelativeTolerance", &Model::SetRelativeTolerance)
         .function("SimulateTimeCourse", &Model::SimulateTimeCourse)
         .function("DumpStats", &Model::DumpStats);
+    
+    emscripten::class_<CvodeModel, emscripten::base<Model>>("CvodeModel")
+        .constructor<std::vector<double>, std::vector<double>, int, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, std::optional<EventParams>>(emscripten::allow_raw_pointers());
     
     emscripten::value_object<EventInfo>("EventInfo")
         .field("is_for_piecewise", &EventInfo::is_for_piecewise)

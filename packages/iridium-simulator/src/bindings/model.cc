@@ -1,86 +1,38 @@
 #include <cstdint>
-#include <cstdio>
 #include <limits>
-#include <sstream>
 #include <stdexcept>
 #include <vector>
-#include <iostream>
 #include <algorithm>
 
 #include "model.h"
+#include "context.h"
 #include "event.h"
 
-#include "cvode/cvode_ls.h"
 #include "nvector/nvector_serial.h"
-#include "cvode/cvode.h"
-#include "sundials/sundials_context.h"
 #include "sundials/sundials_nvector.h"
 #include "sundials/sundials_types.h"
-#include "sunlinsol/sunlinsol_dense.h"
-#include "sunnonlinsol/sunnonlinsol_newton.h"
-#include "sunmatrix/sunmatrix_dense.h"
 
 // #define DEBUG_LOG
-
-int delegating_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
-    int result = model->rhs_fn_(
-        t,
-        NV_DATA_S(y),
-        NV_DATA_S(ydot),
-        model->p_.data(),
-        model->current_triggered_events_.data()
-    );
-#ifdef DEBUG_LOG
-        for (int i = 0; i < NV_LENGTH_S(ydot); i++) {
-            if (i == 0) std::cout << "[time " << t << "] {";
-            else std::cout << ", ";
-
-            std::cout << NV_Ith_S(ydot, i);
-        
-            if (i == NV_LENGTH_S(ydot) - 1) std::cout << "}" << std::endl;
-        }
-#endif
-    return result;
-}
-
-// For the empty RHS, there will be one dummy value in the state vector. We just set it to 0.
-int empty_rhs(double t, N_Vector y, N_Vector ydot, Model *model) {
-    NV_Ith_S(ydot, 0) = 0;
-    return CV_SUCCESS;
-}
-
-int delegating_roots(double t, N_Vector y, double *gout, Model *model) {
-    // TODO: we need to optimize this so we aren't recalculating everything for each event
-    model->rhs_fn_(t, NV_DATA_S(y), model->dummy_y_dot_, model->p_.data(), model->current_triggered_events_.data());
-
-    model->roots_fn_(
-        t,
-        NV_DATA_S(y),
-        gout,
-        model->p_.data(),
-        model->current_triggered_events_.data()
-    );
-    return 0;
-}
 
 static double const kEpsilon = std::numeric_limits<double>::epsilon();
 
 static int const kMaxInvocationsInOneStep = 16777216;
 
+// i added _parma before some parameteres since they get moved (don't want to re-use them)
 Model::Model(
-    std::vector<double> y,
-    std::vector<double> p,
+    std::vector<double> y_param,
+    std::vector<double> p_param,
     int num_reactions,
-    uintptr_t rhs,
+    uintptr_t update_p,
     uintptr_t convert_to_amounts,
     uintptr_t convert_to_concentrations,
     uintptr_t convert_reset,
-    std::optional<EventParams> event_params
-) : original_y_(y),
-    original_p_(p),
-    event_params_(event_params),
+    std::optional<EventParams> event_params_param
+) : original_y_(std::move(y_param)),
+    original_p_(std::move(p_param)),
+    event_params_(std::move(event_params_param)),
     num_reactions_(num_reactions),
-    rhs_fn_((RHSFunc*)rhs),
+    update_p_fn_((UpdatePFunc*)update_p),
     convert_to_amounts_fn_((ConvertFunc*)convert_to_amounts),
     convert_to_concentrations_fn_((ConvertFunc*)convert_to_concentrations),
     convert_reset_fn_((ConvertFunc*)convert_reset),
@@ -88,25 +40,21 @@ Model::Model(
         invocation.priority = CalculatePriority(invocation);
     })
 {
-    // TODO: handle errors?
-    SUNContext_Create(SUN_COMM_NULL, &ctx_);
+    SUNContext ctx = get_ctx();
 
-    cvode_mem_ = CVodeCreate(CV_BDF, ctx_);
-
-    if (original_y_.empty()) {
+    if (HasEmptyY()) {
         // Make a dummy 1d state vector.
-        y_ = N_VNew_Serial(1, ctx_);
+        y_ = N_VNew_Serial(1, ctx);
     } else {
-        y_ = N_VNew_Serial(y.size(), ctx_);
+        y_ = N_VNew_Serial(original_y_.size(), ctx);
     }
 
-    p_.resize(original_p_.size() + num_reactions_ + original_y_.size());
-    dummy_y_dot_ = new double[NV_LENGTH_S(y_)];
-    abs_tol_v_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx_);
-
-    matrix_ = SUNDenseMatrix(NV_LENGTH_S(y_), NV_LENGTH_S(y_), ctx_);
-    non_lin_solver_ = SUNNonlinSol_Newton(y_, ctx_);
-    linear_solver_ = SUNLinSol_Dense(y_, matrix_, ctx_);
+    p_.resize(
+        original_p_.size() +
+        num_reactions_ +
+        original_y_.size()
+    );
+    abs_tol_v_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx);
 
     if (!event_params_.has_value()) {
         num_roots_ = 0;
@@ -130,14 +78,8 @@ Model::~Model() {
     if (output_array_) {
         delete[] output_array_;
     }
-    SUNNonlinSolFree(non_lin_solver_);
-    SUNLinSolFree_Dense(linear_solver_);
-    SUNMatDestroy_Dense(matrix_);
-    delete[] dummy_y_dot_;
     N_VDestroy_Serial(y_);
     N_VDestroy_Serial(abs_tol_v_);
-    CVodeFree(&cvode_mem_);
-    SUNContext_Free(&ctx_);
 }
 
 void Model::ResetState() {
@@ -192,46 +134,21 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     if (num_points <= 1) throw std::invalid_argument("required: num_points > 1");
 
     convert_to_amounts_fn_(NV_DATA_S(y_), p_.data());
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+    UpdateP(time_);
 
     if (!has_init_) {
-        if (original_y_.empty()) {
-            CVodeInit(cvode_mem_, (CVRhsFn)empty_rhs, time_, y_);
-        } else {
-            CVodeInit(cvode_mem_, (CVRhsFn)delegating_rhs, time_, y_);
-        }
-
-        CVodeSetNonlinearSolver(cvode_mem_, non_lin_solver_);
-        CVodeSetLinearSolver(cvode_mem_, linear_solver_, matrix_);
-        CVodeSetUserData(cvode_mem_, this);
-
+        InitIntegrator(num_roots_);
         has_init_ = true;
     } else {
-        CVodeReInit(cvode_mem_, time_, y_);
+        ReinitIntegrator();
     }
 
     // Update tolerances using scaling factor
-    if (original_y_.empty()) {
-        CVodeSStolerances(cvode_mem_, rel_tol_, abs_tol_factor_);
-    } else {
-        for (int i = 0; i < NV_LENGTH_S(y_); i++) {
-            double y_i = std::abs(NV_Ith_S(y_, i));
-            NV_Ith_S(abs_tol_v_, i) =
-                (y_i == 0)
-                    ? abs_tol_factor_
-                    : y_i * abs_tol_factor_;
-        }
-
-        CVodeSVtolerances(cvode_mem_, rel_tol_, abs_tol_v_);
-    }
+    UpdateTolerances();
 
     InitializeOutputArray(num_points);
 
     if (event_params_.has_value()) {
-        CVodeRootInit(cvode_mem_, num_roots_, (CVRootFn)delegating_roots);
-
-        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
-
         UpdateEvents();
         RunPendingEventInvocations();
     }
@@ -242,9 +159,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         Integrate(target_time);
     }
 
-    // TODO: temporary hack to get the RHS to update the `p` variables
-    //       later should make separate update function
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+    UpdateP(time_);
 
     RecordToOutputArray(time_);
 
@@ -259,7 +174,7 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
         Integrate(target_time);
 
         // dumb hack to update p values like above
-        rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+        UpdateP(time_);
 
         RecordToOutputArray(time_);
     }
@@ -272,87 +187,38 @@ Float64Array Model::SimulateTimeCourse(double start_time, double end_time, int n
     );
 }
 
-void Model::DumpStats() {
-    long int nsteps, nfevals, nlinsteps, netfails;
-    int qlast, qcur;
-    double hinused, hlast, hcur, tcur;
+void Model::HandleRoots(double time, N_Vector y, double *gout) {
+    UpdateP(time);
 
-    CVodePrintAllStats(cvode_mem_, stdout, SUN_OUTPUTFORMAT_TABLE);
-
-    // CVodeGetIntegratorStats(
-    //     cvode_mem_,
-    //     &nsteps, &nfevals, &nlinsteps, &netfails,
-    //     &qlast, &qcur,
-    //     &hinused, &hlast, &hcur, &tcur
-    // );
-    //
-    // std::cout
-    //     << "Number of Steps: " << nsteps << "\n"
-    //     << "Number of RHS calls: " << nfevals << "\n"
-    //     << "Number of linear solver setups: " << nlinsteps << "\n"
-    //     << "Number of error test failures: " << netfails << "\n"
-    //     << "Method order in last step: " << qlast << "\n"
-    //     << "Initial step size: " << hinused << "\n"
-    //     << "Last step size: " << hlast << "\n"
-    //     << "Next step size: " << hcur << "\n"
-    //     << "Internal time: " << tcur << std::endl;
+    roots_fn_(
+        time,
+        NV_DATA_S(y),
+        gout,
+        p_.data(),
+        current_triggered_events_.data()
+    );
 }
 
-void Model::Integrate(double target_time) {
-    while (target_time - time_ >= kEpsilon) {
-        double event_time = event_queue_.GetNextInvocationTime();
-        bool go_to_event = event_time > 0 && event_time < target_time;
-        int result =
-            go_to_event
-                ? CVode(cvode_mem_, event_time, y_, &time_, CV_NORMAL)
-                : CVode(cvode_mem_, target_time, y_, &time_, CV_NORMAL);
+void Model::HandleRootsFound() {
+    UpdateP(time_);
 
-        if (result == CV_SUCCESS) {
-            if (!go_to_event) {
-                break;
-            } else {
-                // TODO: do we know that CVODE guarantees we will always go at or past the target time?
-                if (time_ >= event_time) {
-                    RunPendingEventInvocations();
-                    continue;
-                } else {
-                    // what happened??
-                    std::stringstream ss;
-                    ss << "Missed event!? At " << time_ << " wanted " << event_time << std::endl;
-                    throw std::runtime_error(ss.str());
-                    continue;
-                }
-            }
-        } else if (result == CV_ROOT_RETURN) {
-#ifdef DEBUG_LOG
-            std::cout << "hit root at " << time_ << std::endl;
-#endif
-            CVodeGetRootInfo(cvode_mem_, roots_found_.data());
+    ((CheckRootsFn*)event_params_.value().check_roots_fn)(
+        time_,
+        NV_DATA_S(y_),
+        p_.data(),
+        roots_found_.data(),
+        conditions_state_.data(),
+        events_swap_.data()
+    );
 
-            // TODO: replace this with better
-            rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+    EnqueueEventsFromSwap();
 
-            ((CheckRootsFn*)event_params_.value().check_roots_fn)(
-                time_,
-                NV_DATA_S(y_),
-                p_.data(),
-                roots_found_.data(),
-                conditions_state_.data(),
-                events_swap_.data()
-            );
-
-            EnqueueEventsFromSwap();
-
-            RunPendingEventInvocations();
-        } else {
-            // TODO: actual error handling? useful error message?!?!
-            std::stringstream ss;
-            ss << "CVODE Error: " << result << std::endl;
-            throw std::runtime_error(ss.str());
-            break;
-        }
-    }
+    RunPendingEventInvocations();
 }
+
+void Model::UpdateP(double time) {
+    update_p_fn_(time, NV_DATA_S(y_), p_.data(), current_triggered_events_.data());
+};
 
 void Model::EnqueueEventsFromSwap() {
 #ifdef DEBUG_LOG
@@ -489,7 +355,7 @@ void Model::RunPendingEventInvocations() {
 #ifdef DEBUG_LOG
         std::cout << "Re-init at " << time_ << std::endl;
 #endif
-        CVodeReInit(cvode_mem_, time_, y_);
+        ReinitIntegrator();
     }
 }
 
@@ -498,7 +364,7 @@ void Model::RunEventInvocation(const EventInvocation &invocation) {
 
     ((SetAssignmentsFn*)info->set_assignments_fn)(NV_DATA_S(y_), p_.data(), invocation.y_values.data(), invocation.p_values.data());
 
-    rhs_fn_(time_, NV_DATA_S(y_), dummy_y_dot_, p_.data(), current_triggered_events_.data());
+    UpdateP(time_);
 
     UpdateEvents();
 

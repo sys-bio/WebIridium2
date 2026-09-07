@@ -46,6 +46,7 @@ import {
   checkNoRecursiveCalls,
   compileAllUserDefinedFunctions,
 } from "./userDefinedFunction.ts";
+import { getUpdatePFor } from "./model/updateP.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -74,6 +75,7 @@ export const compileIntermediate = (
       compileBody: (functionTable) =>
         compileRhs(compilation, functionTable).getOutput(),
     },
+    getUpdatePFor(compilation),
     {
       kind: "compile",
       isExported: true,
