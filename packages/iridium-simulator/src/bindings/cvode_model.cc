@@ -56,9 +56,10 @@ CvodeModel::CvodeModel(
     uintptr_t convert_reset,
     std::optional<EventParams> event_params
 ) : Model(
-        std::move(y),
+        y,
         std::move(p),
         num_reactions,
+        y.size(),
         update_p,
         convert_to_amounts,
         convert_from_amounts,

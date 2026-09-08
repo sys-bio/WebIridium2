@@ -201,12 +201,13 @@ class FormulaCompilerListener implements AntimonyListener {
   exitVar(ctx: VarContext): void {
     const reference = getReferenceFromVariable(ctx.variable());
 
-    if (reference.length > 1) {
-      throw new CompileError(
-        "cannot use subvariables or constants inside a function.",
-        { tree: ctx },
-      );
-    }
+    // TODO: ok apparently this is legal but the SBML antimony produces isn't???
+    // if (reference.length > 1) {
+    //   throw new CompileError(
+    //     "cannot use subvariables or constants inside a function.",
+    //     { tree: ctx },
+    //   );
+    // }
 
     const [name, conversionFactorExpr] = this.#resolveVariable(reference);
 

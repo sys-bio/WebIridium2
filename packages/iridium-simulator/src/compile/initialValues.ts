@@ -33,7 +33,7 @@ import { compileAllUserDefinedFunctions } from "./userDefinedFunction.ts";
 import {
   createAssignmentsGraphFromCompilation,
   type Assignment,
-  type Name,
+  type Assignable,
 } from "./graph.ts";
 
 /**
@@ -52,7 +52,7 @@ export const evaluateInitialValues = async (
     true,
   );
 
-  const relevantNames: Name[] = [];
+  const relevantNames: Assignable[] = [];
   for (const variable of compilation.variables.values()) {
     if (
       variable.value.kind === "initial" ||
@@ -143,11 +143,24 @@ const evaluateFromAssignments = async (
   );
 
   const values = new Map<string, number>();
-  for (let i = 0; i < compilation.yVars.length; i++) {
-    values.set(compilation.yVars[i], doubleView[i]);
+  for (let i = 0; i < compilation.yDifferentialVars.length; i++) {
+    values.set(compilation.yDifferentialVars[i], doubleView[i]);
+  }
+  for (let i = 0; i < compilation.yAlgebraicVars.length; i++) {
+    values.set(
+      compilation.yAlgebraicVars[i],
+      doubleView[compilation.yDifferentialVars.length + i],
+    );
   }
   for (let i = 0; i < compilation.pVars.length; i++) {
-    values.set(compilation.pVars[i], doubleView[compilation.yVars.length + i]);
+    values.set(
+      compilation.pVars[i],
+      doubleView[
+        compilation.yDifferentialVars.length +
+          compilation.yAlgebraicVars.length +
+          i
+      ],
+    );
   }
 
   return values;

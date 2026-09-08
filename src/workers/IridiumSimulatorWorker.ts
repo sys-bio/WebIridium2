@@ -1,7 +1,7 @@
 import {
-  createCvodeSimulator,
+  createSimulator,
   type RuntimeModel,
-  type CvodeSimulator,
+  type Simulator,
 } from "iridium-simulator";
 import {
   buildAntimonyDocument,
@@ -32,11 +32,11 @@ export type IridiumSimulatorResult =
   | IridiumCompileResult
   | IridiumTimeCourseResult;
 
-let wrapperPromise: Promise<CvodeSimulator> | undefined;
+let wrapperPromise: Promise<Simulator> | undefined;
 
-const ensureWrapper = (): Promise<CvodeSimulator> => {
+const ensureWrapper = (): Promise<Simulator> => {
   if (!wrapperPromise) {
-    wrapperPromise = createCvodeSimulator();
+    wrapperPromise = createSimulator();
     return wrapperPromise;
   } else {
     return wrapperPromise;

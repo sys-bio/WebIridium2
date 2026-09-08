@@ -29,7 +29,18 @@ export class Compilation {
   /** Assignment graph for non-initial values. */
   assignmentGraph: AssignmentGraph;
 
-  yVars: string[];
+  /**
+   * Differential variables that go in y.
+   */
+  yDifferentialVars: string[];
+  /**
+   * Algebraic variables that go in p.
+   */
+  yAlgebraicVars: string[];
+  /**
+   * Variables that go in p. Does not include reaction rates or
+   * rates for differential variables.
+   */
   pVars: string[];
 
   yTable: IndexSymbolTable;
@@ -56,7 +67,8 @@ export class Compilation {
 
     this.piecewisePieces = new Map();
 
-    this.yVars = [];
+    this.yDifferentialVars = [];
+    this.yAlgebraicVars = [];
     this.pVars = [];
 
     for (const variable of model.variables) {
@@ -64,7 +76,9 @@ export class Compilation {
         variable.value.kind === "rate" ||
         variable.value.kind === "reaction"
       ) {
-        this.yVars.push(variable.name);
+        this.yDifferentialVars.push(variable.name);
+      } else if (variable.value.kind === "algebraic") {
+        this.yAlgebraicVars.push(variable.name);
       } else {
         this.pVars.push(variable.name);
       }
@@ -86,7 +100,10 @@ export class Compilation {
     }
 
     this.yTable = new IndexSymbolTable();
-    for (const name of this.yVars) {
+    for (const name of this.yDifferentialVars) {
+      this.yTable.add(name);
+    }
+    for (const name of this.yAlgebraicVars) {
       this.yTable.add(name);
     }
 
@@ -97,8 +114,8 @@ export class Compilation {
     for (const reaction of model.reactions) {
       this.pTable.add(reaction.name);
     }
-    // we actually add the yVars to pTable to represent the ydot
-    for (const name of this.yVars) {
+    // we actually add these to pTable to represent the ydot
+    for (const name of this.yDifferentialVars) {
       this.pTable.add(name);
     }
 
@@ -134,7 +151,12 @@ export class Compilation {
   forAllExpressions(
     callback: (
       expr: IridiumExpression,
-      context: "variables" | "events" | "reactions" | "functions",
+      context:
+        | "variables"
+        | "events"
+        | "reactions"
+        | "algebraicRules"
+        | "functions",
     ) => void,
   ): void {
     for (const variable of this.variables.values()) {
@@ -169,6 +191,10 @@ export class Compilation {
 
     for (const reaction of this.reactions.values()) {
       callback(reaction.rate, "reactions");
+    }
+
+    for (const rule of this.algebraicRules) {
+      callback(rule.expression, "algebraicRules");
     }
 
     for (const func of this.functions.values()) {

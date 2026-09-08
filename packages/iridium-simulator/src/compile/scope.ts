@@ -112,8 +112,10 @@ export class GlobalScope implements Scope {
         variable.value.kind !== "rate" &&
         variable.value.kind !== "reaction"
       ) {
-        // too hard to find he rateOf this
-        if (variable.value.kind === "assignment") {
+        if (
+          variable.value.kind === "assignment" ||
+          variable.value.kind === "algebraic"
+        ) {
           return false;
         }
 
@@ -176,7 +178,10 @@ export class GlobalScope implements Scope {
 
   emitLoadRate(emitter: Emitter, expr: IridiumExpressionRateOf): void {
     if (!this.emitLoadRateFromName(emitter, expr.name)) {
-      throw new CompileError(`No rateOf: ${expr.name}`, expr.metadata);
+      throw new CompileError(
+        `Cannot determine rateOf: ${expr.name}`,
+        expr.metadata,
+      );
     }
   }
 

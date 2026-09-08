@@ -23,6 +23,7 @@ Model::Model(
     std::vector<double> y_param,
     std::vector<double> p_param,
     int num_reactions,
+    int num_differential_variables,
     uintptr_t update_p,
     uintptr_t convert_to_amounts,
     uintptr_t convert_to_concentrations,
@@ -52,7 +53,7 @@ Model::Model(
     p_.resize(
         original_p_.size() +
         num_reactions_ +
-        original_y_.size()
+        num_differential_variables
     );
     abs_tol_v_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx);
 
@@ -393,10 +394,10 @@ void Model::RecordToOutputArray(double time) {
     std::copy(NV_DATA_S(y_), NV_DATA_S(y_) + original_y_.size(), output_array_ + start);
     std::copy(
         p_.data(),
-        p_.data() + p_.size() - original_y_.size(),
+        p_.data() + p_.size(),
         output_array_ + start + original_y_.size()
     );
-    output_array_[start + original_y_.size() + p_.size() - original_y_.size()] = time;
+    output_array_[start + original_y_.size() + p_.size()] = time;
 
     convert_to_concentrations_fn_(
         output_array_ + start,

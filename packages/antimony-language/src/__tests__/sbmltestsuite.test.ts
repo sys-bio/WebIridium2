@@ -10,7 +10,6 @@ import { promises as fs } from "fs";
 import path from "path";
 
 const UNSUPPORTED_TAGS = [
-  "AlgebraicRule",
   "FastReaction",
   "CSymbolDelay",
   "RandomEventExecution",
@@ -39,6 +38,12 @@ const SKIP_CASES = new Set<number>([
 
   // No MathML is not converted correctly in these cases.
   1234, 1235, 1555, 1557,
+
+  // Antimony doesn't distinguish between constant and boundary species so we
+  551, 554, 695,
+
+  // Stoichiometry/speciesReference are not marked as const in the conversion
+  1386,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.

@@ -1,4 +1,4 @@
-import { createCvodeSimulator, type TimeCourseOutput } from "iridium-simulator";
+import { createSimulator, type TimeCourseOutput } from "iridium-simulator";
 import { compileToIridium } from "../compile/compile";
 import { compile } from "iridium-simulator";
 import { buildAntimonyDocument } from "../semantic/semantic";
@@ -84,7 +84,7 @@ export const simulateOnce = async (
   relativeTolerance?: number,
   amounts?: string[],
 ): Promise<TimeCourseOutput> => {
-  const simulator = await createCvodeSimulator();
+  const simulator = await createSimulator();
   const document = buildAntimonyDocument(model);
   const ir = compileToIridium(document);
   const runtimeModel = await compile(ir);

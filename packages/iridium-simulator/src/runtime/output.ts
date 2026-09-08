@@ -41,13 +41,25 @@ export class TimeCourseOutput {
     return this.#columnNames;
   }
 
-  get columnCount() {
-    return (
-      1 +
-      this.model.y.length +
-      this.model.p.length +
-      this.model.reactions.length
-    );
+  get columnCount(): number {
+    switch (this.model.kind) {
+      case "cvode":
+        return (
+          1 +
+          this.model.y.length +
+          this.model.p.length +
+          this.model.reactions.length +
+          this.model.y.length
+        );
+      case "ida":
+        return (
+          1 +
+          this.model.y.length +
+          this.model.p.length +
+          this.model.reactions.length +
+          this.model.algebraicVariablesStartIndex
+        );
+    }
   }
 
   get rowCount() {
@@ -73,7 +85,7 @@ export class TimeCourseOutput {
     }
 
     if (name === TIME_NAME) {
-      return i;
+      return this.columnCount - 1;
     }
 
     return -1;
@@ -115,15 +127,20 @@ export class TimeCourseOutput {
    */
   toCsv(): string {
     const lines = [];
-    const colCount = this.columnCount;
+    const names = this.columnNames;
+    const indexes = [];
+    for (const name of names) {
+      indexes.push(this.getColumnIndex(name));
+    }
+
     const rowCount = this.rowCount;
 
-    lines.push(this.columnNames.map(escapeCsv).join(","));
+    lines.push(names.map(escapeCsv).join(","));
 
     for (let y = 0; y < rowCount; y++) {
       const line = [];
-      for (let x = 0; x < colCount; x++) {
-        line.push(this.buffer[x + y * colCount]);
+      for (const index of indexes) {
+        line.push(this.buffer[index + y * this.columnCount]);
       }
       lines.push(line.join(","));
     }

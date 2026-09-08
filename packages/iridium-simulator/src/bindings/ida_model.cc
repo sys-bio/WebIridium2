@@ -1,20 +1,49 @@
+#include <cstdio>
+#include <stdexcept>
 #include <iostream>
 #include <sstream>
 
 #include "ida/ida.h"
 #include "nvector/nvector_serial.h"
+#include "sunlinsol/sunlinsol_dense.h"
+#include "sunnonlinsol/sunnonlinsol_newton.h"
 
 #include "ida_model.h"
 #include "context.h"
-#include "sunlinsol/sunlinsol_dense.h"
-#include "sunnonlinsol/sunnonlinsol_newton.h"
-#include <cstdio>
-#include <stdexcept>
+
+// #define DEBUG_LOG
 
 static double const kEpsilon = std::numeric_limits<double>::epsilon();
 
 int delegating_ida_res(double t, N_Vector y, N_Vector ydot, N_Vector residualout, IdaModel *model) {
-    return model->res_fn_(
+#ifdef DEBUG_LOG
+        std::cout << "[before time " << t << "]" << std::endl;
+        for (int i = 0; i < NV_LENGTH_S(y); i++) {
+            if (i == 0) std::cout << "y={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(y, i);
+        
+            if (i == NV_LENGTH_S(y) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(ydot); i++) {
+            if (i == 0) std::cout << "ydot={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(ydot, i);
+        
+            if (i == NV_LENGTH_S(ydot) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(residualout); i++) {
+            if (i == 0) std::cout << "residual={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(residualout, i);
+        
+            if (i == NV_LENGTH_S(residualout) - 1) std::cout << "}" << std::endl;
+        }
+#endif
+    int result = model->res_fn_(
         t,
         NV_DATA_S(y),
         NV_DATA_S(ydot),
@@ -22,6 +51,34 @@ int delegating_ida_res(double t, N_Vector y, N_Vector ydot, N_Vector residualout
         model->p_.data(),
         model->current_triggered_events_.data()
     );
+#ifdef DEBUG_LOG
+        std::cout << "[after time " << t << "]" << std::endl;
+        for (int i = 0; i < NV_LENGTH_S(y); i++) {
+            if (i == 0) std::cout << "y={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(y, i);
+        
+            if (i == NV_LENGTH_S(y) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(ydot); i++) {
+            if (i == 0) std::cout << "ydot={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(ydot, i);
+        
+            if (i == NV_LENGTH_S(ydot) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(residualout); i++) {
+            if (i == 0) std::cout << "residual={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(residualout, i);
+        
+            if (i == NV_LENGTH_S(residualout) - 1) std::cout << "}" << std::endl;
+        }
+#endif
+    return result;
 }
 
 int empty_res(double t, N_Vector y, N_Vector ydot, N_Vector residualout, IdaModel *model) {
@@ -49,6 +106,7 @@ IdaModel::IdaModel(
         std::move(y),
         std::move(p),
         num_reactions,
+        algebraic_variables_start_index,
         update_p,
         convert_to_amounts,
         convert_from_amounts,
@@ -59,7 +117,7 @@ IdaModel::IdaModel(
 {
     SUNContext ctx = get_ctx();
 
-    // TODO: error hnadling?
+    // TODO: error handling?
     ida_mem_ = IDACreate(ctx);
 
     ydot_ = N_VNew_Serial(NV_LENGTH_S(y_), ctx);
@@ -166,11 +224,84 @@ void IdaModel::Integrate(double target_time) {
 }
 
 void IdaModel::UpdateAfterDiscontinuity() {
+    // set ydot so IDACalcIc has an easier time
+
+    IDAReInit(ida_mem_, time_, y_, ydot_);
+
+    std::vector<double> residualout(NV_LENGTH_S(y_));
+    for (int i = 0; i < NV_LENGTH_S(ydot_); i++) {
+        NV_Ith_S(ydot_, i) = 0;
+    }
+
+#ifdef DEBUG_LOG
+        std::cout << "initial 1" << std::endl;
+        for (int i = 0; i < NV_LENGTH_S(y_); i++) {
+            if (i == 0) std::cout << "y={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(y_, i);
+        
+            if (i == NV_LENGTH_S(y_) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(ydot_); i++) {
+            if (i == 0) std::cout << "ydot={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(ydot_, i);
+        
+            if (i == NV_LENGTH_S(ydot_) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < p_.size(); i++) {
+            if (i == 0) std::cout << "p={";
+            else std::cout << ", ";
+
+            std::cout << p_[i];
+        
+            if (i == p_.size() - 1) std::cout << "}" << std::endl;
+        }
+#endif
+
+    res_fn_(time_, NV_DATA_S(y_), NV_DATA_S(ydot_), residualout.data(), p_.data(), current_triggered_events_.data());
+
+    for (int i = 0; i < residualout.size(); i++) {
+        NV_Ith_S(ydot_, i) = -residualout[i];
+    }
+
+#ifdef DEBUG_LOG
+        std::cout << "initial 2" << std::endl;
+        for (int i = 0; i < NV_LENGTH_S(y_); i++) {
+            if (i == 0) std::cout << "y={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(y_, i);
+        
+            if (i == NV_LENGTH_S(y_) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < NV_LENGTH_S(ydot_); i++) {
+            if (i == 0) std::cout << "ydot={";
+            else std::cout << ", ";
+
+            std::cout << NV_Ith_S(ydot_, i);
+        
+            if (i == NV_LENGTH_S(ydot_) - 1) std::cout << "}" << std::endl;
+        }
+        for (int i = 0; i < p_.size(); i++) {
+            if (i == 0) std::cout << "p={";
+            else std::cout << ", ";
+
+            std::cout << p_[i];
+        
+            if (i == p_.size() - 1) std::cout << "}" << std::endl;
+        }
+#endif
+
     // Always integrate forward so we use time_ + 0.1.
     // NOTE: this might not always the best thing to do.
     //       Change if issues arise.
     int result = IDACalcIC(ida_mem_, IDA_YA_YDP_INIT, time_ + 0.1);
-    if (result != IDA_SUCCESS) {
+    if (result == IDA_SUCCESS) {
+        IDAGetConsistentIC(ida_mem_, y_, ydot_);
+    } else {
         std::stringstream ss;
         ss << "IDACalcIC Error: " << result << std::endl;
         throw std::runtime_error(ss.str());

@@ -1,7 +1,4 @@
-export {
-  createCvodeSimulator,
-  type CvodeSimulator,
-} from "./runtime/cvodeSimulator.ts";
+export { createSimulator, type Simulator } from "./runtime/simulator.ts";
 export { compile, compileIntermediate } from "./compile/compile.ts";
 export { TIME_NAME } from "./names.ts";
 export type { RuntimeModel } from "./runtime/model.ts";

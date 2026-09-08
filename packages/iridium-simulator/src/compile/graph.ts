@@ -12,27 +12,38 @@ import type { IndexSymbolTable } from "./symbolTables";
 
 type Index = number & { readonly __brand: unique symbol };
 
-export type Name = {
-  kind: "name" | "rate";
+export type Assignable = {
+  kind: "name" | "rate" | "algebraic";
   name: string;
 };
 
-export type Assignment = Name & {
-  expression: IridiumExpression;
-};
+export type Assignment =
+  | {
+      kind: "name" | "rate";
+      name: string;
+      expression: IridiumExpression;
+    }
+  | {
+      kind: "algebraic";
+      name: string;
+      index: number;
+      expression: IridiumExpression;
+    };
 
-// This tag are two-fold. They are used in the topo sort so that ydot/p assignments
-// go after y assignments and to recover the original name from the index.
+// These tags are two-fold are used in the topo sort so that ydot/p assignments/algebraic rules go after y assignments
 const P_TAG = 0x4000_0000;
+const ALGEBRAIC_TAG = 0x8000_0000;
 
 const asY = (index: number): Index => index as Index;
 const asP = (index: number): Index => (index | P_TAG) as Index;
+const asAlgebraic = (index: number): Index =>
+  ((index | ALGEBRAIC_TAG) >>> 0) as Index; // need to add the >>> so its treated as unsigned
 
 export class AssignmentGraph {
   #yTable: IndexSymbolTable;
   #pTable: IndexSymbolTable;
-  #names: Map<Index, Name>;
   #assignments: Map<Index, Assignment>;
+  #algebraicRuleIndexes: Map<string, Index>;
 
   constructor(
     y: IndexSymbolTable,
@@ -40,11 +51,12 @@ export class AssignmentGraph {
     yAssignments: Map<string, IridiumExpression>,
     ydotAssignments: Map<string, IridiumExpression>,
     pAssignments: Map<string, IridiumExpression>,
+    algebraicRules: Map<string, IridiumExpression>,
   ) {
     this.#yTable = y;
     this.#pTable = p;
     this.#assignments = new Map();
-    this.#names = new Map();
+    this.#algebraicRuleIndexes = new Map();
 
     const yNames = y.keys();
     for (let i = 0; i < yNames.length; i++) {
@@ -52,7 +64,6 @@ export class AssignmentGraph {
 
       const yAssignment = yAssignments.get(name);
       if (yAssignment) {
-        this.#names.set(asY(i), { kind: "name", name });
         this.#assignments.set(asY(i), {
           kind: "name",
           name,
@@ -63,7 +74,6 @@ export class AssignmentGraph {
       const ydotAssignment = ydotAssignments.get(name);
       if (ydotAssignment) {
         const index = asP(this.#pTable.get(name));
-        this.#names.set(index, { kind: "rate", name });
         this.#assignments.set(index, {
           kind: "rate",
           name,
@@ -77,7 +87,6 @@ export class AssignmentGraph {
       const name = pNames[i];
       const pAssignment = pAssignments.get(name);
       if (pAssignment) {
-        this.#names.set(asP(i), { kind: "name", name });
         this.#assignments.set(asP(i), {
           kind: "name",
           name,
@@ -85,17 +94,33 @@ export class AssignmentGraph {
         });
       }
     }
+
+    const algebraicRuleNames = Array.from(algebraicRules.keys());
+    for (let i = 0; i < algebraicRuleNames.length; i++) {
+      const name = algebraicRuleNames[i];
+      const expression = algebraicRules.get(name)!;
+      this.#assignments.set(asAlgebraic(i), {
+        kind: "algebraic",
+        name,
+        index: i,
+        expression,
+      });
+      this.#algebraicRuleIndexes.set(name, asAlgebraic(i));
+    }
   }
 
-  #assignmentToIndex(assignment: Name): Index {
-    if (assignment.kind === "name") {
-      if (this.#yTable.has(assignment.name)) {
-        return asY(this.#yTable.get(assignment.name));
-      } else {
+  #assignmentToIndex(assignment: Assignable): Index {
+    switch (assignment.kind) {
+      case "name":
+        if (this.#yTable.has(assignment.name)) {
+          return asY(this.#yTable.get(assignment.name));
+        } else {
+          return asP(this.#pTable.get(assignment.name));
+        }
+      case "rate":
         return asP(this.#pTable.get(assignment.name));
-      }
-    } else {
-      return asP(this.#pTable.get(assignment.name));
+      case "algebraic":
+        return this.#algebraicRuleIndexes.get(assignment.name)!;
     }
   }
 
@@ -103,7 +128,7 @@ export class AssignmentGraph {
     return this.#assignments.get(index)!;
   }
 
-  getAssignmentOrder(assignments: Name[]): Assignment[] {
+  getAssignmentOrder(assignments: Assignable[]): Assignment[] {
     const graph: Map<Index, Index[]> = new Map();
     const inDegrees: Map<Index, number> = new Map();
 
@@ -252,7 +277,14 @@ const deleteMinHeap = (heap: Index[]): Index | undefined => {
 };
 
 export const createAssignmentsGraphFromCompilation = (
-  { yTable, pTable, variables, reactions, compartments }: Compilation,
+  {
+    yTable,
+    pTable,
+    variables,
+    reactions,
+    algebraicRules,
+    compartments,
+  }: Compilation,
   isForInitialValues?: boolean,
 ): AssignmentGraph => {
   const yAssignments = new Map<string, IridiumExpression>();
@@ -340,8 +372,10 @@ export const createAssignmentsGraphFromCompilation = (
   for (const variable of variables.values()) {
     switch (variable.value.kind) {
       case "initial":
-      case "algebraic":
         addInitialValue(pAssignments, variable);
+        break;
+      case "algebraic":
+        addInitialValue(yAssignments, variable);
         break;
       case "rate": {
         addInitialValue(yAssignments, variable);
@@ -423,5 +457,6 @@ export const createAssignmentsGraphFromCompilation = (
     yAssignments,
     ydotAssignments,
     pAssignments,
+    new Map(algebraicRules.map(({ name, expression }) => [name, expression])),
   );
 };

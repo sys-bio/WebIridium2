@@ -2,16 +2,7 @@ import Emitter from "./Emitter";
 import { MAGIC_WORD, SectionCode, VERSION_WORD } from "./codes";
 import { FunctionTable, TypeTable } from "./symbolTables.ts";
 import { evaluateInitialValues } from "./initialValues.ts";
-import {
-  CONVERT_TO_CONCENTRATIONS_NAME,
-  CONVERT_TO_AMOUNTS_NAME,
-  CORE_NAMESPACE,
-  IMPORT_NAMESPACE,
-  MEMORY_IMPORT_NAME,
-  RHS_NAME,
-  CONVERT_RESET_NAME,
-} from "../names";
-import { compileRhs, RHS_PARAMS, RHS_RESULTS } from "./model/rhs";
+import { CORE_NAMESPACE, IMPORT_NAMESPACE, MEMORY_IMPORT_NAME } from "../names";
 import { compileEvents } from "./model/event";
 import {
   predefinedFuncDefs,
@@ -26,11 +17,7 @@ import {
 } from "./functions";
 import { CompileInvariantError, CompileModelError } from "./errors";
 import { Compilation } from "./Compilation.ts";
-import {
-  compileConvert,
-  CONVERT_PARAMS,
-  CONVERT_RESULTS,
-} from "./model/convertConcentration.ts";
+import { getConvertConcentrationFunctions } from "./model/convertConcentration.ts";
 import type { IridiumModel } from "../ir/model.ts";
 import {
   walkExpression,
@@ -47,6 +34,7 @@ import {
   compileAllUserDefinedFunctions,
 } from "./userDefinedFunction.ts";
 import { getUpdatePFor } from "./model/updateP.ts";
+import { getResFor, getRhsFor } from "./model/rhsRes.ts";
 
 /** Used for testing. */
 export const compileIntermediate = (
@@ -56,53 +44,21 @@ export const compileIntermediate = (
   imports: string[];
   runtimeEvents: (RuntimePieceEvent | RuntimeEvent)[];
   bytecode: Uint8Array;
+  isUsingIda: boolean;
 } => {
   checkNoRecursiveCalls(ir.functions);
 
   const compilation = new Compilation(ir);
+  const isUsingIda = compilation.hasAlgebraicRules;
 
   const referencedFunctions = Array.from(
     getReferencedFunctions(compilation, { shouldTrackPiecewise: true }),
   );
 
   const functions: WasmFunction[] = [
-    {
-      kind: "compile",
-      isExported: true,
-      name: RHS_NAME,
-      params: RHS_PARAMS,
-      results: RHS_RESULTS,
-      compileBody: (functionTable) =>
-        compileRhs(compilation, functionTable).getOutput(),
-    },
+    isUsingIda ? getResFor(compilation) : getRhsFor(compilation),
     getUpdatePFor(compilation),
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_TO_AMOUNTS_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "toAmount").getOutput(),
-    },
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_TO_CONCENTRATIONS_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "toConcentrations").getOutput(),
-    },
-    {
-      kind: "compile",
-      isExported: true,
-      name: CONVERT_RESET_NAME,
-      params: CONVERT_PARAMS,
-      results: CONVERT_RESULTS,
-      compileBody: (_functionTable) =>
-        compileConvert(compilation, "reset").getOutput(),
-    },
+    ...getConvertConcentrationFunctions(compilation),
     ...referencedFunctions.map((name) => {
       if (Object.hasOwn(predefinedFuncDefs, name)) {
         return predefinedFuncDefs[name];
@@ -125,30 +81,52 @@ export const compileIntermediate = (
     imports: referencedFunctions,
     runtimeEvents: runtimeEvents,
     bytecode: compileFunctions(functions),
+    isUsingIda,
   };
 };
 
 export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
-  const { compilation, imports, runtimeEvents, bytecode } =
+  const { compilation, imports, runtimeEvents, bytecode, isUsingIda } =
     compileIntermediate(ir);
 
   const initialValues = await evaluateInitialValues(compilation);
 
-  return {
-    kind: "cvode",
-    y: compilation.yVars.map((name) => ({
-      name,
-      initialValue: initialValues.get(name) ?? 0,
-    })),
-    p: compilation.pVars.map((name) => ({
-      name,
-      initialValue: initialValues.get(name) ?? 0,
-    })),
-    reactions: Array.from(compilation.reactions.values()).map((r) => r.name),
-    events: runtimeEvents,
-    wasmModule: await WebAssembly.compile(bytecode),
-    funcImports: imports,
-  };
+  if (isUsingIda) {
+    return {
+      kind: "ida",
+      y: compilation.yDifferentialVars
+        .concat(compilation.yAlgebraicVars)
+        .map((name) => ({
+          name,
+          initialValue: initialValues.get(name) ?? 0,
+        })),
+      p: compilation.pVars.map((name) => ({
+        name,
+        initialValue: initialValues.get(name) ?? 0,
+      })),
+      algebraicVariablesStartIndex: compilation.yDifferentialVars.length,
+      reactions: Array.from(compilation.reactions.values()).map((r) => r.name),
+      events: runtimeEvents,
+      wasmModule: await WebAssembly.compile(bytecode),
+      funcImports: imports,
+    };
+  } else {
+    return {
+      kind: "cvode",
+      y: compilation.yDifferentialVars.map((name) => ({
+        name,
+        initialValue: initialValues.get(name) ?? 0,
+      })),
+      p: compilation.pVars.map((name) => ({
+        name,
+        initialValue: initialValues.get(name) ?? 0,
+      })),
+      reactions: Array.from(compilation.reactions.values()).map((r) => r.name),
+      events: runtimeEvents,
+      wasmModule: await WebAssembly.compile(bytecode),
+      funcImports: imports,
+    };
+  }
 };
 
 export const getReferencedFunctions = (

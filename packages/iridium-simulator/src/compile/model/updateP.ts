@@ -11,7 +11,7 @@ import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "../constants";
 import Emitter from "../Emitter";
 import { emitExpression } from "../expression";
 import type { CompiledFunction } from "../functions";
-import type { Name } from "../graph";
+import type { Assignable } from "../graph";
 import { GlobalScope } from "../scope";
 import { LocalsSymbolTable, type FunctionTable } from "../symbolTables";
 
@@ -46,8 +46,12 @@ export const compileUpdateP = (
 
   const assignments = assignmentGraph.getAssignmentOrder(
     compilation.pVars
-      .map((name) => ({ kind: "name", name }) as Name)
-      .concat(compilation.yVars.map((name) => ({ kind: "rate", name }) as Name))
+      .map((name) => ({ kind: "name", name }) as Assignable)
+      .concat(
+        compilation.yDifferentialVars.map(
+          (name) => ({ kind: "rate", name }) as Assignable,
+        ),
+      )
       .concat(
         Array.from(compilation.reactions.values()).map((r) => ({
           kind: "name",

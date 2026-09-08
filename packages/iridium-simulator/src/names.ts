@@ -1,4 +1,5 @@
 export const RHS_NAME = "rhs";
+export const RES_NAME = "res"; // res = residual. Used for IDA.
 export const UPDATE_P_NAME = "updateP";
 
 export const CONVERT_TO_AMOUNTS_NAME = "convertToAmounts";

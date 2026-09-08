@@ -5,7 +5,7 @@ import {
   buildAntimonyFromParseTree,
 } from "../semantic/semantic";
 import { compileToIridium } from "../compile/compile";
-import { compile, createCvodeSimulator } from "iridium-simulator";
+import { compile, createSimulator } from "iridium-simulator";
 
 const modelFiles = import.meta.glob("./benchModels/*.ant", {
   query: "?raw",
@@ -62,7 +62,7 @@ describe("load", async () => {
       compileToIridium(buildAntimonyDocument(code as string)),
     );
     bench(`load ${name}`, async () => {
-      const simulator = await createCvodeSimulator();
+      const simulator = await createSimulator();
       await simulator.setModel(model);
     });
   }
@@ -74,7 +74,7 @@ describe("compile and load", () => {
       const model = await compile(
         compileToIridium(buildAntimonyDocument(code as string)),
       );
-      const simulator = await createCvodeSimulator();
+      const simulator = await createSimulator();
       await simulator.setModel(model);
     });
   }

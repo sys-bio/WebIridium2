@@ -6,6 +6,7 @@
 
 #include <emscripten/val.h>
 
+#include "nvector/nvector_serial.h"
 #include "sundials/sundials_nvector.h"
 
 #include "event.h"
@@ -29,6 +30,7 @@ public:
         std::vector<double> y,
         std::vector<double> p,
         int num_reactions,
+        int num_differential_variables,
         uintptr_t update_p,
         uintptr_t convert_to_amounts,
         uintptr_t convert_from_amounts,
@@ -46,8 +48,7 @@ public:
         return
             1 +
             original_y_.size() +
-            original_p_.size() +
-            num_reactions_;
+            p_.size();
     }
 
     // Reset all variables to their original values.

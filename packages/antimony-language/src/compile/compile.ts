@@ -416,7 +416,11 @@ const compileModel = (
     }
 
     // for algebraic rules, we need to add it to the set
-    if (resolveIsForAlgebraicRule && object.kind === "variable") {
+    if (
+      resolveIsForAlgebraicRule &&
+      object.kind === "variable" &&
+      !object.isConst
+    ) {
       algebraicRuleInvolvedVariables.add(object);
     }
 

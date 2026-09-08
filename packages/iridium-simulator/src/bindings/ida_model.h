@@ -55,7 +55,6 @@ private:
     SUNLinearSolver linear_solver_;
 
     IdaResFunc *res_fn_;
-    int algebraic_variables_start_index_;
 
     friend int delegating_ida_res(double t, N_Vector y, N_Vector ydot, N_Vector residualout, IdaModel *model);
     friend int delegating_ida_roots(double t, N_Vector y, N_Vector ydot, double *gout, IdaModel *model);

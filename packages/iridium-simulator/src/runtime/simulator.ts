@@ -20,6 +20,7 @@ import {
   UPDATE_CONDITIONS_NAME,
   CONVERT_RESET_NAME,
   UPDATE_P_NAME,
+  RES_NAME,
 } from "../names.ts";
 import {
   predefinedFuncDefs,
@@ -44,7 +45,7 @@ interface InternalModel {
   funcPtrs: number[];
 }
 
-export class CvodeSimulator {
+export class Simulator {
   #bindings: MainModule;
   #internalModel: InternalModel | undefined;
 
@@ -95,8 +96,8 @@ export class CvodeSimulator {
       pVector,
     ];
 
-    const rhsPtr = this.#bindings.addFunction(
-      instance.exports[RHS_NAME],
+    const rhsResPtr = this.#bindings.addFunction(
+      instance.exports[runtimeModel.kind === "ida" ? RES_NAME : RHS_NAME],
     ) as number;
     const updatePPtr = this.#bindings.addFunction(
       instance.exports[UPDATE_P_NAME],
@@ -113,7 +114,7 @@ export class CvodeSimulator {
 
     let eventParams: EventParams | undefined;
 
-    funcPtrs.push(rhsPtr);
+    funcPtrs.push(rhsResPtr);
     funcPtrs.push(updatePPtr);
     funcPtrs.push(convertToAmountsPtr);
     funcPtrs.push(convertToConcentrationsPtr);
@@ -226,17 +227,31 @@ export class CvodeSimulator {
       runtimeModel,
       yIndices,
       pIndices,
-      binding: new this.#bindings.CvodeModel(
-        yVector,
-        pVector,
-        runtimeModel.reactions.length,
-        rhsPtr,
-        updatePPtr,
-        convertToAmountsPtr,
-        convertToConcentrationsPtr,
-        convertResetPtr,
-        eventParams,
-      ),
+      binding:
+        runtimeModel.kind === "ida"
+          ? new this.#bindings.IdaModel(
+              yVector,
+              pVector,
+              runtimeModel.reactions.length,
+              rhsResPtr,
+              runtimeModel.algebraicVariablesStartIndex,
+              updatePPtr,
+              convertToAmountsPtr,
+              convertToConcentrationsPtr,
+              convertResetPtr,
+              eventParams,
+            )
+          : new this.#bindings.CvodeModel(
+              yVector,
+              pVector,
+              runtimeModel.reactions.length,
+              rhsResPtr,
+              updatePPtr,
+              convertToAmountsPtr,
+              convertToConcentrationsPtr,
+              convertResetPtr,
+              eventParams,
+            ),
       funcPtrs,
     };
 
@@ -324,7 +339,7 @@ export class CvodeSimulator {
   }
 }
 
-export const createCvodeSimulator = async (): Promise<CvodeSimulator> => {
+export const createSimulator = async (): Promise<Simulator> => {
   const locateFile = (name: string, root: string) => {
     const isNode = typeof process === "object" && !process.browser;
     if (name.endsWith(".wasm")) {
@@ -334,5 +349,5 @@ export const createCvodeSimulator = async (): Promise<CvodeSimulator> => {
   };
 
   const bindings = await createBindings({ locateFile });
-  return new CvodeSimulator(bindings);
+  return new Simulator(bindings);
 };
