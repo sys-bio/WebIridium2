@@ -203,6 +203,7 @@ describe("algebraic rule", () => {
     basic: "5 = A + B",
     decimal: "5.5 = A + B",
     scientific: "5e+5 = A + B",
+    empty: "0 = ;",
   });
 });
 

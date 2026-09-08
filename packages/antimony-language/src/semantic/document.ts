@@ -131,7 +131,7 @@ export type AntimonyReaction = AntimonyObjectBase<"reaction"> &
 export type AntimonyAlgebraicRule = AntimonyObjectBase<"algebraicRule"> &
   AntimonyDeleteable & {
     constant: number;
-    formula: AntimonyFormula;
+    formula?: AntimonyFormula;
   };
 
 export type AntimonyFunction = AntimonyObjectBase<"function"> & {

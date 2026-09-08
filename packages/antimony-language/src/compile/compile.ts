@@ -672,6 +672,8 @@ const compileModel = (
   const algebraicRuleInvolvedVariables = new Set<AntimonyObject>();
 
   for (const rule of algebraicRules) {
+    if (!rule.formula) continue;
+
     resolveIsForAlgebraicRule = true;
     let expression = compileFormulaInModel(rule.formula);
     resolveIsForAlgebraicRule = false;

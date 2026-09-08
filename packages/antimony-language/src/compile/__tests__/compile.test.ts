@@ -613,6 +613,10 @@ describe("ir", () => {
         }),
       );
     });
+
+    it("should ignore empty", () => {
+      expectCompilesToExact("A: 0 =;", model({}));
+    });
   });
 
   describe("function", () => {

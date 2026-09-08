@@ -86,7 +86,7 @@ eventOption      : NAME '=' formula;
 eventAssignments : NEWLINE* eventAssignment (',' NEWLINE* eventAssignment)*;
 eventAssignment  : variable '=' formula?;
 
-algebraicRule    : nameLabel? NUMBER '=' formula;
+algebraicRule    : nameLabel? NUMBER '=' formula?;
 
 rename : variable conversionFactorLeft? IS variable
        | variable IS variable conversionFactorRight?

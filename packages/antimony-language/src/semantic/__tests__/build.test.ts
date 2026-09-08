@@ -696,6 +696,15 @@ describe("algebraic rules", () => {
       }),
     );
   });
+
+  it("should allow empty algebraic rules", () => {
+    expectModel(
+      "A: 0 = ;",
+      model({
+        A: algebraicRule(0),
+      }),
+    );
+  });
 });
 
 describe("subvariable name labels", () => {
