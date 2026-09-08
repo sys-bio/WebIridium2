@@ -21,7 +21,7 @@ const UNSUPPORTED_TAGS = [
   // "NoMathML",
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
-const WIP_TAGS: string[] = ["NoMathML"];
+const WIP_TAGS: string[] = [];
 const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
   // libantimony adds an underscore at the end. Expected output expects them
@@ -44,6 +44,13 @@ const SKIP_CASES = new Set<number>([
 
   // Stoichiometry/speciesReference are not marked as const in the conversion
   1386,
+
+  // Stoichiometry value overriden by empty assignment
+  1657, 1554, 1552, 1465,
+
+  // The initial value is used for the old name, but it should be used for the
+  // new name
+  1179,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.

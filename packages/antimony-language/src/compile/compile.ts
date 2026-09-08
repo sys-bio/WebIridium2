@@ -295,11 +295,11 @@ const flattenModel = (
 };
 
 const GOT_DELETED_SYMBOL = Symbol("GOT_DELETED");
-const SPECIES_DEFAULT: IridiumExpression<Metadata> = {
+const VARIABLE_DEFAULT: IridiumExpression<Metadata> = {
   kind: "number",
   value: 0,
 };
-const COMPARTMENT_DEFAULT: IridiumExpression<Metadata> = {
+const COMPARTMENT_AND_STOICH_DEFAULT: IridiumExpression<Metadata> = {
   kind: "number",
   value: 1,
 };
@@ -696,9 +696,10 @@ const compileModel = (
 
   for (const variable of variables) {
     const defaultValue =
-      variable.variableKind === "compartment"
-        ? COMPARTMENT_DEFAULT
-        : SPECIES_DEFAULT;
+      variable.variableKind === "compartment" ||
+      variable.variableKind === "stoichiometry"
+        ? COMPARTMENT_AND_STOICH_DEFAULT
+        : VARIABLE_DEFAULT;
     let value: IridiumVariableValue<Metadata>;
     // if the variable is going to be set with an initial value, this determines what "kind" its value will be
     const initialKind = algebraicRuleInvolvedVariables.has(variable)

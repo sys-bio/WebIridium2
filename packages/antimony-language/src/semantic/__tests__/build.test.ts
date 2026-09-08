@@ -14,6 +14,7 @@ import {
   event,
   renameLink,
   algebraicRule,
+  stoichiometry,
 } from "./modelDsl.ts";
 
 import defaultModel from "@/assets/default.ant?raw";
@@ -518,9 +519,9 @@ describe("reactions", () => {
         A: species(),
         B: species(),
         C: species(),
-        n1: parameter(),
-        n2: parameter(),
-        n3: parameter(),
+        n1: stoichiometry(),
+        n2: stoichiometry(),
+        n3: stoichiometry(),
         k1: parameter(),
         _J0: reaction({ A: "n1", B: "n2" }, { C: "n3" }, "k1"),
       }),
@@ -546,6 +547,48 @@ describe("reactions", () => {
         A: reaction({}, {}),
       }),
     );
+  });
+});
+
+describe("stoichiometries", () => {
+  it("should allow variable stoichiometries", () => {
+    expectModel(
+      "J: n A -> ; k1;",
+      model({
+        J: reaction({ A: "n" }, {}, "k1"),
+        n: stoichiometry(),
+      }),
+    );
+  });
+
+  it("should error when trying to use one in two places", () => {
+    expect(() => {
+      buildAntimonyDocument("n A + n B -> C; k1");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to use a species as a stoichiometry", () => {
+    expect(() => {
+      buildAntimonyDocument("species n; n A + B -> C; k1");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to use a built-in as a stoichiometry", () => {
+    expect(() => {
+      buildAntimonyDocument("pi A + B -> C; k1");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to use a compartment as a stoichiometry", () => {
+    expect(() => {
+      buildAntimonyDocument("compartment n; n A + B -> C; k1");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to use a reaction as a stoichiometry", () => {
+    expect(() => {
+      buildAntimonyDocument("J: ->; ; J A + B -> C; k1");
+    }).toThrowError(SemanticError);
   });
 });
 

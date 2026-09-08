@@ -39,6 +39,9 @@ const asP = (index: number): Index => (index | P_TAG) as Index;
 const asAlgebraic = (index: number): Index =>
   ((index | ALGEBRAIC_TAG) >>> 0) as Index; // need to add the >>> so its treated as unsigned
 
+/**
+ * Stores assignments and allows you to query them in topological order.
+ */
 export class AssignmentGraph {
   #yTable: IndexSymbolTable;
   #pTable: IndexSymbolTable;
@@ -128,6 +131,16 @@ export class AssignmentGraph {
     return this.#assignments.get(index)!;
   }
 
+  getAssignment(assignable: Assignable): Assignment | undefined {
+    return this.#assignments.get(this.#assignmentToIndex(assignable));
+  }
+
+  /**
+   * Finds a topological ordering for given assignments.
+   *
+   * @param assignments - list of names that we wnamesant to find an ordering for
+   * @returns - ordering of names and the expression they evaluate to
+   */
   getAssignmentOrder(assignments: Assignable[]): Assignment[] {
     const graph: Map<Index, Index[]> = new Map();
     const inDegrees: Map<Index, number> = new Map();

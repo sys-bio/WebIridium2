@@ -17,7 +17,6 @@ import type {
   IridiumExpressionRateOf,
   IridiumExpressionVariable,
 } from "../ir/ast";
-import { emitExpression } from "./expression.ts";
 
 export interface Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void;
@@ -53,126 +52,138 @@ export class GlobalScope implements Scope {
   }
 
   /**
-   * @returns if the name was found
+   * Ensure the given name is actually a valid name.
    */
-  emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
-    if (name === TIME_NAME) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(this.localsTable.getParam(T_PARAM));
-    } else if (Object.hasOwn(builtinConstants, name)) {
-      emitter.emitByte(OpCode.f64const);
-      emitter.emitFloat64(builtinConstants[name].value);
-    } else if (this.#compilation.yTable.has(name)) {
+  #emitLoadVariableUnsafe(emitter: Emitter, name: string): void {
+    if (this.#compilation.yTable.has(name)) {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(Y_PARAM));
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
-
-      const variable = this.#compilation.variables.get(name);
-      const compartment = this.#compilation.compartments.get(name);
-      if (!variable?.hasSubstanceOnly && compartment) {
-        this.emitConvertToConcentration(emitter, compartment.name);
-      }
-    } else if (this.#compilation.pTable.has(name)) {
+    } else {
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(this.localsTable.getParam(P_PARAM));
 
       emitter.emitByte(OpCode.f64load);
       emitter.emitUint(MEM_ALIGNMENT);
       emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+    }
+  }
+
+  /**
+   * @returns if the name was found
+   */
+  emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
+    if (name === TIME_NAME) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(T_PARAM));
+      return true;
+    } else if (Object.hasOwn(builtinConstants, name)) {
+      emitter.emitByte(OpCode.f64const);
+      emitter.emitFloat64(builtinConstants[name].value);
+      return true;
+    } else if (
+      this.#compilation.yTable.has(name) ||
+      this.#compilation.pTable.has(name)
+    ) {
+      this.#emitLoadVariableUnsafe(emitter, name);
 
       const variable = this.#compilation.variables.get(name);
       const compartment = this.#compilation.compartments.get(name);
       if (!variable?.hasSubstanceOnly && compartment) {
         this.emitConvertToConcentration(emitter, compartment.name);
       }
+      return true;
     } else {
       return false;
     }
+  }
 
-    return true;
+  emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
+    if (!this.emitLoadVariableFromName(emitter, expr.name)) {
+      throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
+    }
+  }
+
+  /**
+   * Ensure the given name has been evaluated and it has a rate or
+   * weird stuff will happen.
+   */
+  #emitLoadRateUnsafe(emitter: Emitter, name: string): void {
+    // In the RHS, the rateOf will be stored in the ydot param.
+    // In updateP, the rateOf will be stored in the p param.
+    if (this.localsTable.hasParam(YDOT_PARAM)) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(YDOT_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
+    } else {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(P_PARAM));
+
+      emitter.emitByte(OpCode.f64load);
+      emitter.emitUint(MEM_ALIGNMENT);
+      emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
+    }
   }
 
   emitLoadRateFromName(emitter: Emitter, name: string): boolean {
     if (name === TIME_NAME) {
       // TODO: no idea if this is right
       emitter.emitF64ConstOp(1);
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(this.localsTable.getParam(T_PARAM));
+      return true;
     } else if (Object.hasOwn(builtinConstants, name)) {
       // TODO: does the spec allow this
       emitter.emitF64ConstOp(0);
+      return true;
     } else {
       const variable = this.#compilation.variables.get(name);
+      if (!variable) return false;
 
-      if (
-        variable &&
-        variable.value.kind !== "rate" &&
-        variable.value.kind !== "reaction"
-      ) {
-        if (
-          variable.value.kind === "assignment" ||
-          variable.value.kind === "algebraic"
-        ) {
+      switch (variable.value.kind) {
+        case "assignment":
+        case "algebraic":
+          // Can't get the rate of these.
           return false;
-        }
+        case "initial":
+          emitter.emitF64ConstOp(0);
+          return true;
+        case "reaction":
+        case "rate": {
+          this.#emitLoadRateUnsafe(emitter, variable.name);
 
-        emitter.emitF64ConstOp(0);
-        return true;
-      }
+          const compartment = this.#compilation.compartments.get(name);
+          if (variable && !variable.hasSubstanceOnly && compartment) {
+            this.emitConvertToConcentration(emitter, compartment.name);
 
-      const compartment = this.#compilation.compartments.get(name);
-      if (variable && !variable.hasSubstanceOnly && compartment) {
-        // if the compartment has its own rate, we need to recalculate everything
-        if (compartment.value.kind === "rate") {
-          if (variable.value.kind === "rate") {
-            emitExpression(variable.value.rate, emitter, this, {
-              compilation: this.#compilation,
-            });
-            return true;
-          } else {
-            throw new Error(
-              "TODO: handle rateOf with reaction variable inside changing compartment",
-            );
+            // a = amount, c = concentration, C = compartment (in amount)
+            // c = a/C so dc/dt = (C * da/dt - a * dCA/dt) / C^2
+            // simplfies to dc/dt = da/dt / C - c * dCA/dt / C
+            // since we already have the left term, we just need to complete the right term
+            if (
+              compartment.value.kind === "rate" ||
+              compartment.value.kind === "reaction"
+            ) {
+              if (!this.emitLoadVariableFromName(emitter, variable.name))
+                return false;
+
+              this.#emitLoadRateUnsafe(emitter, compartment.name);
+              emitter.emitByte(OpCode.f64mul);
+
+              this.#emitLoadVariableUnsafe(emitter, compartment.name);
+              emitter.emitByte(OpCode.f64div);
+
+              emitter.emitByte(OpCode.f64sub);
+            }
           }
-        } else if (compartment.value.kind === "reaction") {
-          throw new Error(
-            "TODO: handle rateOf with variable inside compartment with reaction",
-          );
+
+          return true;
         }
       }
-
-      // In the RHS, the rateOf will be stored in the ydot param.
-      // In updateP, the rateOf will be stored in the p param.
-      if (this.localsTable.hasParam(YDOT_PARAM)) {
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(this.localsTable.getParam(YDOT_PARAM));
-
-        emitter.emitByte(OpCode.f64load);
-        emitter.emitUint(MEM_ALIGNMENT);
-        emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.yTable.get(name));
-      } else {
-        emitter.emitByte(OpCode.localget);
-        emitter.emitUint(this.localsTable.getParam(P_PARAM));
-
-        emitter.emitByte(OpCode.f64load);
-        emitter.emitUint(MEM_ALIGNMENT);
-        emitter.emitUint(SIZEOF_DOUBLE * this.#compilation.pTable.get(name));
-      }
-
-      if (!variable?.hasSubstanceOnly && compartment) {
-        this.emitConvertToConcentration(emitter, compartment.name);
-      }
-    }
-
-    return true;
-  }
-
-  emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
-    if (!this.emitLoadVariableFromName(emitter, expr.name)) {
-      throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
     }
   }
 

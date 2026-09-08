@@ -183,6 +183,8 @@ export const parameter = createVariableFunc("parameter");
 
 export const compartment = createVariableFunc("compartment");
 
+export const stoichiometry = createVariableFunc("stoichiometry");
+
 const stringToReference = (s: string) => {
   return s.split(".").map((v) => {
     const n = Number(v);

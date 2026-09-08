@@ -90,7 +90,11 @@ export type AntimonyAssignment =
   | AntimonyRuleAssignment
   | AntimonyRateAssignment;
 
-export type VariableKind = "species" | "parameter" | "compartment";
+export type VariableKind =
+  | "species"
+  | "parameter"
+  | "compartment"
+  | "stoichiometry";
 
 // TODO: units
 export type AntimonyVariable = AntimonyObjectBase<"variable"> &

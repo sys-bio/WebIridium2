@@ -583,6 +583,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         `Cannot convert ${variable.name} to compartment when it is a species.`,
         ctx,
       );
+      return;
     }
 
     if (variable.variableKind === "compartment" && kind !== "compartment") {
@@ -590,6 +591,19 @@ export class BuildAntimonyListener implements AntimonyListener {
         `Cannot convert ${variable.name} from compartment.`,
         ctx,
       );
+      return;
+    }
+
+    if (
+      kind === "stoichiometry" &&
+      variable.variableKind !== "parameter" &&
+      variable.variableKind !== "stoichiometry"
+    ) {
+      this.#reportError(
+        `Cannot use ${variable.name} as a stoichiometry because it is a ${variable.variableKind}.`,
+        ctx,
+      );
+      return;
     }
 
     variable.variableKind = kind;
@@ -1122,7 +1136,24 @@ export class BuildAntimonyListener implements AntimonyListener {
           `${object.name} of type ${object.kind} cannot be used as a stoichiometry.`,
           ctx,
         );
+        return;
       }
+
+      if (!object) {
+        this.#reportError("Cannot use built-in as a stoichiometry.", ctx);
+        return;
+      }
+
+      // it has already been used as a stoichiometry
+      if (object.variableKind === "stoichiometry") {
+        this.#reportError(
+          `${object.name} is already in the stoichiometry of another term. Use another name.`,
+          ctx,
+        );
+        return;
+      }
+
+      this.#setVariableKind(ctx, object, "stoichiometry");
     }
   }
 
