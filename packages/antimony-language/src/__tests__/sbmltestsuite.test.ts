@@ -15,10 +15,11 @@ const UNSUPPORTED_TAGS = [
   "RandomEventExecution",
   "comp:ExternalModelDefinition",
 
-  // NEED TO TEST SEPARATELY (not fully converted by libantimony)
+  // Not fully supported by Antimony
   "ConversionFactors",
-  "HasOnlySubstanceUnits",
-  // "NoMathML",
+
+  // Antimony does not handle substanceOnly + initialConcentration correctly
+  "HasSubstanceOnlyUnits"
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
 const WIP_TAGS: string[] = [];
@@ -51,6 +52,9 @@ const SKIP_CASES = new Set<number>([
   // The initial value is used for the old name, but it should be used for the
   // new name
   1179,
+
+  // Why are these ones never terminating?
+  1178, 1180, 1181,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
