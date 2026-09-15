@@ -16,8 +16,8 @@
     "typecheck": "npx tsc -b --noEmit",
     "preview": "vite preview",
     "test": "vitest",
-    "test-ant": "vitest --config packages/antimony-language/vitest.config.ts",
-    "bench-ant": "vitest bench --config packages/antimony-language/vitest.config.ts",
+    "test-ant": "vitest --config packages/iridium-simulator/vitest.config.ts",
+    "bench-ant": "vitest bench --config packages/iridium-simulator/vitest.config.ts",
     "coverage": "vitest run --coverage",
     "bench": "vitest bench --config vitest.config.bench.ts"
   },

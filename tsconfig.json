@@ -4,7 +4,6 @@
     { "path": "./tsconfig.antlr.json" },
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" },
-    { "path": "./packages/antimony-language" },
     { "path": "./packages/iridium-simulator" }
   ]
 }

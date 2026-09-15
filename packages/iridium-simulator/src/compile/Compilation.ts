@@ -34,7 +34,7 @@ export class Compilation {
    */
   yDifferentialVars: string[];
   /**
-   * Algebraic variables that go in p.
+   * Algebraic variables that go in y.
    */
   yAlgebraicVars: string[];
   /**

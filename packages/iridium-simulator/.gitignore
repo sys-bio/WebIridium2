@@ -1,3 +1,5 @@
+scripts/.venv
+simResults/
 build/**/*
 # we want to keep the wrapper
 !build/cvodeBindings*
@@ -5,3 +7,7 @@ build/**/*
 # tooling
 .clangd
 .cache
+
+# antimony
+src/antimony/__tests__/sbmlTestSuiteOriginal
+__pycache__

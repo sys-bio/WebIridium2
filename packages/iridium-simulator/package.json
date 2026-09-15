@@ -5,7 +5,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./dsl": "./src/ir/dsl.ts"
+    "./dsl": "./src/ir/dsl.ts",
+    "./antimony": "./src/antimony/index.ts"
   },
-  "dependencies": {}
+  "scripts": {
+    "antlr4ts": "antlr4ts ./src/grammar/Antimony.g4 -visitor -Xexact-output-dir -o ./src/generated/"
+  },
+  "dependencies": {
+    "antlr4ts": "^0.5.0-alpha.4"
+  },
+  "devDependencies": {
+    "antlr4ts-cli": "^0.5.0-alpha.4"
+  }
 }

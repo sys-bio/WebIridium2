@@ -17,7 +17,7 @@ import {
 import {
   type AntimonyModel,
   type AntimonyVariable,
-} from "antimony-language/semantic";
+} from "iridium-simulator/antimony";
 import type {
   IridiumCompileAction,
   IridiumCompileResult,

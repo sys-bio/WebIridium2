@@ -5,7 +5,7 @@ import {
   buildAntimonyFromParseTree,
 } from "../semantic/semantic";
 import { compileToIridium } from "../compile/compile";
-import { compile, createSimulator } from "iridium-simulator";
+import { compile, createSimulator } from "../../index";
 
 const modelFiles = import.meta.glob("./benchModels/*.ant", {
   query: "?raw",

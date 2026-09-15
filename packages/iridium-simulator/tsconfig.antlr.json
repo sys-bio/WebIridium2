@@ -3,5 +3,5 @@
   "compilerOptions": {
     "verbatimModuleSyntax": false
   },
-  "include": ["src/generated/**/*.ts"]
+  "include": ["src/antimony/generated/**/*.ts"]
 }

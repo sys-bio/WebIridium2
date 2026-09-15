@@ -13,7 +13,7 @@ import defaultModel from "@/assets/default.ant?raw";
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
 const WRITE_TEST_OUTPUT = true;
-const resultsDir = path.resolve(__dirname, "..", "..", "simResults");
+const resultsDir = path.resolve(__dirname, "..", "..", "..", "simResults");
 
 if (WRITE_TEST_OUTPUT) {
   console.log(`Writing to ${resultsDir}`);

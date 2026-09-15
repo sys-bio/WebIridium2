@@ -17,7 +17,7 @@ import {
   type ProductContext,
   type VarContext,
 } from "../grammar";
-import type { IridiumExpression } from "iridium-simulator";
+import type { IridiumExpression } from "../../index";
 import type { Metadata } from "./metadata";
 import type {
   AntimonyConversionFactor,
@@ -25,7 +25,7 @@ import type {
 } from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
 import { CompileError } from "../errors";
-import { RATE_OF_NAME } from "../../../iridium-simulator/src/runtime/builtins";
+import { RATE_OF_NAME } from "../../runtime/builtins";
 
 export type ResolveReferenceFn = (
   reference: AntimonyReference,

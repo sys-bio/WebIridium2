@@ -1,5 +1,5 @@
 # Used for generating test data from sbml-test-suite.
-# Add a folder to src/__tests__/ called `sbmlTestSuiteOriginal` with the cases/semantic from the sbml-test-suite
+# Add a folder to src/antimony/__tests__/ called `sbmlTestSuiteOriginal` with the cases/semantic from the sbml-test-suite
 # repository. Then run this script and it will make a sibling folder called `sbmlTestSuite` with the results
 # converted to something we can use.
 # Make sure to delete the `sbmlTestSuiteOriginal` after.
@@ -117,7 +117,7 @@ def convert(case_dir: Path, out_dir: Path) -> None:
 
 
 def main() -> None:
-    root_dir = Path(__file__).resolve().parent.parent / "src" / "__tests__"
+    root_dir = Path(__file__).resolve().parent.parent / "src" / "antimony" / "__tests__"
     og_dir = root_dir / "sbmlTestSuiteOriginal"
     out_dir = root_dir / "sbmlTestSuite"
     out_dir.mkdir(parents=True, exist_ok=True)

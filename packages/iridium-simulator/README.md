@@ -32,3 +32,14 @@ You have to use `npm run test-ant`.
 - It will use RoadRunner to generate the expected data for each tests in `src/__tests__/results/`.
 - Then run then run the `plotCompare.py <test name>` script to get a plot of the expected and received results and their difference.
 - This script gets the data in `iridiumResults/` and `src/__tests__/results/` and plots them.
+
+# Antimony
+
+## Generating Grammar
+
+Use `npm run --workspace iridium-simulator antlr4ts`.
+
+ANTLR will generate TypeScript that does not match our TypeScript config. To fix this, just
+add `// @ts-nocheck` to the top of every generated file in `packages/antimony-language/src/generated/`.
+
+Here is a command that will do that: `sed -i '' '1s;^;// @ts-nocheck\n;' packages/antimony-language/src/generated/*.ts`

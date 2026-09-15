@@ -211,8 +211,10 @@ const copyAntimonyObject = (
     }
     case "algebraicRule": {
       const copy = { ...object };
-      copy.formula = { ...copy.formula };
-      prependReferenceForFormula(copy.formula, referencePrefix);
+      if (copy.formula) {
+        copy.formula = { ...copy.formula };
+        prependReferenceForFormula(copy.formula, referencePrefix);
+      }
       return copy;
     }
     case "event": {

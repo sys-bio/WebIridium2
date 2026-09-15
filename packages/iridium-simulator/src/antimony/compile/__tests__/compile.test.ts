@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { compileIntermediate, type IridiumModel } from "iridium-simulator";
+import { compileIntermediate, type IridiumModel } from "../../../index";
 import {
   event,
   expr,
@@ -14,7 +14,7 @@ import {
   assignmentVariable,
   algebraicRule,
   algebraicVariable,
-} from "iridium-simulator/dsl";
+} from "../../../ir/dsl";
 import { CompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
@@ -1471,6 +1471,6 @@ describe("wasm", () => {
       writeFileSync("defaultModel.wasm", bytecode);
     }
 
-    expect(WebAssembly.validate(bytecode)).toBe(true);
+    expect(WebAssembly.validate(bytecode as BufferSource)).toBe(true);
   });
 });

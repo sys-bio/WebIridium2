@@ -5,11 +5,11 @@ import {
 } from "iridium-simulator";
 import {
   buildAntimonyDocument,
+  compileToIridium,
   type AntimonyModel,
-} from "antimony-language/semantic";
+} from "iridium-simulator/antimony";
 import type { Action, ErrorResult, Result } from "@/features/taskPool";
 import type { SimulateTimeCourseOptions } from "@/features/simulation/Simulator";
-import { compileToIridium } from "antimony-language/compile";
 import { compile } from "iridium-simulator";
 import { errorToDisplayString } from "@/features/formatUtils";
 

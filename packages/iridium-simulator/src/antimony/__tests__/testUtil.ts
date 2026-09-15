@@ -1,6 +1,5 @@
-import { createSimulator, type TimeCourseOutput } from "iridium-simulator";
 import { compileToIridium } from "../compile/compile";
-import { compile } from "iridium-simulator";
+import { compile, createSimulator, type TimeCourseOutput } from "../../index";
 import { buildAntimonyDocument } from "../semantic/semantic";
 
 export type TestParams = {

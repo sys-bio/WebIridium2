@@ -1,4 +1,4 @@
-# Run without any arguments to generate data for every test.
+# Run without any arguments to generate data for every test in src/antimony/__tests__/results.
 # Run with <substring> to generate data only for tests with names containing the substring.
 
 from typing import Any
@@ -13,7 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-test_dir = (Path(__file__).parent / Path("../src/__tests__/results/")).resolve()
+test_dir = (Path(__file__).parent / Path("../src/antimony/__tests__/results/")).resolve()
 
 
 @dataclass
