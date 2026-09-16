@@ -1,3 +1,5 @@
+import type { FunctionInfo } from "../compile/functions";
+
 export const TIME_NAME = "time";
 export const RATE_OF_NAME = "rateOf";
 
@@ -45,13 +47,6 @@ export const builtinConstants: Readonly<Record<string, BuiltinConstantInfo>> = {
     value: 6.02214179e23,
     unit: "dimensionless",
   },
-};
-
-export type Arity = number | { min: number };
-
-export type BuiltinFunctionInfo = {
-  description: string;
-  arity: Arity;
 };
 
 export type BuiltinFunctionName = keyof typeof builtinFunctions;
@@ -262,4 +257,4 @@ export const builtinFunctions = {
     description: "The inverse tangent function",
     arity: 1,
   },
-} satisfies Record<string, BuiltinFunctionInfo>;
+} satisfies Record<string, FunctionInfo>;

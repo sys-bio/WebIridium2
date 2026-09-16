@@ -1,4 +1,5 @@
 import type { ValType } from "./codes";
+import type { FunctionInfo } from "./functions";
 import type { WasmTypeDefinition } from "./wasm";
 
 /**
@@ -54,27 +55,36 @@ export class IndexSymbolTable {
  * accessed by `get`. (since these are meant for external code).
  */
 export class FunctionTable {
-  #map: Map<string, number>;
+  #indexes: Map<string, number>;
+  #infos: Map<string, FunctionInfo>;
   #currentIndex: number;
 
   constructor() {
-    this.#map = new Map();
+    this.#indexes = new Map();
+    this.#infos = new Map();
     this.#currentIndex = 0;
   }
 
   get(funcName: string): number {
-    const index = this.#map.get(funcName);
+    const index = this.#indexes.get(funcName);
     if (index === undefined) {
       throw new Error(`Missing: ${funcName}`);
     }
     return index;
   }
 
-  add(funcName: string): number {
-    if (this.#map.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
+  getInfo(funcName: string): FunctionInfo | undefined {
+    return this.#infos.get(funcName);
+  }
+
+  add(funcName: string, info?: FunctionInfo): number {
+    if (this.#indexes.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
 
     const index = this.#currentIndex++;
-    this.#map.set(funcName, index);
+    this.#indexes.set(funcName, index);
+    if (info) {
+      this.#infos.set(funcName, info);
+    }
     return index;
   }
 
@@ -83,7 +93,7 @@ export class FunctionTable {
   }
 
   has(funcName: string): boolean {
-    return this.#map.has(funcName);
+    return this.#indexes.has(funcName);
   }
 }
 

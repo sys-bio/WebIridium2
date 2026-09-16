@@ -41,7 +41,7 @@ import {
   type AntimonyStoichiometry,
   type AntimonyConversionFactor,
 } from "./document";
-import { isBuiltinName } from "./builtins";
+import { isBuiltinName } from "../../runtime/builtins";
 
 type DeclarationState = {
   kind?: VariableKind;

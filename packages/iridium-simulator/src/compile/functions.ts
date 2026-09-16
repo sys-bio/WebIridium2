@@ -37,6 +37,13 @@ export type InlineFunction = {
 
 export type WasmFunction = ImportedFunction | CompiledFunction | InlineFunction;
 
+export type FunctionInfo = {
+  description?: string;
+  arity: Arity;
+};
+
+export type Arity = number | { min: number };
+
 export const PIECEWISE_NAME = "piecewise";
 export const AND_RESERVED_NAME = "$reserved_and";
 export const OR_RESERVED_NAME = "$reserved_or";

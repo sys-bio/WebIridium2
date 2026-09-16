@@ -6,13 +6,12 @@ import { GlobalScope } from "../scope";
 import { FunctionTable, LocalsSymbolTable } from "../symbolTables";
 import { emitExpression } from "../expression";
 import { OpCode, ValType } from "../codes";
-import { expr } from "../../ir/dsl";
+import { expr, func, model, parameter } from "../../ir/dsl";
 import { EVENTS_PARAM, P_PARAM, T_PARAM, Y_PARAM } from "../../names";
+import { CompileError } from "../errors";
+import { compile } from "../compile";
 
-const expectCompile = (
-  expression: IridiumExpression,
-  builder: (emitter: Emitter) => void,
-) => {
+const compileExpression = (expression: IridiumExpression): Emitter => {
   const compilation = new Compilation({
     events: [],
     variables: [
@@ -28,9 +27,6 @@ const expectCompile = (
     functions: [],
   });
 
-  const expected = new Emitter();
-  builder(expected);
-
   const got = new Emitter();
   emitExpression(
     expression,
@@ -41,6 +37,18 @@ const expectCompile = (
       new FunctionTable(),
     ),
   );
+
+  return got;
+};
+
+const expectCompile = (
+  expression: IridiumExpression,
+  builder: (emitter: Emitter) => void,
+) => {
+  const expected = new Emitter();
+  builder(expected);
+
+  const got = compileExpression(expression);
 
   expect(Array.from(got.getOutput())).toEqual(Array.from(expected.getOutput()));
 };
@@ -78,5 +86,28 @@ describe("binary", () => {
       emitter.emitByte(OpCode.end);
       emitter.emitByte(OpCode.f64convert_u_i32);
     });
+  });
+
+  it("should error with call incorrect arguments", async () => {
+    expect(() => {
+      compileExpression(expr.call("ln", [expr.num(0), expr.num(0)]));
+    }).toThrowError(CompileError);
+
+    expect(() => {
+      compileExpression(expr.call("min", []));
+    }).toThrowError(CompileError);
+
+    await expect(
+      compile(
+        model({
+          variables: {
+            A: parameter(expr.call("test", [expr.num(5)])),
+          },
+          functions: {
+            test: func(["a", "b"], expr.add(expr.var("a"), expr.var("b"))),
+          },
+        }),
+      ),
+    ).rejects.toThrowError(CompileError);
   });
 });

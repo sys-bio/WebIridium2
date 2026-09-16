@@ -17,11 +17,13 @@ import type {
   IridiumExpressionRateOf,
   IridiumExpressionVariable,
 } from "../ir/ast";
+import type { FunctionInfo } from "./functions.ts";
 
 export interface Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void;
   emitLoadRate(emitter: Emitter, expr: IridiumExpressionRateOf): void;
   emitCallOp(emitter: Emitter, name: string): void;
+  getFunctionInfo(name: string): FunctionInfo | undefined;
 }
 
 export class GlobalScope implements Scope {
@@ -209,6 +211,10 @@ export class GlobalScope implements Scope {
     this.emitLoadVariableFromName(emitter, compartment);
     emitter.emitByte(OpCode.f64mul);
   }
+
+  getFunctionInfo(name: string): FunctionInfo | undefined {
+    return this.functionTable.getInfo(name);
+  }
 }
 
 export class FunctionScope implements Scope {
@@ -235,5 +241,9 @@ export class FunctionScope implements Scope {
 
   emitCallOp(emitter: Emitter, name: string): void {
     emitter.emitCallOp(this.#functionTable.get(name));
+  }
+
+  getFunctionInfo(name: string): FunctionInfo | undefined {
+    return this.#functionTable.getInfo(name);
   }
 }

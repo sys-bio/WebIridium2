@@ -14,12 +14,15 @@ import {
   POW_RESERVED_NAME,
   inlineFunctions,
   predefinedFuncDefs,
+  type Arity,
+  type FunctionInfo,
   type InlineFunction,
 } from "./functions";
 import { CompileError, CompileInvariantError } from "./errors";
 import { EVENTS_PARAM } from "../names";
 import { MEM_ALIGNMENT, SIZEOF_INT } from "./constants";
 import type { Compilation } from "./Compilation";
+import { builtinFunctions } from "../runtime/builtins";
 
 export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   if (op === "ge") {
@@ -126,14 +129,35 @@ export const emitExpression = (
       }
     },
     visitCall: (expr) => {
-      if (expr.name === PIECEWISE_NAME) {
-        const hasFallback = expr.args.length % 2 === 1;
-        if (expr.args.length === 0) {
+      let arity: Arity | undefined;
+      if (Object.hasOwn(builtinFunctions, expr.name)) {
+        arity = (builtinFunctions as Record<string, FunctionInfo | undefined>)[
+          expr.name
+        ]?.arity;
+      } else {
+        arity = scope.getFunctionInfo(expr.name)?.arity;
+      }
+
+      if (!arity) {
+        throw new CompileError(`Unknown function: ${expr.name}.`, expr);
+      } else if (typeof arity === "number") {
+        if (expr.args.length !== arity) {
           throw new CompileError(
-            "Piecewise require at least one argument.",
-            expr.metadata,
+            `${expr.name} expects ${arity} arguments, got ${expr.args.length}.`,
+            expr,
           );
         }
+      } else {
+        if (expr.args.length < arity.min) {
+          throw new CompileError(
+            `${expr.name} expects at least ${arity.min} arguments, got ${expr.args.length}.`,
+            expr,
+          );
+        }
+      }
+
+      if (expr.name === PIECEWISE_NAME) {
+        const hasFallback = expr.args.length % 2 === 1;
 
         if (expr.args.length === 1) {
           visitExpression(expr.args[0], visitor);

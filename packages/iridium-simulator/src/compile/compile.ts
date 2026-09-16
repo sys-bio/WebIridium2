@@ -270,7 +270,7 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   importSection.emitExternMemoryType(1);
 
   for (const func of importedFunctions) {
-    functionTable.add(func.name);
+    functionTable.add(func.name, { arity: func.params.length });
 
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
 
@@ -283,7 +283,7 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
     const funcIndex = func.isExported
       ? functionTable.addExported(func.name)
-      : functionTable.add(func.name);
+      : functionTable.add(func.name, { arity: func.params.length });
 
     functionSection.emitUint(funcTypeIndex);
 

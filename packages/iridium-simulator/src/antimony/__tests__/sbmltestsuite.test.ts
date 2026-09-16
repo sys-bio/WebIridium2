@@ -19,7 +19,7 @@ const UNSUPPORTED_TAGS = [
   "ConversionFactors",
 
   // Antimony does not handle substanceOnly + initialConcentration correctly
-  "HasSubstanceOnlyUnits",
+  "HasOnlySubstanceUnits",
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
 const WIP_TAGS: string[] = [];
@@ -53,8 +53,9 @@ const SKIP_CASES = new Set<number>([
   // new name
   1179,
 
-  // Why are these ones never terminating?
-  1178, 1180, 1181,
+  // Why are these ones never terminating? (need to enable HasOnlySubstanceUnits)
+  1178,
+  1180, 1181,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.

@@ -38,7 +38,7 @@ import {
   resolveReference,
   resolveReferenceWithModelInfo,
 } from "../semantic/BuildAntimonyListener";
-import { isBuiltinName, TIME_NAME } from "../semantic/builtins";
+import { isBuiltinName, TIME_NAME } from "../../runtime/builtins";
 
 const INVALID_BOOLEAN_MESSAGE =
   "You can only use the values `true` or `false` here.";
