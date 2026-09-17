@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=50 atol=0.001 rtol=0.0001 selections=X0,X1,T amounts=X0,X1,T
 ## tags=Compartment,Species,Reaction,Parameter,AlgebraicRule,Amount,InitialValueReassigned
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00541()
 
   // Compartments and Species:
@@ -38,7 +38,7 @@ model *case00541()
   // Unit definitions:
   unit substance = mole;
   unit area = metre^2;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_area = mole / metre^2;
 end
 

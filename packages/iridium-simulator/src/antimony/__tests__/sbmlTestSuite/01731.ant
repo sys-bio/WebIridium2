@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,S3,S4,s1_cf,C amounts=S1,S2,S3,S4
 ## tags=Compartment,Parameter,Reaction,Species,Amount,BoundaryCondition,ConversionFactors
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01731()
 
   // Compartments and Species:
@@ -22,6 +22,10 @@ model *case01731()
 
   // Variable initializations:
   s1_cf = 5;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
+  S3.conversionFactor = s1_cf;
 
   // Other declarations:
   const C, s1_cf;

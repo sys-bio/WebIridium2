@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=Compartment,Species,Reaction,Parameter,Amount
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00803()
 
   // Compartments and Species:
@@ -30,8 +30,11 @@ model *case00803()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
+
+  // SBO terms:
+  reaction1.kineticLaw.sboTerm = 333
 end
 
 case00803 is "case00803"

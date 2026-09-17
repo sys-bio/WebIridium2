@@ -1,7 +1,7 @@
 ## start=0.0 end=2.0 points=10 atol=0.0001 rtol=0.0001 selections=x,y amounts=
 ## tags=AssignmentRule,CSymbolDelay,CSymbolTime,Compartment,EventNoDelay,Parameter,RateRule,NonConstantParameter,InitialValueReassigned
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00984()
 
   // Assignment Rules:

@@ -1,7 +1,7 @@
 ## start=0.0 end=2.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=CSymbolTime,Compartment,EventNoDelay,EventPriority,Species,Amount,EventIsPersistent
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00934()
 
   // Compartments and Species:
@@ -9,9 +9,9 @@ model *case00934()
   species S1 in C, S2 in C;
 
   // Events:
-  A: at time >= 0.99, priority = 10: S2 = 0, S1 = 1;
-  B: at time >= 0.99, priority = 2*S2: S2 = 1, S1 = 2;
-  C1: at time >= 0.99, priority = 2*S1: S2 = 2, S1 = 3;
+  A: at time >= 0.99, priority = 10: S1 = 1, S2 = 0;
+  B: at time >= 0.99, priority = 2*S2: S1 = 2, S2 = 1;
+  C1: at time >= 0.99, priority = 2*S1: S1 = 3, S2 = 2;
 
   // Species initializations:
   S1 = 0;

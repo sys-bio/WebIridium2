@@ -1,7 +1,7 @@
 ## start=0.0 end=3.0 points=50 atol=0.001 rtol=0.0001 selections=c amounts=
 ## tags=Compartment,RateRule,FunctionDefinition,NonConstantCompartment,NonUnityCompartment
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00915()
 
   // Compartments and Species:
@@ -19,7 +19,7 @@ model *case00915()
 
   // Unit definitions:
   unit length = metre;
-  unit time_unit = time_unit;
+  unit time_unit = second;
 end
 
 case00915 is "case00915"

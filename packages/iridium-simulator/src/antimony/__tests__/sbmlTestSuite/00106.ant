@@ -1,7 +1,7 @@
 ## start=0.0 end=2.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3,S4,C amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,FunctionDefinition,RateRule,Amount,NonConstantCompartment,NonUnityCompartment
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00106()
 
   // Compartments and Species:
@@ -41,7 +41,7 @@ model *case00106()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 end
 

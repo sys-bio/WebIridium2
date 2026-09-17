@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,c,p1 amounts=S1
 ## tags=CSymbolRateOf,Compartment,Parameter,RateRule,Reaction,Species,Amount,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01265()
 
   // Compartments and Species:

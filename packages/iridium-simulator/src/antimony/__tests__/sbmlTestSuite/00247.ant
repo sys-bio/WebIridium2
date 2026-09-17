@@ -1,7 +1,7 @@
 ## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,Amount,0D-Compartment,BoundaryCondition
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00247()
 
   // Compartments and Species:
@@ -14,14 +14,14 @@ model *case00247()
   reaction2: $S3 + $S4 => S1 + S2; k2*S3*S4;
 
   // Species initializations:
-  S1 = 1/compartment_;
-  S1 has substance_per_volume;
-  S2 = 1.5/compartment_;
-  S2 has substance_per_volume;
-  S3 = 2/compartment_;
-  S3 has substance_per_volume;
-  S4 = 0.5/compartment_;
-  S4 has substance_per_volume;
+  S1 = 1;
+  S1 has substance;
+  S2 = 1.5;
+  S2 has substance;
+  S3 = 2;
+  S3 has substance;
+  S4 = 0.5;
+  S4 has substance;
 
   // Compartment initializations:
   compartment_ = ;
@@ -35,8 +35,7 @@ model *case00247()
 
   // Unit definitions:
   unit substance = mole;
-  unit time_unit = time_unit;
-  unit substance_per_volume = mole / litre;
+  unit time_unit = second;
 
   // Display Names:
   compartment_ is "compartment";

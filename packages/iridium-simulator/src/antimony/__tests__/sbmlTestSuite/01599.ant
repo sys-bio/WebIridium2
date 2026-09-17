@@ -1,7 +1,7 @@
 ## start=0.0 end=100.0 points=1001 atol=0.15 rtol=0.0001 selections=S,errorLow,errorHigh amounts=
 ## tags=AssignmentRule,CSymbolTime,EventNoDelay,EventPriority,Parameter,RateRule,EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,RandomEventExecution,UncommonMathML
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01599()
 
   // Assignment Rules:
@@ -11,8 +11,8 @@ model *case01599()
   reset' = 1;
 
   // Events:
-  Qinc: at reset >= 0.01, priority = 1, persistent=false: Q = Q + cosh(0)/100, reset = 0;
-  Rinc: at reset >= 0.01, priority = 1, persistent=false: R = R + cosh(0)/100, reset = 0;
+  Qinc: at reset >= 0.01, priority = 1, persistent=false: reset = 0, Q = Q + cosh(0)/100;
+  Rinc: at reset >= 0.01, priority = 1, persistent=false: reset = 0, R = R + cosh(0)/100;
   maxcheck: at abs(Q - R) > maxdiff: maxdiff = abs(Q - R);
   error_check: at (time >= 99) && (maxdiff < 0.2): errorLow = 1;
   error_check2: at maxdiff >= 4: errorHigh = 1;

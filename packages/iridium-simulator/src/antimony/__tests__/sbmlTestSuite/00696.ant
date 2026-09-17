@@ -1,7 +1,7 @@
 ## start=0.0 end=20.0 points=50 atol=0.001 rtol=0.0001 selections=X0,X1,T,S1 amounts=X0,X1,T,S1
 ## tags=Compartment,Species,Reaction,Parameter,AlgebraicRule,AssignmentRule,Amount,BoundaryCondition,InitialValueReassigned
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00696()
 
   // Compartments and Species:
@@ -43,7 +43,7 @@ model *case00696()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 end
 

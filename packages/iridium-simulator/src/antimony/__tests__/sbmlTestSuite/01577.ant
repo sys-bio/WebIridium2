@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=k1,k2,P1 amounts=
 ## tags=AlgebraicRule,CSymbolTime,EventNoDelay,EventPriority,Parameter,RateRule,InitialValueReassigned,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01577()
 
   // Rate Rules:

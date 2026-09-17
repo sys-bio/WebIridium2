@@ -1,7 +1,7 @@
 ## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=C1,C2 amounts=
 ## tags=Compartment,RateRule,NonConstantCompartment,NonUnityCompartment,MultiCompartment
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00903()
 
   // Compartments and Species:
@@ -22,7 +22,7 @@ model *case00903()
 
   // Unit definitions:
   unit volume = litre;
-  unit time_unit = time_unit;
+  unit time_unit = second;
 end
 
 case00903 is "case00903"

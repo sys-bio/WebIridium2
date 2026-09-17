@@ -1,7 +1,7 @@
 ## start=0.0 end=5.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=InitialAssignment,Compartment,Species,Reaction,Parameter,FunctionDefinition,InitialValueReassigned,Amount,AssignedConstantStoichiometry,NonUnityStoichiometry
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01068()
 
   // Compartments and Species:
@@ -32,7 +32,7 @@ model *case01068()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 
   // Display Names:

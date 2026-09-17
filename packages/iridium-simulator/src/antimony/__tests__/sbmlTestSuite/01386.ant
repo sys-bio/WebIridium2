@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,J1,C,A__x amounts=S1
 ## tags=AlgebraicRule,Compartment,Parameter,Reaction,Species,comp:ModelDefinition,comp:ReplacedElement,comp:Submodel,Amount,InitialValueReassigned,NonUnityStoichiometry,SpeciesReferenceInMath,comp:SubmodelOutput
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 
 // Warnings from automatic translation:
 //    Cannot replace stoichiometries in Antimony:  all replacedElements and replacedBy children of S1 in reaction J1 will be ignored.
@@ -29,7 +29,7 @@ model sub1()
   J0_sr = 2;
 
   // Other declarations:
-  var x;
+  var x, J0_sr;
   const C;
 end
 

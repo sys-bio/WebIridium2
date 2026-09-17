@@ -1,15 +1,15 @@
 ## start=0.0 end=100.0 points=1001 atol=0.03 rtol=0.0001 selections=S,errorLow,errorHigh amounts=
 ## tags=AlgebraicRule,CSymbolTime,EventNoDelay,EventPriority,Parameter,EventIsNotPersistent,InitialValueReassigned,NonConstantParameter,RandomEventExecution
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01589()
 
   // Algebraic Rules:
   _alg0: 0 = Q + R - S;
 
   // Events:
-  Qinc: at (time - reset) >= 0.01, priority = 0.01, persistent=false: Q = Q + 0.01, reset = time;
-  Rinc: at (time - reset) >= 0.01, priority = 0.01, persistent=false: R = R + 0.01, reset = time;
+  Qinc: at (time - reset) >= 0.01, priority = 0.01, persistent=false: reset = time, Q = Q + 0.01;
+  Rinc: at (time - reset) >= 0.01, priority = 0.01, persistent=false: reset = time, R = R + 0.01;
   maxcheck: at abs(Q - R) > maxdiff: maxdiff = abs(Q - R);
   error_check: at (time >= 99) && (maxdiff < 0.2): errorLow = 1;
   error_check2: at maxdiff >= 4: errorHigh = 1;

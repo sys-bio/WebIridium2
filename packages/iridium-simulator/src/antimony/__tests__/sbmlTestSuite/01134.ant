@@ -1,7 +1,7 @@
 ## start=0.0 end=1.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,sub1__S1,sub2__S1,sub3__S1,sub3__sub1__S1,sub3__sub2__S1 amounts=
 ## tags=Compartment,Species,comp:ModelDefinition,comp:Port,comp:ReplacedBy,comp:ReplacedElement,comp:SBaseRef,comp:Submodel,Concentration,MultiCompartment,NonUnityCompartment,comp:SubmodelOutput
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 
 // Warnings from automatic translation:
 //    Unable to create port C2_port in model case01134 because the object the port referenced is in a submodel, and these objects cannot be declared ports in Antimony.
@@ -70,6 +70,12 @@ model *case01134(C)
   sub2.sub1.C is C;
   sub3.sub2.sub1.S1 is S1;
   sub2.sub1.S1 is S1;
+
+  // Compartments and Species:
+  species S1 in C;
+
+  // Species initializations:
+  S1 = 2.5;
 
   // Compartment initializations:
   C = 10;

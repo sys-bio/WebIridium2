@@ -1,16 +1,16 @@
 ## start=0.0 end=1000.0 points=1000 atol=0.01 rtol=0.01 selections=S,error amounts=
 ## tags=AssignmentRule,CSymbolTime,EventNoDelay,EventPriority,FunctionDefinition,Parameter,EventIsNotPersistent,EventIsPersistent,EventUsesTriggerTimeValues,NonConstantParameter,RandomEventExecution
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00966()
 
   // Assignment Rules:
   S := Q + R;
 
   // Events:
-  Rinc: at (time - reset) >= 0.01, priority = 10, persistent=false: R = R + 0.01, chicount = chicount + 1, reset = time;
-  Qinc: at (time - reset) >= 0.01, priority = 10, persistent=false: Q = Q + 0.01, chicount = chicount + 1, chitest = chitest + 1, reset = time;
-  repeat: at floor(chicount/16) >= 1, priority = 5: chicount = 0, assemble = 1.5;
+  Rinc: at (time - reset) >= 0.01, priority = 10, persistent=false: reset = time, chicount = chicount + 1, R = R + 0.01;
+  Qinc: at (time - reset) >= 0.01, priority = 10, persistent=false: reset = time, chitest = chitest + 1, chicount = chicount + 1, Q = Q + 0.01;
+  repeat: at floor(chicount/16) >= 1, priority = 5: assemble = 1.5, chicount = 0;
   _E0: at (assemble >= 1) && (chitest == 0), priority = 3: chi0 = chi0 + 1;
   _E1: at (assemble >= 1) && (chitest == 1), priority = 3: chi1 = chi1 + 1;
   _E2: at (assemble >= 1) && (chitest == 2), priority = 3: chi2 = chi2 + 1;
@@ -28,7 +28,7 @@ model *case00966()
   _E14: at (assemble >= 1) && (chitest == 14), priority = 3: chi14 = chi14 + 1;
   _E15: at (assemble >= 1) && (chitest == 15), priority = 3: chi15 = chi15 + 1;
   _E16: at (assemble >= 1) && (chitest == 16), priority = 3: chi16 = chi16 + 1;
-  _E17: at assemble >= 1, priority = 1: assemble = 0, chitest = 0, tests = tests + 1;
+  _E17: at assemble >= 1, priority = 1: tests = tests + 1, chitest = 0, assemble = 0;
   _E18: at (tests >= 6240) && (finalchi == 0), priority = 0: finalchi = (chi0 - 0.0952)^2/0.0952 + (chi1 - 1.523)^2/1.523 + (chi2 - 11.428)^2/11.428 + (chi3 - 53.32)^2/53.32 + (chi4 - 173.29)^2/173.29 + (chi5 - 415.898)^2/415.898 + (chi6 - 762.48)^2/762.48 + (chi7 - 1089.26)^2/1089.26 + (chi8 - 1225.415)^2/1225.415 + (chi9 - 1089.26)^2/1089.26 + (chi10 - 762.48)^2/762.48 + (chi11 - 415.898)^2/415.898 + (chi12 - 173.29)^2/173.29 + (chi13 - 53.32)^2/53.32 + (chi14 - 11.428)^2/11.428 + (chi15 - 1.523)^2/1.523 + (chi16 - 0.0952)^2/0.0952;
   error_check: at finalchi > 50, priority = -1: error = 1;
 

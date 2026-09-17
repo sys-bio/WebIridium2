@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,s1_cf,C amounts=S1,S2
 ## tags=CSymbolTime,Compartment,EventNoDelay,EventPriority,Parameter,Reaction,Species,Amount,ConversionFactors
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01682()
 
   // Compartments and Species:
@@ -12,8 +12,8 @@ model *case01682()
   J0: S1 -> S2; 0.01;
 
   // Events:
-  E0: at time > 3.5, priority = S1: S1 = 1, S2 = 3;
-  E1: at time > 3.5, priority = 1.82: S1 = 4, S2 = 4;
+  E0: at time > 3.5, priority = S1: S2 = 3, S1 = 1;
+  E1: at time > 3.5, priority = 1.82: S2 = 4, S1 = 4;
 
   // Species initializations:
   S1 = 2/C;
@@ -24,6 +24,9 @@ model *case01682()
 
   // Variable initializations:
   s1_cf = 5;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
 
   // Other declarations:
   const C, s1_cf;

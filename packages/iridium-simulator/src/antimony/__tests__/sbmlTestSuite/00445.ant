@@ -1,7 +1,7 @@
 ## start=0.0 end=2.5 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3 amounts=S1,S2,S3
 ## tags=StoichiometryMath,Compartment,Species,Reaction,Parameter,EventWithDelay,Amount,AssignedConstantStoichiometry,DefaultValue,NonUnityStoichiometry
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00445()
 
   // Compartments and Species:
@@ -9,10 +9,10 @@ model *case00445()
   species S1 in C, S2 in C, S3 in C;
 
   // Assignment Rules:
-  S1_S2_stoichiometry := 2*p1;
+  reaction1_S2_stoichiometry0 := 2*p1;
 
   // Reactions:
-  reaction1: S1 + S1_S2_stoichiometry S2 => S3; C*k1*S1*S2;
+  reaction1: S1 + reaction1_S2_stoichiometry0 S2 => S3; C*k1*S1*S2;
   reaction2: S3 => S1 + S2; C*k2*S3;
 
   // Events:

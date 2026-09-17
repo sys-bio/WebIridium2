@@ -1,7 +1,7 @@
 ## start=0.0 end=6.0 points=50 atol=1e-06 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,EventWithDelay,Amount,ConstantSpecies
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00443()
 
   // Compartments and Species:
@@ -13,7 +13,7 @@ model *case00443()
   reaction2: S3 => S1 + S2; C*k2*S3*S4;
 
   // Events:
-  event1: at 1.75 after S2 < S4: S3 = (1/2000), S1 = (1/500);
+  event1: at 1.75 after S2 < S4: S1 = (1/500), S3 = (1/2000);
 
   // Species initializations:
   S1 = 0.001/C;
@@ -39,7 +39,7 @@ model *case00443()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 end
 

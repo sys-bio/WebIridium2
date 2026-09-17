@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,m_cf,s1_cf,C amounts=S1,S2
 ## tags=CSymbolAvogadro,Compartment,InitialAssignment,Parameter,Reaction,Species,Amount,ConversionFactors,InitialValueReassigned
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01775()
 
   // Compartments and Species:
@@ -10,6 +10,8 @@ model *case01775()
 
   // Reactions:
   J0: S1 -> S2; 0.01;
+
+  model.conversionFactor = m_cf;
 
   // Species initializations:
   S1 = 2/C;
@@ -22,8 +24,11 @@ model *case01775()
   m_cf = avogadro/1e24;
   s1_cf = avogadro/1.5e24;
 
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
+
   // Other declarations:
-  const C, m_cf, s1_cf;
+  const m_cf, C, s1_cf;
 end
 
 case01775 is "case01775"

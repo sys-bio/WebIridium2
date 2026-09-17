@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=p1,p2,p3,p4 amounts=
 ## tags=AssignmentRule,CSymbolTime,FunctionDefinition,Parameter,InitialValueReassigned,L3v2MathML,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01497()
 
   // Assignment Rules:

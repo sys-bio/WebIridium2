@@ -1,7 +1,7 @@
 ## start=0.0 end=5.0 points=50 atol=1e-07 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=Compartment,Species,Reaction,Parameter,Amount,HasOnlySubstanceUnits
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00208()
 
   // Compartments and Species:
@@ -12,10 +12,10 @@ model *case00208()
   reaction1: S1 => S2; k1*S1;
 
   // Species initializations:
-  S1 = 0.00015/compartment_;
-  S1 has substance_per_area;
-  S2 = 0.0001/compartment_;
-  S2 has substance_per_area;
+  S1 = 0.00015;
+  S1 has substance;
+  S2 = 0.0001;
+  S2 has substance;
 
   // Compartment initializations:
   compartment_ = 1;
@@ -30,8 +30,8 @@ model *case00208()
   // Unit definitions:
   unit substance = mole;
   unit area = metre^2;
-  unit time_unit = time_unit;
-  unit substance_per_area = mole / metre^2;
+  unit time_unit = second;
+  unit substance_area = mole * metre^2;
 
   // Display Names:
   compartment_ is "compartment";

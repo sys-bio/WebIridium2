@@ -1,7 +1,7 @@
 ## start=0.0 end=8.0 points=50 atol=1e-05 rtol=0.0001 selections=S1,S2,S3,S4 amounts=
 ## tags=Parameter,RateRule,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00168()
 
   // Rate Rules:
@@ -24,7 +24,7 @@ model *case00168()
   const k1, k2, k3;
 
   // Unit definitions:
-  unit time_unit = time_unit;
+  unit time_unit = second;
 end
 
 case00168 is "case00168"

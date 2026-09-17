@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
 ## tags=CSymbolTime,Compartment,EventNoDelay,EventPriority,RateRule,Species,Amount,BoundaryCondition,HasOnlySubstanceUnits,NonUnityCompartment
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01705()
 
   // Compartments and Species:
@@ -16,7 +16,7 @@ model *case01705()
   E1: at time >= 2.5, priority = 7.4: S1 = 10;
 
   // Species initializations:
-  S1 = 10/C;
+  S1 = 10;
 
   // Compartment initializations:
   C = 2;

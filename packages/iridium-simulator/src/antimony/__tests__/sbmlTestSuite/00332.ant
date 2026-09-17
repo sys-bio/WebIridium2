@@ -1,13 +1,13 @@
 ## start=0.0 end=10.0 points=50 atol=1e-09 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,RateRule,Amount,HasOnlySubstanceUnits
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00332()
 
   // Compartments and Species:
   compartment compartment_;
   substanceOnly species S1 in compartment_, S2 in compartment_, S3 in compartment_;
-  substanceOnly species $S4 in compartment_;
+  substanceOnly species S4 in compartment_;
 
   // Rate Rules:
   S4' = 1e-7;
@@ -17,14 +17,14 @@ model *case00332()
   reaction2: S3 => S1 + S2; k2*S3;
 
   // Species initializations:
-  S1 = 1.5e-06/compartment_;
-  S1 has substance_per_volume;
-  S2 = 2e-06/compartment_;
-  S2 has substance_per_volume;
-  S3 = 1.5e-06/compartment_;
-  S3 has substance_per_volume;
-  S4 = 1e-06/compartment_;
-  S4 has substance_per_volume;
+  S1 = 1.5e-06;
+  S1 has substance;
+  S2 = 2e-06;
+  S2 has substance;
+  S3 = 1.5e-06;
+  S3 has substance;
+  S4 = 1e-06;
+  S4 has substance;
 
   // Compartment initializations:
   compartment_ = 1;
@@ -40,8 +40,8 @@ model *case00332()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
-  unit substance_per_volume = mole / litre;
+  unit time_unit = second;
+  unit substance_volume = mole * litre;
 
   // Display Names:
   compartment_ is "compartment";

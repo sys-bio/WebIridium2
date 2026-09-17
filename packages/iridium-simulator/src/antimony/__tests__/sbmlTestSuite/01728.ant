@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,s1_cf,C amounts=S1,S2
 ## tags=Compartment,Parameter,RateRule,Reaction,Species,Amount,AssignedVariableStoichiometry,ConversionFactors,NonUnityStoichiometry
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01728()
 
   // Compartments and Species:
@@ -26,6 +26,9 @@ model *case01728()
   s1_cf = 5;
   S1_stoich = 1;
   S2_stoich = 1;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
 
   // Other declarations:
   var S1_stoich, S2_stoich;

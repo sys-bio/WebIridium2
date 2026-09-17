@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=100 atol=0.0001 rtol=0.0001 selections=X amounts=X
 ## tags=StoichiometryMath,Compartment,Parameter,Reaction,Species,Amount,AssignedConstantStoichiometry,DefaultValue,NonUnityStoichiometry
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00968()
 
   // Compartments and Species:

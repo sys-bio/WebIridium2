@@ -1,7 +1,7 @@
 ## start=0.0 end=0.5 points=50 atol=1e-09 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=Compartment,Species,Reaction,Parameter,Amount,BoundaryCondition
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00227()
 
   // Compartments and Species:
@@ -30,7 +30,7 @@ model *case00227()
   // Unit definitions:
   unit substance = mole;
   unit length = metre;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_length = mole / metre;
 
   // Display Names:

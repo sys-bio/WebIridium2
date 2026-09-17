@@ -1,15 +1,15 @@
 ## start=0.0 end=100.0 points=1001 atol=0.03 rtol=0.0001 selections=S,error amounts=
 ## tags=AssignmentRule,CSymbolTime,EventNoDelay,EventPriority,Parameter,EventIsNotPersistent,EventIsPersistent,EventUsesTriggerTimeValues,NonConstantParameter,RandomEventExecution
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00965()
 
   // Assignment Rules:
   S := Q + R;
 
   // Events:
-  Qinc: at (time - reset) >= 0.01, priority = 10, persistent=false: Q = Q + 0.01, Qrun = Qrun + 1, Rrun = 0, reset = time;
-  Rinc: at (time - reset) >= 0.01, priority = 10, persistent=false: R = R + 0.01, Rrun = Rrun + 1, Qrun = 0, reset = time;
+  Qinc: at (time - reset) >= 0.01, priority = 10, persistent=false: reset = time, Rrun = 0, Qrun = Qrun + 1, Q = Q + 0.01;
+  Rinc: at (time - reset) >= 0.01, priority = 10, persistent=false: reset = time, Qrun = 0, Rrun = Rrun + 1, R = R + 0.01;
   maxrun_check1: at Qrun > maxrun, priority = 9: maxrun = Qrun;
   maxrun_check2: at Rrun > maxrun, priority = 8: maxrun = Rrun;
   error_check: at maxrun > 300, priority = 7: error = 1;

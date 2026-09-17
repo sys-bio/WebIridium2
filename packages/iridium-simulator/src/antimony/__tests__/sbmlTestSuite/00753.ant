@@ -1,12 +1,12 @@
 ## start=0.0 end=2.5 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,EventNoDelay,FunctionDefinition,RateRule,Amount
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00753()
 
   // Compartments and Species:
   compartment C;
-  species S1 in C, S2 in C, S3 in C, $S4 in C;
+  species S1 in C, S2 in C, S3 in C, S4 in C;
 
   // Rate Rules:
   S4' = k2*(S1 + S2);
@@ -16,7 +16,7 @@ model *case00753()
   reaction2: S3 => S1 + S2; C*k2*S3;
 
   // Events:
-  event1: at S1 < 0.6: S4 = k3 + k4, S2 = 1;
+  event1: at S1 < 0.6: S2 = 1, S4 = k3 + k4;
 
   // Species initializations:
   S1 = 1/C;
@@ -44,7 +44,7 @@ model *case00753()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 end
 

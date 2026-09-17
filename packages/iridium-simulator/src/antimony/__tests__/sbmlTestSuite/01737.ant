@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,S3,S4,s1_cf,C amounts=S1,S2,S3,S4
 ## tags=Compartment,Parameter,RateRule,Reaction,Species,Amount,AssignedVariableStoichiometry,BoundaryCondition,ConversionFactors,NonUnityStoichiometry
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01737()
 
   // Compartments and Species:
@@ -32,6 +32,10 @@ model *case01737()
   S1_stoich = 1;
   S2_stoich = 1;
   S4_stoich = 1;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
+  S3.conversionFactor = s1_cf;
 
   // Other declarations:
   var S3_stoich, S1_stoich, S2_stoich, S4_stoich;

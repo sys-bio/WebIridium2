@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,P1,C,conversionFactor amounts=S1
 ## tags=AlgebraicRule,Compartment,Parameter,Reaction,Species,Amount,ConversionFactors,InitialValueReassigned,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01484()
 
   // Compartments and Species:
@@ -23,6 +23,9 @@ model *case01484()
   // Variable initializations:
   conversionFactor = 3;
   P1 = ;
+
+  // Species conversion factors:
+  S1.conversionFactor = conversionFactor;
 
   // Other declarations:
   var P1;

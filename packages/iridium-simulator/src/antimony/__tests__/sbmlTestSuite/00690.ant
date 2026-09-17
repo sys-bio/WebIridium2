@@ -1,12 +1,12 @@
 ## start=0.0 end=3.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3 amounts=
 ## tags=Compartment,Species,Reaction,Parameter,AssignmentRule,EventWithDelay,Concentration,NonUnityCompartment,InitialValueReassigned
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00690()
 
   // Compartments and Species:
   compartment C;
-  species S1 in C, S2 in C, $S3 in C;
+  species S1 in C, S2 in C, S3 in C;
 
   // Assignment Rules:
   S3 := k1*S2;
@@ -38,7 +38,7 @@ model *case00690()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 end
 

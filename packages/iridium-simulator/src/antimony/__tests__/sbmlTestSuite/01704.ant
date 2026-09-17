@@ -1,12 +1,12 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,C amounts=S1
 ## tags=Compartment,EventWithDelay,RateRule,Species,Amount,EventIsNotPersistent,HasOnlySubstanceUnits,NonUnityCompartment
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01704()
 
   // Compartments and Species:
   compartment C;
-  substanceOnly species $S1 in C;
+  substanceOnly species S1 in C;
 
   // Rate Rules:
   S1' = -1;
@@ -15,7 +15,7 @@ model *case01704()
   E0: at 2 after (S1 <= 4.3) && (S1 >= 3), persistent=false: S1 = 10;
 
   // Species initializations:
-  S1 = 10/C;
+  S1 = 10;
 
   // Compartment initializations:
   C = 2;

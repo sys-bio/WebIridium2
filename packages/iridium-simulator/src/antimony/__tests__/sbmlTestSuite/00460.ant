@@ -1,7 +1,7 @@
 ## start=0.0 end=4.0 points=50 atol=0.001 rtol=0.0001 selections=S1,S2,S3 amounts=
 ## tags=Parameter,RateRule,EventWithDelay,NonConstantParameter,EventUsesTriggerTimeValues
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00460()
 
   // Rate Rules:
@@ -10,7 +10,7 @@ model *case00460()
   S3' = k2*S2 + -1*k3*S3;
 
   // Events:
-  event1: at 1.5 after S1 < 0.75: S1 = S2, S2 = 1.5;
+  event1: at 1.5 after S1 < 0.75: S2 = 1.5, S1 = S2;
 
   // Variable initializations:
   S1 = 1;
@@ -25,7 +25,7 @@ model *case00460()
   const k3, k1, k2;
 
   // Unit definitions:
-  unit time_unit = time_unit;
+  unit time_unit = second;
 end
 
 case00460 is "case00460"

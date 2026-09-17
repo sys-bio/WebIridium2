@@ -1,12 +1,12 @@
 ## start=0.0 end=8.0 points=50 atol=0.0001 rtol=0.0001 selections=S1,S2 amounts=S1,S2
 ## tags=Compartment,Species,Parameter,AlgebraicRule,RateRule,Amount
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00040()
 
   // Compartments and Species:
   compartment compartment_;
-  species $S1 in compartment_, S2 in compartment_;
+  species S1 in compartment_, S2 in compartment_;
 
   // Rate Rules:
   S1' = k1*S2;
@@ -34,7 +34,7 @@ model *case00040()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 
   // Display Names:

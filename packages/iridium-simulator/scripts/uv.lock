@@ -4,13 +4,13 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "antimony"
-version = "3.0.0"
+version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/b1/1935498006ab113bfa2792c46694814ebceb9c31a20e42e40e691bbe6e76/antimony-3.0.0-py3-none-macosx_13_0_x86_64.whl", hash = "sha256:d27cccf370be656d0e1261eaf623ba069769ac010d5daac7cdedc5e8dea46481", size = 3462765, upload-time = "2025-06-06T20:11:23.144Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/41/4ee5c1bb95935fa92f09e5d65c20f3201f86ffe6832283c8120fbebedd5c/antimony-3.0.0-py3-none-macosx_14_0_arm64.whl", hash = "sha256:c9ca4bfbe7009b1998bf6ea529bfeaccf8dcea4e40f02c9a180fa9fb15d6f1dc", size = 3442109, upload-time = "2025-06-06T20:06:45.125Z" },
-    { url = "https://files.pythonhosted.org/packages/77/fc/4e0c0a716d5358edf8d3b5137e428096ae45ab6021ea4dee99f631d2f9bc/antimony-3.0.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:2528fe9934d2f69f36954ff71729bd2a370faeb3bbf48afee6efe8babeb7aa08", size = 5327763, upload-time = "2025-06-06T20:11:24.838Z" },
-    { url = "https://files.pythonhosted.org/packages/93/3c/d6732f8953e8fed7e07a65a01d70220b04bddaf9083ffa8fbee40cb86425/antimony-3.0.0-py3-none-win_amd64.whl", hash = "sha256:cabac54a7763aa33c1f62019ade5e94ce14130da2c74fd8ff236141e6816deca", size = 2517698, upload-time = "2025-06-06T20:11:26.48Z" },
+    { url = "https://files.pythonhosted.org/packages/90/68/0866a28bca6b6a86662eca5d8c273b365890cb9e37f77e84ba9161d1b22c/antimony-3.2.0-py3-none-macosx_14_0_arm64.whl", hash = "sha256:5b8cce9b7140ec210cf5380f14095b1ce639d0ec591ac676a185006e8002f93e", size = 3575691, upload-time = "2026-09-08T10:55:09.119Z" },
+    { url = "https://files.pythonhosted.org/packages/40/5e/2d5752a4048d3a34b6d90f5391f336ecf4fd86a8d826025389902dcb70a2/antimony-3.2.0-py3-none-macosx_15_0_x86_64.whl", hash = "sha256:d6dd38670d0743858fd53c4bc736fe00bca80f42fae256404c5af1c91a811e9a", size = 3595116, upload-time = "2026-09-08T10:55:11.403Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/31/9790f2be8b22c2a8269862ba226530ca8b1cf620a7c398c278a6080a6014/antimony-3.2.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:2036c1dcf699a8f1dedf35d26007e0060ddbd91f9f4bb9f4d05fa8a79cc7c2fd", size = 5492997, upload-time = "2026-09-08T10:55:12.736Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/20/3509083b38fc03bcd207e940d4f8dddb89b62d10993c74b8a4f8ed55e3e0/antimony-3.2.0-py3-none-win_amd64.whl", hash = "sha256:406852a49570a8a34a05b3029d3f7049c25f797e9bb93fac1c7973d6608210c9", size = 2564610, upload-time = "2026-09-08T10:55:14.268Z" },
 ]
 
 [[package]]
@@ -397,7 +397,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "antimony", specifier = "==3.0.0" },
+    { name = "antimony", specifier = "==3.2.0" },
     { name = "libroadrunner", specifier = "==2.8.0" },
     { name = "matplotlib", specifier = ">=3.10.9" },
 ]

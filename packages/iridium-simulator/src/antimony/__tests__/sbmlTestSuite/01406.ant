@@ -1,7 +1,7 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,C,P0,P1,conversion amounts=S1,S2
 ## tags=AssignmentRule,CSymbolDelay,CSymbolRateOf,Compartment,Parameter,Reaction,Species,Amount,ConversionFactors,InitialValueReassigned,NonConstantParameter
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01406()
 
   // Compartments and Species:
@@ -24,6 +24,9 @@ model *case01406()
 
   // Variable initializations:
   conversion = 2;
+
+  // Species conversion factors:
+  S1.conversionFactor = conversion;
 
   // Other declarations:
   var P0, P1;

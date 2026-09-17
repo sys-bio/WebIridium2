@@ -1,12 +1,12 @@
 ## start=0.0 end=12.0 points=50 atol=1e-05 rtol=0.0001 selections=S1,S2,S3,S4 amounts=S1,S2,S3,S4
 ## tags=Compartment,Species,Reaction,Parameter,RateRule,Amount,BoundaryCondition
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00345()
 
   // Compartments and Species:
   compartment compartment_;
-  species S1 in compartment_, S2 in compartment_, $S3 in compartment_, $S4 in compartment_;
+  species S1 in compartment_, S2 in compartment_, S3 in compartment_, $S4 in compartment_;
 
   // Rate Rules:
   S3' = 0.0005*k1;
@@ -39,7 +39,7 @@ model *case00345()
   // Unit definitions:
   unit volume = litre;
   unit substance = mole;
-  unit time_unit = time_unit;
+  unit time_unit = second;
   unit substance_per_volume = mole / litre;
 
   // Display Names:

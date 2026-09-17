@@ -1,15 +1,12 @@
 ## start=0.0 end=10.0 points=10 atol=0.0001 rtol=0.0001 selections=S1,S2,k0,C amounts=S1,S2
 ## tags=AssignmentRule,Compartment,InitialAssignment,Parameter,Reaction,Species,Amount,AssignedConstantStoichiometry,InitialValueReassigned,NoMathML,NonUnityStoichiometry,SpeciesReferenceInMath
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case01657()
 
   // Compartments and Species:
   compartment C;
   species S1 in C, S2 in C;
-
-  // Assignment Rules:
-  S1_stoich := ;
 
   // Reactions:
   J0: S1_stoich S1 -> S2; 0.01;
@@ -23,9 +20,9 @@ model *case01657()
 
   // Variable initializations:
   k0 = S1_stoich*2;
+  S1_stoich = 2;
 
   // Other declarations:
-  var S1_stoich;
   const C, k0;
 end
 

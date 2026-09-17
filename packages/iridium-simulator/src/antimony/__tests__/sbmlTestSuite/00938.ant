@@ -1,11 +1,12 @@
 ## start=0.0 end=2.0 points=40 atol=0.0001 rtol=0.0001 selections=x,y amounts=x
 ## tags=AssignmentRule,CSymbolDelay,CSymbolTime,Compartment,InitialAssignment,Parameter,Reaction,Species,Amount,NonConstantParameter,InitialValueReassigned,UncommonMathML
 
-// Created by libAntimony v3.0.0
+// Created by libAntimony v3.2.0
 model *case00938()
 
   // Compartments and Species:
-  species x;
+  compartment default_compartment;
+  species x in default_compartment;
 
   // Assignment Rules:
   y := 2 + delay(x, 0.2);
@@ -16,8 +17,15 @@ model *case00938()
   // Species initializations:
   x = 1*sin(10*time);
 
+  // Compartment initializations:
+  default_compartment = 1;
+
   // Other declarations:
   var y;
+  const default_compartment;
+
+  // SBO terms:
+  default_compartment.sboTerm = 410
 
   // Notes:
   model notes "Originally created by libAntimony 1.4 (using libSBML 5.0.0-a1)"
