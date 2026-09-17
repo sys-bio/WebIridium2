@@ -5,6 +5,7 @@ import {
   parseTags,
   parseTestParams,
   simulateOnce,
+  type Columns,
 } from "./testUtil.ts";
 import { promises as fs } from "fs";
 import path from "path";
@@ -17,9 +18,6 @@ const UNSUPPORTED_TAGS = [
 
   // Not fully supported by Antimony
   "ConversionFactors",
-
-  // Antimony does not handle substanceOnly + initialConcentration correctly
-  "HasOnlySubstanceUnits",
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
 const WIP_TAGS: string[] = [];
@@ -27,35 +25,21 @@ const SKIP_CASES = new Set<number>([
   // These test case create variables with the same names as some constants.
   // libantimony adds an underscore at the end. Expected output expects them
   // without the underscore, so the test runner fails.
-  1761, 1762, 1763, 1810, 1811, 1812, 1813, 1814, 1815, 1816, 1817, 1818, 1819,
-  1820, 1821,
+  // 1761, 1762, 1763, 1810, 1811, 1812, 1813, 1814, 1815, 1816, 1817, 1818, 1819,
+  // 1820, 1821,
 
-  // These ones are converted incorrectly since libantimony seems to not handle
-  // passing constants as parameters to user-defined functions correctly (?)
-  1486, 1490, 1491,
-
-  // These ones don't convert the rate rule deletion.
-  1149, 1162,
-
-  // No MathML is not converted correctly in these cases.
-  1234, 1235, 1555, 1557,
-
-  // Antimony doesn't distinguish between constant and boundary species so we
+  // Antimony doesn't distinguish between constant and boundary species so these algebraic systems become overdetermined (or is $ for boundary??)
   551, 554, 695,
 
   // Stoichiometry/speciesReference are not marked as const in the conversion
   1386,
 
-  // Stoichiometry value overriden by empty assignment
-  1657, 1554, 1552, 1465,
-
-  // The initial value is used for the old name, but it should be used for the
-  // new name
-  1179,
-
   // Why are these ones never terminating? (need to enable HasOnlySubstanceUnits)
   1178,
   1180, 1181,
+
+  // Investigate more (what is going on?)
+  1159,
 ]);
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
@@ -93,6 +77,18 @@ const simulationResults = import.meta.glob("./sbmlTestSuite/*.csv", {
   import: "default",
   eager: true,
 });
+
+const getColumn = (columns: Columns, name: string): number[] => {
+  if (name === "Time" || name === "time") {
+    return columns["Time"] ?? columns["Time_"];
+  }
+
+  // A__S1 -> A_S1
+  // avogadro -> avogadro_
+  return (
+    columns[name] ?? columns[name.replaceAll("__", "_")] ?? columns[name + "_"]
+  );
+};
 
 for (const [fileName, code] of Object.entries(simulationFiles)) {
   const modelName = fileName.replace(".ant", "");
@@ -148,7 +144,11 @@ for (const [fileName, code] of Object.entries(simulationFiles)) {
       for (const [name, column] of Object.entries(expectedColumns)) {
         for (let i = 0; i < column.length; i++) {
           // for whatever reason, some of the cases have their output with Time, others as time.
-          const got = gotColumns[name === "time" ? "Time" : name][i];
+
+          // add the replaceAll so sub_T and sub__T both work
+          // add another one so _time works
+          const column = getColumn(gotColumns, name);
+          const got = column[i];
           const expected = column[i];
           if (
             Math.abs(expected - got) >
