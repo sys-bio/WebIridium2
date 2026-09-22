@@ -23,7 +23,7 @@ import type {
   AntimonyConversionFactor,
   AntimonyReference,
 } from "../semantic/document";
-import { getReferenceFromVariable } from "../semantic/BuildAntimonyListener";
+import { getReferenceFromVariable } from "../semantic/reference";
 import { CompileError } from "../errors";
 import { RATE_OF_NAME } from "../../runtime/builtins";
 

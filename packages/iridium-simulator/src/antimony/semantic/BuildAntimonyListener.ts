@@ -39,15 +39,31 @@ import {
   type AntimonyConcreteObject,
   type AntimonyFormula,
   type AntimonyStoichiometry,
-  type AntimonyConversionFactor,
 } from "./document";
 import { isBuiltinName } from "../../runtime/builtins";
+import {
+  BadReferenceError,
+  getReferenceFromVariable,
+  resolveReference,
+} from "./reference";
 
 type DeclarationState = {
   kind?: VariableKind;
   isConst?: boolean;
   hasSubstanceOnly?: boolean;
 };
+
+type NameHandle =
+  | { kind: "modelTemplate"; name: string }
+  | { kind: "function"; name: string }
+  | { kind: "builtin"; name: string }
+  | {
+      kind: "object";
+      model: AntimonyModel;
+      object?: AntimonyModelObject;
+      name: string;
+    }
+  | { kind: "attribute"; object: AntimonyConcreteObject; name: string };
 
 const ALLOWED_DECLARATIONS = new Set<VariableKind>(["species", "compartment"]);
 
@@ -262,137 +278,10 @@ const copyAntimonyObject = (
   }
 };
 
-const referenceToString = (reference: AntimonyReference) => reference.join(".");
-
-export const getReferenceFromVariable = (
-  variable: VariableContext,
-): AntimonyReference => {
-  const reference = [];
-  let current = variable;
-
-  while (true) {
-    if (current instanceof NameContext) {
-      reference.push(current.NAME().text);
-      break;
-    } else if (current instanceof SubvariableContext) {
-      reference.push(current.NAME().text);
-      current = current.variable();
-    } else if (current instanceof ConstantContext) {
-      current = current.variable();
-    } else {
-      throw new Error(`Unknown variable type: ${variable.text}.`);
-    }
-  }
-
-  reference.reverse();
-
-  return reference;
-};
-
-const getReferenceFromNameLabel = (nameLabel: NameLabelContext) => {
-  return nameLabel.NAME().map((v) => v.text);
-};
-
-type ObjectWithModelInfo = [
-  model: AntimonyModel,
-  name: string | number,
-  obj: AntimonyConcreteObject,
-  conversionFactors: AntimonyConversionFactor[] | undefined,
-];
-
-// This one doesn't point to a model so name can't be a number
-type ModelObjectWithModelInfo = [
-  model: AntimonyModel,
-  name: string,
-  obj: AntimonyConcreteObject | undefined,
-];
-
-/**
- * If the object is a renameLink, follow it. Otherwise, return the object.
- */
-const resolveObjectWithModelInfo = (
-  rootModel: AntimonyModel,
-  object: AntimonyObject,
-  containingModel: AntimonyModel,
-): ObjectWithModelInfo => {
-  if (object.kind === "renameLink") {
-    const [gotModel, gotName, gotObject, gotConversionFactors] =
-      resolveReferenceWithModelInfo(rootModel, object.to);
-    if (object.conversionFactor && gotConversionFactors) {
-      gotConversionFactors.push(object.conversionFactor);
-      return [gotModel, gotName, gotObject, gotConversionFactors];
-    } else if (object.conversionFactor) {
-      return [gotModel, gotName, gotObject, [object.conversionFactor]];
-    } else {
-      return [gotModel, gotName, gotObject, gotConversionFactors];
-    }
-  } else {
-    return [containingModel, object.name, object, undefined];
-  }
-};
-
-export class BadReferenceError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "BadReferenceError";
-  }
-}
-
-export const resolveReferenceWithModelInfo = (
-  rootModel: AntimonyModel,
-  reference: AntimonyReference,
-  startModel?: AntimonyModel,
-): ObjectWithModelInfo => {
-  let parent: AntimonyModel = startModel ?? rootModel;
-  let current: AntimonyObject = startModel ?? rootModel;
-
-  for (const name of reference) {
-    if (current.kind !== "model") {
-      throw new BadReferenceError(
-        `Cannot access ${current.name} in ${referenceToString(reference)} because it is not a model.`,
-      );
-    }
-
-    const got: AntimonyObject | undefined =
-      typeof name === "number"
-        ? current.unnamedImports[name]
-        : current.objects.get(name);
-
-    if (!got) {
-      throw new BadReferenceError(
-        `${name} is not a subvariable of ${current.name}.`,
-      );
-    }
-
-    parent = current;
-    current = got;
-  }
-
-  return resolveObjectWithModelInfo(rootModel, current, parent);
-};
-
-/**
- * @param rootModel - where any links are resolved from
- * @param reference - reference to resolve
- * @param startModel - an optional model where the reference should start at
- */
-export const resolveReference = (
-  rootModel: AntimonyModel,
-  reference: AntimonyReference,
-  startModel?: AntimonyModel,
-): [
-  object: AntimonyConcreteObject,
-  conversionFactors: AntimonyConversionFactor[] | undefined,
-] => {
-  const [_model, _name, object, conversionFactor] =
-    resolveReferenceWithModelInfo(rootModel, reference, startModel);
-  return [object, conversionFactor];
-};
-
-const createReference = (
-  model: AntimonyModel,
-  childName?: string,
-): AntimonyReference => {
+const getReferenceFromHandle = ({
+  model,
+  name,
+}: Extract<NameHandle, { kind: "object" }>): AntimonyReference => {
   const reference = [];
 
   let current = model.parent;
@@ -416,14 +305,61 @@ const createReference = (
 
   reference.reverse();
 
-  if (childName !== undefined) {
-    reference.push(childName);
-  }
+  reference.push(name);
 
   return reference;
 };
 
-const isRenameable = (object: AntimonyObject): object is AntimonyModelObject =>
+const resolveReferenceAsHandle = (
+  root: AntimonyModel,
+  reference: AntimonyReference,
+): NameHandle => {
+  let parent: AntimonyModel = root;
+  let current: AntimonyModelObject | undefined;
+
+  for (let i = 0; i < reference.length; i++) {
+    const name = reference[i];
+
+    if (typeof name === "string") {
+      current = parent.objects.get(name);
+    } else {
+      current = parent.unnamedImports[name];
+    }
+
+    if (i < reference.length - 1) {
+      if (!current || current.kind !== "model") {
+        throw new BadReferenceError("Incomplete reference.");
+      }
+      parent = current;
+    }
+  }
+
+  return {
+    kind: "object",
+    model: parent,
+    name: reference[reference.length - 1] as string,
+    object: current,
+  };
+};
+
+const resolveObjectAsHandle = (
+  rootModel: AntimonyModel,
+  model: AntimonyModel,
+  object: AntimonyModelObject,
+): NameHandle => {
+  if (object.kind === "renameLink") {
+    return resolveReferenceAsHandle(rootModel, object.to);
+  } else {
+    return { kind: "object", model, object, name: object.name };
+  }
+};
+
+const isRenameable = (
+  object: AntimonyObject,
+): object is Extract<
+  AntimonyModelObject,
+  { kind: "variable" | "reaction" | "event" }
+> =>
   object.kind === "variable" ||
   object.kind === "reaction" ||
   object.kind === "event";
@@ -511,13 +447,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     target?: AntimonyReference,
   ): AntimonyFormula | undefined {
     if (formula === undefined) return undefined;
-
-    const model = this.#getActiveModel();
-    if (model.parent) {
-      return { scope: createReference(model), ctx: formula, target };
-    } else {
-      return { scope: null, ctx: formula, target };
-    }
+    return { scope: null, ctx: formula, target };
   }
 
   #createStoichiometry(
@@ -530,23 +460,15 @@ export class BuildAntimonyListener implements AntimonyListener {
     stoichiometry: StoichiometryContext | undefined,
   ): AntimonyStoichiometry | undefined {
     if (stoichiometry === undefined) return undefined;
-
-    const model = this.#getActiveModel();
-    if (model.parent) {
-      return { scope: createReference(model), ctx: stoichiometry };
-    } else {
-      return { scope: null, ctx: stoichiometry };
-    }
+    return { scope: null, ctx: stoichiometry };
   }
 
   /** returns true on success. */
-  #setObject(
-    model: AntimonyModel,
-    name: string,
+  #setHandle(
+    { model, name, object: existing }: Extract<NameHandle, { kind: "object" }>,
     object: AntimonyModelObject,
     ctx: ParserRuleContext,
   ): boolean {
-    const existing = model.objects.get(name);
     if (existing) {
       if (existing.kind !== object.kind) {
         if (
@@ -617,171 +539,245 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!compartmentCtx) {
       return null;
     } else {
-      const compartmentObject = this.#getOrCreateObject(
+      const handle = this.#ensureNameIsModelObject(
         compartmentCtx.variable(),
         undefined,
         "compartment",
       );
 
-      if (!compartmentObject) {
+      if (!handle) {
+        return null;
+      } else if (handle.kind !== "object") {
         this.#reportError(
-          "Cannot use built-in as a compartment",
+          `Cannot use ${handle.name} as a compartment because it is already a ${handle.kind}.`,
           compartmentCtx,
         );
         return null;
       }
 
-      if (compartmentObject.kind !== "variable") {
+      if (handle.object.kind !== "variable") {
         this.#reportError(
-          `${compartmentObject.name} of type ${compartmentObject.kind} cannot be used as a compartment.`,
+          `${handle.object.name} cannot be used as a compartment because it is a ${handle.object.kind}.`,
           compartmentCtx,
         );
         return null;
       }
 
-      this.#setVariableKind(compartmentCtx, compartmentObject, "compartment");
+      this.#setVariableKind(compartmentCtx, handle.object, "compartment");
 
-      return getReferenceFromVariable(compartmentCtx.variable());
+      return getReferenceFromHandle(handle);
     }
   }
 
-  /**
-   * This resolves a reference but with some special rules.
-   *  - if the reference is exactly one item long and does not resolve to any
-   *    object, undefined will be returned instead of throwing (subvariables
-   *    will still throw if they don't exist).
-   *  - function names will be resolved
-   *  RenameLinks will still be resolved as usual.
-   */
-  #resolveReferenceForAssignment(
-    rootModel: AntimonyModel,
-    reference: AntimonyReference,
+  #resolveNamePath(
+    path: string[],
+    {
+      getDefaultObject,
+    }: { getDefaultObject?: (name: string) => AntimonyModelObject } = {},
     ctx: ParserRuleContext,
-  ): ModelObjectWithModelInfo {
-    let parent: AntimonyModel = rootModel;
-    let current: AntimonyObject = rootModel;
-
-    for (let i = 0; i < reference.length; i++) {
-      const name = reference[i];
-
-      if (current.kind !== "model") {
-        // TODO: actually implement this properly
-        if (name === "sboTerm") {
-          return [parent, current.name, undefined];
-        }
-
-        this.#reportError(
-          `Cannot access object ${name} in ${referenceToString(reference)} because it is not a model.`,
-          ctx,
-        );
-        return resolveObjectWithModelInfo(
-          rootModel,
-          current,
-          parent,
-        ) as unknown as ModelObjectWithModelInfo;
-      }
-
-      const got: AntimonyObject | undefined =
-        typeof name === "number"
-          ? current.unnamedImports[name]
-          : current.objects.get(name);
-
-      if (!got) {
-        if (i === 0) {
-          return [parent, name as string, undefined];
+  ): NameHandle | undefined {
+    const activeModel = this.#getActiveModel();
+    let current: NameHandle | undefined;
+    for (let i = 0; i < path.length; i++) {
+      const name = path[i];
+      if (!current) {
+        if (isBuiltinName(name)) {
+          current = { kind: "builtin", name };
+        } else if (this.#document.functions.has(name)) {
+          current = { kind: "function", name };
+        } else if (this.#document.models.has(name)) {
+          current = { kind: "modelTemplate", name };
         } else {
-          this.#reportError(
-            `${name} is not a subvariable of ${current.name}.`,
-            ctx,
-          );
-          return [parent, name as string, undefined];
+          const object = activeModel.objects.get(name);
+          if (object) {
+            current = resolveObjectAsHandle(activeModel, activeModel, object);
+          } else if (!object && getDefaultObject) {
+            const defaulted = getDefaultObject(name);
+            activeModel.objects.set(name, defaulted);
+            current = {
+              kind: "object",
+              model: activeModel,
+              name,
+              // this is the default object
+              object: defaulted,
+            };
+          } else {
+            current = { kind: "object", model: activeModel, name };
+          }
+        }
+      } else {
+        switch (current.kind) {
+          case "function":
+            this.#reportError(
+              `${current.name} does not have any subvariables because it is a function.`,
+              ctx,
+            );
+            return;
+          case "modelTemplate":
+            this.#reportError(
+              `${current.name} does not have any subvariables because it is a model template.`,
+              ctx,
+            );
+            return;
+          case "builtin":
+            this.#reportError(
+              `${current.name} does not have any subvariables because it is a builtin.`,
+              ctx,
+            );
+            return;
+          case "object":
+            if (!current.object) {
+              this.#reportError(
+                `${current.name} does not have any subvariables because it has not been instantiated.`,
+                ctx,
+              );
+              return;
+            } else {
+              switch (current.object.kind) {
+                case "model": {
+                  const got = current.object.objects.get(name);
+                  if (got) {
+                    current = resolveObjectAsHandle(
+                      activeModel,
+                      current.object,
+                      got,
+                    );
+                  } else {
+                    this.#reportError(
+                      `${name} is not a subvariable of ${current.object.name}.`,
+                      ctx,
+                    );
+                    return;
+                  }
+                  break;
+                }
+                case "variable":
+                  if (name === "sboTerm") {
+                    current = {
+                      kind: "attribute",
+                      object: current.object,
+                      name: "sboTerm",
+                    };
+                  } else {
+                    this.#reportError(
+                      `${name} is not a subvariable of ${current.object.name}.`,
+                      ctx,
+                    );
+                    return;
+                  }
+                  break;
+                case "event":
+                case "reaction":
+                case "algebraicRule":
+                  this.#reportError(
+                    `${current.name} does not have any subvariables because it is a ${current.kind}.`,
+                    ctx,
+                  );
+                  break;
+              }
+            }
+            break;
         }
       }
-
-      parent = current;
-      current = got;
     }
 
-    return resolveObjectWithModelInfo(
-      rootModel,
-      current,
-      parent,
-    ) as unknown as ModelObjectWithModelInfo;
-  }
-
-  #resolveVariable(
-    rootModel: AntimonyModel,
-    variableCtx: VariableContext,
-  ): ModelObjectWithModelInfo {
-    return this.#resolveReferenceForAssignment(
-      rootModel,
-      getReferenceFromVariable(variableCtx),
-      variableCtx,
-    );
+    return current;
   }
 
   /**
-   * Get or create a variable and return it.
-   * If the variable has the name of a built-in, does not create
-   * the variable, instead returns undefined.
+   * @returns - a NameHandle or undefined if an error occurred.
    */
-  #getOrCreateObject(
+  #resolveName(
+    ctx: VariableContext | NameLabelContext,
+    options: { getDefaultObject?: (name: string) => AntimonyModelObject } = {},
+  ): NameHandle | undefined {
+    const path: string[] = [];
+    if (ctx instanceof VariableContext) {
+      let current: VariableContext = ctx;
+      while (current) {
+        if (current instanceof NameContext) {
+          path.push(current.NAME().text);
+          break;
+        } else if (current instanceof SubvariableContext) {
+          path.push(current.NAME().text);
+          current = current.variable();
+        } else if (current instanceof ConstantContext) {
+          current = current.variable();
+        }
+      }
+    } else if (ctx instanceof NameLabelContext) {
+      for (const name of ctx.NAME()) {
+        path.push(name.text);
+      }
+    }
+
+    return this.#resolveNamePath(path, options, ctx);
+  }
+
+  /**
+   * @returns - a NameHandle for the name or undefined if an error occurred
+   */
+  #ensureNameIsModelObject(
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
     defaultVariableKind?: VariableKind,
-  ): AntimonyObject | undefined {
-    if (variableCtx instanceof NameContext) {
-      if (this.#document.functions.has(variableCtx.NAME().text)) {
-        return this.#document.functions.get(variableCtx.NAME().text);
-      }
-    }
-
-    const [model, name, gotObject] = this.#resolveVariable(
-      this.#getActiveModel(),
-      variableCtx,
-    );
-
-    let object = gotObject;
-
-    if (isBuiltinName(name)) {
-      return undefined;
-    }
-
-    if (!object) {
-      object = {
+    isForVariableInFormula = false,
+  ): Required<NameHandle> | undefined {
+    const compartment = this.#getOrCreateCompartment(compartmentCtx);
+    const handle = this.#resolveName(variableCtx, {
+      getDefaultObject: (name) => ({
         kind: "variable",
         variableKind:
           defaultVariableKind ?? this.#currentDeclaration?.kind ?? "parameter",
-        compartment: this.#getOrCreateCompartment(compartmentCtx),
+        compartment,
         name: name,
         isDeleted: false,
         isConst:
           variableCtx instanceof ConstantContext ||
           (this.#currentDeclaration?.isConst ?? false),
         hasSubstanceOnly: false,
-      };
+      }),
+    });
 
-      model.objects.set(object.name, object);
-    } else if (compartmentCtx) {
-      object.compartment = this.#getOrCreateCompartment(compartmentCtx);
+    if (!handle) return;
+
+    if (handle.kind !== "object") {
+      if (
+        (handle.kind === "builtin" || handle.kind === "function") &&
+        isForVariableInFormula
+      ) {
+        return;
+      }
+
+      this.#reportError(
+        `${handle.name} should be a model object, not a ${handle.kind}.`,
+        variableCtx,
+      );
+      return;
+    } else if (!handle.object) {
+      return;
     }
 
-    if (object.kind === "variable" && variableCtx instanceof ConstantContext) {
-      object.isConst = true;
+    if (compartment) {
+      handle.object.compartment = compartment;
     }
 
-    return object;
+    if (
+      handle.object.kind === "variable" &&
+      variableCtx instanceof ConstantContext
+    ) {
+      handle.object.isConst = true;
+    }
+
+    return handle as Required<NameHandle>;
   }
 
-  #getOrDefaultReference(
+  #createNameOrDefault(
     nameLabelCtx: NameLabelContext | undefined,
     prefix: string,
-  ): { reference: AntimonyReference; compartment: AntimonyReference | null } {
+  ): NameHandle | undefined {
     if (nameLabelCtx) {
-      return {
-        reference: getReferenceFromNameLabel(nameLabelCtx),
-        compartment: this.#getOrCreateCompartment(nameLabelCtx.inCompartment()),
-      };
+      return this.#resolveName(nameLabelCtx);
     } else {
       let candidate: string;
       let i = 0;
@@ -789,7 +785,7 @@ export class BuildAntimonyListener implements AntimonyListener {
         candidate = `${prefix}${i++}`;
       } while (this.#getActiveModel().objects.has(candidate));
 
-      return { reference: [candidate], compartment: null };
+      return { kind: "object", model: this.#getActiveModel(), name: candidate };
     }
   }
 
@@ -862,30 +858,35 @@ export class BuildAntimonyListener implements AntimonyListener {
       const exports: AntimonyReference[] = [];
       let isValid = true;
       for (const variableCtx of exportListCtx.variable()) {
-        const reference = getReferenceFromVariable(variableCtx);
-        if (reference.length > 1) {
-          this.#reportError("Cannot export subvariables.", variableCtx);
+        const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+        if (!handle) {
           isValid = false;
           continue;
-        }
-
-        const object = this.#getOrCreateObject(variableCtx, undefined);
-        if (!object) {
-          this.#reportError("Cannot export built-in.", variableCtx);
-          isValid = false;
-          continue;
-        }
-
-        if (!isRenameable(object)) {
+        } else if (handle.kind !== "object") {
           this.#reportError(
-            `Cannot export ${variableCtx.text} because it is a ${object.kind}.`,
+            `Cannot export ${handle.name} because it is a ${handle.kind}.`,
             variableCtx,
           );
           isValid = false;
           continue;
         }
 
-        exports.push(reference);
+        if (handle.model !== model) {
+          this.#reportError("Cannot export subvariables.", variableCtx);
+          isValid = false;
+          continue;
+        }
+
+        if (!isRenameable(handle.object)) {
+          this.#reportError(
+            `Cannot export ${variableCtx.text} because it is a ${handle.object.kind}.`,
+            variableCtx,
+          );
+          isValid = false;
+          continue;
+        }
+
+        exports.push(getReferenceFromHandle(handle));
       }
 
       if (isValid) {
@@ -945,23 +946,28 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#currentDeclaration) return;
 
     // TODO: is it always OK to re-assign?
-    const variable = this.#getOrCreateObject(
+    const handle = this.#ensureNameIsModelObject(
       ctx.variable(),
       ctx.inCompartment(),
     );
 
-    if (!variable) {
-      this.#reportError("Cannot use name of built-in within declaration", ctx);
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `${handle.name} is not a valid declaration item because it is a ${handle.kind}.`,
+        ctx,
+      );
       return;
     }
 
-    this.#updateToDeclarationIfNecessary(ctx, variable);
+    this.#updateToDeclarationIfNecessary(ctx, handle.object);
   }
 
   enterVar(ctx: VarContext): void {
     if (!this.#isActive) return;
 
-    this.#getOrCreateObject(ctx.variable(), undefined);
+    this.#ensureNameIsModelObject(ctx.variable(), undefined, undefined, true);
   }
 
   enterAssignment(ctx: AssignmentContext): void {
@@ -970,12 +976,21 @@ export class BuildAntimonyListener implements AntimonyListener {
     // TODO: do this properly
     if (ctx.variable().text.endsWith(".sboTerm")) return;
 
-    const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
-    if (!object) {
-      this.#reportError("Cannot assign to built-in.", ctx);
+    const handle = this.#ensureNameIsModelObject(
+      ctx.variable(),
+      ctx.inCompartment(),
+    );
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot assign to ${handle.name} because it is a ${handle.kind}.`,
+        ctx,
+      );
       return;
     }
 
+    const object = handle.object;
     this.#updateToDeclarationIfNecessary(ctx, object);
 
     const target = getReferenceFromVariable(ctx.variable());
@@ -1093,13 +1108,22 @@ export class BuildAntimonyListener implements AntimonyListener {
   #getReactionTerms(ctx: ReactantListContext): AntimonyReactionTerm[] {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
-      const object = this.#getOrCreateObject(reactant.variable(), undefined);
+      const handle = this.#ensureNameIsModelObject(
+        reactant.variable(),
+        undefined,
+      );
 
-      if (!object) {
-        this.#reportError("Cannot use built-in within reaction.", reactant);
+      if (!handle) {
+        continue;
+      } else if (handle.kind !== "object") {
+        this.#reportError(
+          `Cannot use ${handle.name} within a reaction because it is a ${handle.kind}.`,
+          reactant,
+        );
         continue;
       }
 
+      const object = handle.object;
       if (object.kind !== "variable") {
         this.#reportError(
           `${object.name} is of type ${object.kind} and cannot be used in a reaction.`,
@@ -1120,7 +1144,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       this.#setVariableKind(reactant, object, "species");
 
       terms.push({
-        reference: getReferenceFromVariable(reactant.variable()),
+        reference: getReferenceFromHandle(handle),
         stoichiometry: this.#createStoichiometry(reactant.stoichiometry()),
       });
     }
@@ -1132,30 +1156,33 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const variable = ctx.variable();
     if (variable) {
-      const object = this.#getOrCreateObject(variable, undefined);
-      if (object && object.kind !== "variable") {
+      const handle = this.#ensureNameIsModelObject(variable, undefined);
+      if (!handle) {
+        return;
+      } else if (handle.kind !== "object") {
         this.#reportError(
-          `${object.name} of type ${object.kind} cannot be used as a stoichiometry.`,
+          `Cannot use ${handle.name} in stoichiometry because it is a ${handle.kind}.`,
           ctx,
         );
         return;
-      }
-
-      if (!object) {
-        this.#reportError("Cannot use built-in as a stoichiometry.", ctx);
+      } else if (handle.object.kind !== "variable") {
+        this.#reportError(
+          `Cannot use ${handle.object.name} in stoichiometry because it is a ${handle.object.kind}.`,
+          ctx,
+        );
         return;
       }
 
       // it has already been used as a stoichiometry
-      if (object.variableKind === "stoichiometry") {
+      if (handle.object.variableKind === "stoichiometry") {
         this.#reportError(
-          `${object.name} is already in the stoichiometry of another term. Use another name.`,
+          `${handle.object.name} is already in the stoichiometry of another term. Use another name.`,
           ctx,
         );
         return;
       }
 
-      this.#setVariableKind(ctx, object, "stoichiometry");
+      this.#setVariableKind(ctx, handle.object, "stoichiometry");
     }
   }
 
@@ -1163,21 +1190,20 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const nameLabelCtx = ctx.nameLabel();
-    const { reference, compartment: gotCompartment } =
-      this.#getOrDefaultReference(nameLabelCtx, "_J");
-    let compartment = gotCompartment;
-
-    const activeModel = this.#getActiveModel();
-    const [parentModel, name, _existing] = this.#resolveReferenceForAssignment(
-      activeModel,
-      reference,
-      nameLabelCtx ?? ctx,
-    );
-
-    const compartmentCtx = ctx.inCompartment();
-    if (compartmentCtx) {
-      compartment = this.#getOrCreateCompartment(compartmentCtx);
+    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_J");
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot set ${handle.name} to a reaction because it is a ${handle.kind}.`,
+        ctx,
+      );
+      return;
     }
+
+    const compartment = this.#getOrCreateCompartment(
+      nameLabelCtx?.inCompartment() ?? ctx.inCompartment(),
+    );
 
     let reactants: AntimonyReactionTerm[] = [];
     let products: AntimonyReactionTerm[] = [];
@@ -1187,7 +1213,10 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of reactants) {
-          const [reactant, _] = resolveReference(activeModel, term.reference);
+          const [reactant, _] = resolveReference(
+            this.#getActiveModel(),
+            term.reference,
+          );
           (reactant as AntimonyVariable).compartment = compartment;
         }
       }
@@ -1198,27 +1227,27 @@ export class BuildAntimonyListener implements AntimonyListener {
 
       if (compartment) {
         for (const term of products) {
-          const [product, _] = resolveReference(activeModel, term.reference);
+          const [product, _] = resolveReference(
+            this.#getActiveModel(),
+            term.reference,
+          );
           (product as AntimonyVariable).compartment = compartment;
         }
       }
     }
 
-    // TODO: throw when two reactions have the same name
-
-    this.#setObject(
-      parentModel,
-      name,
+    this.#setHandle(
+      handle,
       {
         kind: "reaction",
         isDeleted: false,
-        name,
+        name: handle.name,
         compartment,
         reactants,
         products,
         rate: this.#createFormula(
           ctx.formula(),
-          createReference(parentModel, name),
+          getReferenceFromHandle(handle),
         ),
       },
       ctx,
@@ -1234,17 +1263,21 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const assignments = new Map<AntimonyReference, AntimonyFormula>();
     for (const assignment of assignmentsCtx.eventAssignment()) {
-      const variable = this.#getOrCreateObject(
+      const handle = this.#ensureNameIsModelObject(
         assignment.variable(),
         undefined,
       );
-      if (!variable) {
-        this.#reportError("Cannot assign to built-in.", ctx);
-        return;
-      }
-      if (variable.kind !== "variable") {
+      if (!handle) {
+        continue;
+      } else if (handle.kind !== "object") {
         this.#reportError(
-          `Cannot assign to ${assignment.variable().text} in an event because it is a ${variable.kind}.`,
+          `Cannot assign to ${handle.name} because it is ${handle.kind}.`,
+          ctx,
+        );
+        continue;
+      } else if (handle.object.kind !== "variable") {
+        this.#reportError(
+          `Cannot assign to ${handle.object.name} in an event because it is a ${handle.object.kind}.`,
           assignment,
         );
         continue;
@@ -1254,7 +1287,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       if (!formula) continue;
 
       assignments.set(
-        getReferenceFromVariable(assignment.variable()),
+        getReferenceFromHandle(handle),
         this.#createFormula(formula),
       );
     }
@@ -1273,25 +1306,26 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
     }
 
-    const nameLabelCtx = ctx.nameLabel();
-    const { reference, compartment } = this.#getOrDefaultReference(
-      nameLabelCtx,
-      "_E",
-    );
-    const [parentModel, name] = this.#resolveReferenceForAssignment(
-      this.#getActiveModel(),
-      reference,
-      nameLabelCtx ?? ctx,
-    );
+    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_E");
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot set ${handle.name} to an event because it is ${handle.kind}.`,
+        ctx,
+      );
+      return;
+    }
 
-    this.#setObject(
-      parentModel,
-      name,
+    this.#setHandle(
+      handle,
       {
         kind: "event",
         isDeleted: false,
-        name,
-        compartment,
+        name: handle.name,
+        compartment: this.#getOrCreateCompartment(
+          ctx.nameLabel()?.inCompartment(),
+        ),
         assignments,
         trigger: this.#createFormula(ctx._trigger),
         delay: this.#createFormula(ctx._delay),
@@ -1304,20 +1338,22 @@ export class BuildAntimonyListener implements AntimonyListener {
   enterAlgebraicRule(ctx: AlgebraicRuleContext): void {
     if (!this.#isActive) return;
 
-    const nameLabelCtx = ctx.nameLabel();
-    const { reference } = this.#getOrDefaultReference(nameLabelCtx, "_alg");
-    const [parentModel, name] = this.#resolveReferenceForAssignment(
-      this.#getActiveModel(),
-      reference,
-      nameLabelCtx ?? ctx,
-    );
+    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_alg");
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot set ${handle.name} to an algebraic rule because it is a ${handle.kind}.`,
+        ctx,
+      );
+      return;
+    }
 
-    this.#setObject(
-      parentModel,
-      name,
+    this.#setHandle(
+      handle,
       {
         kind: "algebraicRule",
-        name: name,
+        name: handle.name,
         isDeleted: false,
         constant: Number(ctx.NUMBER().text),
         formula: this.#createFormula(ctx.formula()),
@@ -1330,20 +1366,44 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const compartment = this.#getOrCreateCompartment(ctx.inCompartment());
-    const object = this.#getOrCreateObject(ctx.variable(), ctx.inCompartment());
+    const handle = this.#ensureNameIsModelObject(
+      ctx.variable(),
+      ctx.inCompartment(),
+    );
 
-    if (!object) {
-      this.#reportError("Cannot set compartment of built-in.", ctx);
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot set compartment of ${handle.name} because it is a ${handle.kind}.`,
+        ctx,
+      );
       return;
     }
 
-    object.compartment = compartment;
+    handle.object.compartment = compartment;
   }
 
   enterFunctionDefinition(ctx: FunctionDefinitionContext): void {
     if (!this.#isActive) return;
 
-    const name = ctx.NAME().text;
+    const handle = this.#resolveNamePath([ctx.NAME().text], undefined, ctx);
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Function cannot be named ${handle.name} because it is already a ${handle.kind}.`,
+        ctx,
+      );
+      return;
+    } else if (handle.object) {
+      this.#reportError(
+        `Function cannot be named ${handle.name} because it is already a ${handle.object.kind}.`,
+        ctx,
+      );
+      return;
+    }
+
     const parameterNames: string[] = [];
     for (const parameterName of ctx.parameterList().NAME()) {
       if (parameterNames.includes(parameterName.text)) {
@@ -1357,42 +1417,42 @@ export class BuildAntimonyListener implements AntimonyListener {
       parameterNames.push(parameterName.text);
     }
 
-    if (this.#document.functions.has(name)) {
-      this.#reportError(`Function ${name} is defined twice.`, ctx);
+    if (this.#document.functions.has(handle.name)) {
+      this.#reportError(`Function ${handle.name} is defined twice.`, ctx);
       return;
     }
 
-    this.#document.functions.set(name, {
+    this.#document.functions.set(handle.name, {
       kind: "function",
-      name: name,
+      name: handle.name,
       parameters: parameterNames,
       body: ctx.formula(),
     });
   }
 
   #rename(
-    fromModel: AntimonyModel,
-    fromName: string,
-    fromObject: AntimonyModelObject,
-    toModel: AntimonyModel,
-    toName: string,
-    toObject: AntimonyObject | undefined,
+    fromHandle: Required<Extract<NameHandle, { kind: "object" }>>,
+    toHandle: Extract<NameHandle, { kind: "object" }>,
     ctx: ParserRuleContext,
     conversionFactor?: AntimonyReference,
   ): void {
     // do nothing when renaming to itself
-    if (fromObject === toObject) {
+    if (toHandle.kind === "object" && fromHandle.object === toHandle.object) {
       if (conversionFactor) {
         this.#reportError(
-          `Cannot rename ${fromName} to itself with a conversion factor.`,
+          `Cannot rename ${fromHandle.name} to itself with a conversion factor.`,
           ctx,
         );
       }
       return;
     }
 
+    const fromObject = fromHandle.object;
+
     // apply antimony sync/merge rules
-    if (toObject) {
+    if (toHandle.kind === "object" && toHandle.object) {
+      const toObject = toHandle.object;
+
       if (fromObject.kind !== toObject.kind) {
         this.#reportError(
           `Cannot rename ${fromObject.name} which is a ${fromObject.kind} to ${toObject.name} which is a ${toObject.kind}.`,
@@ -1429,12 +1489,15 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
     }
 
-    fromObject.name = toName;
-    toModel.objects.set(toName, fromObject);
-    fromModel.objects.set(fromName, {
+    fromObject.name = toHandle.name;
+
+    const model =
+      toHandle.kind === "object" ? toHandle.model : this.#getActiveModel();
+    model.objects.set(toHandle.name, fromObject);
+    fromHandle.model.objects.set(fromHandle.name, {
       kind: "renameLink",
-      name: fromName,
-      to: createReference(toModel, toName),
+      name: fromHandle.name,
+      to: getReferenceFromHandle(toHandle),
       conversionFactor,
     });
   }
@@ -1445,49 +1508,58 @@ export class BuildAntimonyListener implements AntimonyListener {
     const fromCtx = ctx.variable(0);
     const toCtx = ctx.variable(1);
 
-    const fromObject = this.#getOrCreateObject(fromCtx, undefined);
-    const [fromModel, fromName, _fromObject] = this.#resolveVariable(
-      this.#getActiveModel(),
-      fromCtx,
-    );
-    if (!fromObject) {
-      this.#reportError("Cannot rename a built-in", ctx);
+    const fromHandle = this.#ensureNameIsModelObject(fromCtx, undefined);
+    if (!fromHandle) {
       return;
-    }
-    if (!isRenameable(fromObject)) {
+    } else if (fromHandle.kind !== "object") {
       this.#reportError(
-        `Cannot rename ${fromObject.name} because it is a ${fromObject.kind}.`,
+        `Cannot rename ${fromHandle.name} because it is a ${fromHandle.kind}.`,
         ctx,
       );
       return;
     }
 
-    const [toModel, toName, toObject] = this.#resolveVariable(
-      this.#getActiveModel(),
-      toCtx,
-    );
+    if (!isRenameable(fromHandle.object)) {
+      this.#reportError(
+        `Cannot rename ${fromHandle.name} because it is a ${fromHandle.object.kind}.`,
+        ctx,
+      );
+      return;
+    }
+
+    const toHandle = this.#resolveName(toCtx);
+    if (!toHandle) {
+      return;
+    } else if (toHandle.kind !== "object") {
+      this.#reportError(
+        `Cannot rename to ${toHandle.name} because it is a ${toHandle.kind}.`,
+        ctx,
+      );
+      return;
+    }
 
     let conversionFactor: AntimonyReference | undefined;
 
     const conversionFactorCtx =
       ctx.conversionFactorLeft() ?? ctx.conversionFactorRight();
     if (conversionFactorCtx) {
-      this.#getOrCreateObject(conversionFactorCtx.variable(), undefined);
-      conversionFactor = getReferenceFromVariable(
+      const handle = this.#ensureNameIsModelObject(
         conversionFactorCtx.variable(),
+        undefined,
       );
+      if (handle) {
+        if (handle.kind !== "object") {
+          this.#reportError(
+            `Cannot use ${handle.name} as a conversion factor because it is a ${handle.name}.`,
+            ctx,
+          );
+        } else {
+          conversionFactor = getReferenceFromHandle(handle);
+        }
+      }
     }
 
-    this.#rename(
-      fromModel,
-      fromName,
-      fromObject,
-      toModel,
-      toName,
-      toObject,
-      ctx,
-      conversionFactor,
-    );
+    this.#rename(fromHandle, toHandle, ctx, conversionFactor);
   }
 
   enterModelImport(ctx: ModelImportContext): void {
@@ -1502,29 +1574,32 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     let parentModel: AntimonyObject;
     let importName: string | undefined;
-    let existingObject: AntimonyObject | undefined;
+
     const nameLabelCtx = ctx.nameLabel();
     if (nameLabelCtx) {
-      const importReference = getReferenceFromNameLabel(nameLabelCtx);
-      [parentModel, importName, existingObject] =
-        this.#resolveReferenceForAssignment(
-          this.#getActiveModel(),
-          importReference,
-          nameLabelCtx,
+      const importHandle = this.#resolveName(nameLabelCtx);
+      if (!importHandle) {
+        return;
+      } else if (importHandle.kind !== "object") {
+        this.#reportError(
+          `Cannot import model to ${importHandle.name} because it is already a ${importHandle.kind}.`,
+          ctx,
         );
+        return;
+      } else if (importHandle.object) {
+        // NOTE: this DOES not match the original Antimony's behavior but is much more
+        // sensible in my opinion. In the original, you can import into an existing model's name
+        // which can make the model invalid as references are no longer valid.
+        this.#reportError(
+          `Cannot import to ${importHandle.name} as it is already a ${importHandle.object.kind}.`,
+          ctx,
+        );
+        return;
+      }
+      parentModel = importHandle.model;
+      importName = importHandle.name;
     } else {
       parentModel = this.#getActiveModel();
-    }
-
-    // NOTE: this DOES not match the original Antimony's behavior but is much more
-    // sensible in my opinion. In the original, you can import into an existing model's name
-    // which can make the model invalid as references are no longer valid.
-    if (existingObject) {
-      this.#reportError(
-        `Cannot import to ${importName} as it is already a ${existingObject.kind}.`,
-        ctx,
-      );
-      return;
     }
 
     if (callingModel === parentModel) {
@@ -1558,8 +1633,17 @@ export class BuildAntimonyListener implements AntimonyListener {
       } else {
         const variableCtx = optionValueCtx.variable();
         if (!variableCtx) continue;
-        this.#getOrCreateObject(variableCtx, undefined);
-        optionValue = getReferenceFromVariable(variableCtx);
+        const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+        if (!handle) {
+          continue;
+        } else if (handle.kind !== "object") {
+          this.#reportError(
+            `Cannot use ${handle.name} as an option because it is a ${handle.kind}.`,
+            optionCtx,
+          );
+          continue;
+        }
+        optionValue = getReferenceFromHandle(handle);
       }
 
       if (optionName === "timeconv") {
@@ -1588,27 +1672,33 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
 
       const importCtx = importCtxs[i];
-      const [fromModel, fromName, fromObject] = resolveReferenceWithModelInfo(
-        parentModel,
-        [referenceHead, ...exportReference],
-      );
-      if (typeof fromName !== "string") {
-        throw new Error("Export reference last item was not a string.");
-      } else if (!isRenameable(fromObject)) {
-        throw new Error("Export reference is not renameable.");
+      const fromHandle = resolveReferenceAsHandle(parentModel, [
+        referenceHead,
+        ...exportReference,
+      ]);
+      if (!fromHandle || fromHandle.kind !== "object" || !fromHandle.object) {
+        throw new Error("Export was not a model object.");
+      } else if (!isRenameable(fromHandle.object)) {
+        throw new Error("Export was not renameable.");
       }
 
-      const [toModel, toName, toObject] = this.#resolveVariable(
-        parentModel,
-        importCtx,
-      );
+      const toHandle = this.#resolveName(importCtx);
+      if (!toHandle) {
+        continue;
+      } else if (toHandle.kind !== "object") {
+        this.#reportError(
+          `Cannot import to ${toHandle.name} because it is already a ${toHandle.kind}.`,
+          importCtx,
+        );
+        continue;
+      }
       this.#rename(
-        fromModel,
-        fromName,
-        fromObject,
-        toModel,
-        toName,
-        toObject,
+        {
+          ...fromHandle,
+          // need to do this so it typechecks :(
+          object: fromHandle.object,
+        },
+        toHandle,
         importCtx,
       );
     }
@@ -1618,23 +1708,27 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const variableCtx = ctx.variable();
-    const reference = getReferenceFromVariable(variableCtx);
-    if (reference.length <= 1) {
+
+    const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot delete ${handle.kind} because it is a ${handle.kind}.`,
+        ctx,
+      );
+      return;
+    }
+
+    if (handle.model === this.#getActiveModel()) {
       this.#reportError("Only objects inside submodels can be deleted.", ctx);
-      return;
     }
 
-    const got = this.#getOrCreateObject(variableCtx, undefined);
-    if (!got) {
-      this.#reportError("Cannot delete built-in.", ctx);
-      return;
-    }
-
-    if ("isDeleted" in got) {
-      got.isDeleted = true;
+    if ("isDeleted" in handle.object) {
+      handle.object.isDeleted = true;
     } else {
       this.#reportError(
-        `Cannot delete ${got.name} because it is a ${got.kind}.`,
+        `Cannot delete ${handle.name} because it is a ${handle.object.kind}.`,
         ctx,
       );
     }
@@ -1673,12 +1767,12 @@ export class BuildAntimonyListener implements AntimonyListener {
         // we don't want to early return, just use the best name available
       }
 
-      const object = this.#getOrCreateObject(variableCtx, undefined);
-      if (!object) {
+      const handle = this.#resolveName(variableCtx);
+      if (!handle || handle.kind !== "object" || !handle.object) {
         return;
       }
 
-      object.displayName = this.#getContentFromString(strings[0]);
+      handle.object.displayName = this.#getContentFromString(strings[0]);
     } // ignore everything else for now, maybe validate later
   }
 }

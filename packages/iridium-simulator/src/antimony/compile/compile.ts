@@ -37,7 +37,7 @@ import { buildAntimonyDocument } from "../semantic/semantic";
 import {
   resolveReference,
   resolveReferenceWithModelInfo,
-} from "../semantic/BuildAntimonyListener";
+} from "../semantic/reference";
 import { isBuiltinName, TIME_NAME } from "../../runtime/builtins";
 
 const INVALID_BOOLEAN_MESSAGE =

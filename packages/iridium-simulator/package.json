@@ -9,7 +9,7 @@
     "./antimony": "./src/antimony/index.ts"
   },
   "scripts": {
-    "antlr4ts": "antlr4ts ./src/grammar/Antimony.g4 -visitor -Xexact-output-dir -o ./src/generated/"
+    "antlr4ts": "antlr4ts ./src/antimony/grammar/Antimony.g4 -visitor -Xexact-output-dir -o ./src/antimony/generated/"
   },
   "dependencies": {
     "antlr4ts": "^0.5.0-alpha.4"
