@@ -17,24 +17,15 @@ const referenceToString = (reference: AntimonyReference) => reference.join(".");
 export const getReferenceFromVariable = (
   variable: VariableContext,
 ): AntimonyReference => {
-  const reference = [];
-  let current = variable;
-
-  while (true) {
-    if (current instanceof NameContext) {
-      reference.push(current.NAME().text);
-      break;
-    } else if (current instanceof SubvariableContext) {
-      reference.push(current.NAME().text);
-      current = current.variable();
-    } else if (current instanceof ConstantContext) {
-      current = current.variable();
-    } else {
-      throw new Error(`Unknown variable type: ${variable.text}.`);
-    }
+  if (variable instanceof NameContext) {
+    return [variable.NAME().text];
+  } else if (variable instanceof SubvariableContext) {
+    return variable.NAME().map((n) => n.text);
+  } else if (variable instanceof ConstantContext) {
+    return getReferenceFromVariable(variable.variable());
+  } else {
+    throw new Error(`Unknown variable type: ${variable.text}.`);
   }
-
-  return reference;
 };
 
 type ObjectWithModelInfo = [

@@ -645,10 +645,18 @@ describe("ir", () => {
       );
     });
 
-    it("should error when using a function name without calling it", () => {
-      expect(() => {
-        compileToIr("function test(a); a + a; end; C = 3 + test");
-      }).toThrowError(CompileError);
+    it("should not create variables", () => {
+      expectCompilesToExact(
+        "function test(a, b, c) a + b + c end",
+        model({
+          functions: {
+            test: func(
+              ["a", "b", "c"],
+              expr.add(expr.add(expr.var("a"), expr.var("b")), expr.var("c")),
+            ),
+          },
+        }),
+      );
     });
   });
 

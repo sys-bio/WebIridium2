@@ -120,6 +120,7 @@ describe("assignment", () => {
   itShouldErrorForAll({
     space: "A B = 5",
     missingCompartment: "A in = 5",
+    subvariableConst: "A.$sub = 5",
   });
 
   itShouldSucceedForAll({
@@ -135,6 +136,8 @@ describe("assignment", () => {
     empty2: "A:=",
     empty3: "A'=",
     empty4: "A'=;A=",
+    subvariable: "A.sub = 5",
+    subvariableEmpty: "A.sub =;",
   });
 });
 

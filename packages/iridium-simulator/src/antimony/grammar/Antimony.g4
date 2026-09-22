@@ -51,7 +51,7 @@ functionCall : NAME '(' argumentList? ')';
 argumentList : formula (',' formula)*;
 
 variable : NAME #name
-         | NAME '.' variable #subvariable
+         | NAME ('.' NAME)+  #subvariable
          | '$' variable #constant
          ;
 

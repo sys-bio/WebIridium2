@@ -358,11 +358,12 @@ const isRenameable = (
   object: AntimonyObject,
 ): object is Extract<
   AntimonyModelObject,
-  { kind: "variable" | "reaction" | "event" }
+  { kind: "variable" | "reaction" | "event" | "algebraicRule" }
 > =>
   object.kind === "variable" ||
   object.kind === "reaction" ||
-  object.kind === "event";
+  object.kind === "event" ||
+  object.kind === "algebraicRule";
 
 /**
  * Builds Antimony models from a parse tree.
@@ -372,6 +373,8 @@ export class BuildAntimonyListener implements AntimonyListener {
   #document: AntimonyDocument;
   #currentModel: AntimonyModel | undefined;
   #currentDeclaration: DeclarationState | undefined;
+
+  #isInsideFunction = false;
 
   #diagnostics?: Error[];
 
@@ -424,7 +427,7 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   get #isActive(): boolean {
-    return true;
+    return !this.#isInsideFunction;
   }
 
   #getActiveModel(): AntimonyModel {
@@ -691,24 +694,22 @@ export class BuildAntimonyListener implements AntimonyListener {
     ctx: VariableContext | NameLabelContext,
     options: { getDefaultObject?: (name: string) => AntimonyModelObject } = {},
   ): NameHandle | undefined {
-    const path: string[] = [];
+    let path: string[] = [];
     if (ctx instanceof VariableContext) {
       let current: VariableContext = ctx;
       while (current) {
         if (current instanceof NameContext) {
-          path.push(current.NAME().text);
+          path = [current.NAME().text];
           break;
         } else if (current instanceof SubvariableContext) {
-          path.push(current.NAME().text);
-          current = current.variable();
+          path = current.NAME().map((t) => t.text);
+          break;
         } else if (current instanceof ConstantContext) {
           current = current.variable();
         }
       }
     } else if (ctx instanceof NameLabelContext) {
-      for (const name of ctx.NAME()) {
-        path.push(name.text);
-      }
+      path = ctx.NAME().map((t) => t.text);
     }
 
     return this.#resolveNamePath(path, options, ctx);
@@ -742,10 +743,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!handle) return;
 
     if (handle.kind !== "object") {
-      if (
-        (handle.kind === "builtin" || handle.kind === "function") &&
-        isForVariableInFormula
-      ) {
+      if (handle.kind === "builtin" && isForVariableInFormula) {
         return;
       }
 
@@ -789,7 +787,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
-  #updateToDeclarationIfNecessary(
+  #tryUpdateToDeclaration(
     ctx: ParserRuleContext,
     object: AntimonyObject,
   ): void {
@@ -833,6 +831,12 @@ export class BuildAntimonyListener implements AntimonyListener {
     // TODO: we need to stop adding any objects to this model, since the listener will continue anyways
     if (this.#document.models.has(name)) {
       this.#reportError(`Model '${name}' is already defined.`, ctx);
+
+      // we are in diagnostics mode, so re-open
+      if (this.#diagnostics) {
+        this.#currentModel = this.#document.models.get(name)!;
+      }
+
       return;
     }
 
@@ -961,7 +965,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       return;
     }
 
-    this.#updateToDeclarationIfNecessary(ctx, handle.object);
+    this.#tryUpdateToDeclaration(ctx, handle.object);
   }
 
   enterVar(ctx: VarContext): void {
@@ -991,7 +995,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
 
     const object = handle.object;
-    this.#updateToDeclarationIfNecessary(ctx, object);
+    this.#tryUpdateToDeclaration(ctx, object);
 
     const target = getReferenceFromVariable(ctx.variable());
     const formula = ctx.formula();
@@ -1386,6 +1390,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
   enterFunctionDefinition(ctx: FunctionDefinitionContext): void {
     if (!this.#isActive) return;
+    this.#isInsideFunction = true;
 
     const handle = this.#resolveNamePath([ctx.NAME().text], undefined, ctx);
     if (!handle) {
@@ -1428,6 +1433,10 @@ export class BuildAntimonyListener implements AntimonyListener {
       parameters: parameterNames,
       body: ctx.formula(),
     });
+  }
+
+  exitFunctionDefinition(): void {
+    this.#isInsideFunction = false;
   }
 
   #rename(

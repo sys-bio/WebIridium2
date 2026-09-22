@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Generated from ./src/antimony/grammar/Antimony.g4 by ANTLR 4.9.0-SNAPSHOT
 
 

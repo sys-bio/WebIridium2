@@ -1303,6 +1303,14 @@ describe("model imports", () => {
         buildAntimonyDocument(`function t() 5; end; model test(t); end`);
       }).toThrowError(SemanticError);
     });
+
+    it("should error when export list contains a subvariable", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          `model test2(); B = 5; end; model test(A.B); A: test2(); end`,
+        );
+      }).toThrowError(SemanticError);
+    });
   });
 
   describe("with options", () => {
@@ -1401,6 +1409,16 @@ describe("renaming", () => {
       model({
         A: renameLink("B"),
         B: parameter(),
+      }),
+    );
+  });
+
+  it("should rename algebraic rules", () => {
+    expectModel(
+      "alg: 0 = 1 + 2; alg is alg2",
+      model({
+        alg: renameLink("alg2"),
+        alg2: algebraicRule(0, "1+2"),
       }),
     );
   });
@@ -1634,6 +1652,17 @@ describe("deleting", () => {
     );
   });
 
+  it("should mark algebraic rules as deleted", () => {
+    expectModel(
+      "model test; alg: 0 = 1 + 3; end; sub: test(); delete sub.alg",
+      model({
+        sub: model({
+          alg: algebraicRule(0, "1+3").deleted(),
+        }),
+      }),
+    );
+  });
+
   it("should error when trying to delete variable not in submodel", () => {
     expect(() => {
       buildAntimonyDocument("A = 5; delete A");
@@ -1663,6 +1692,26 @@ describe("deleting", () => {
   it("should error when trying to delete submodel", () => {
     expect(() => {
       buildAntimonyDocument("model test; A = 5; end; sub: test(); delete test");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete a builtin", () => {
+    expect(() => {
+      buildAntimonyDocument("delete time");
+    }).toThrowError(SemanticError);
+  });
+
+  it("should error when trying to delete a function", () => {
+    expect(() => {
+      buildAntimonyDocument("function test(); 5; end; delete test");
+    }).toThrowError(SemanticError);
+  });
+});
+
+describe("functions", () => {
+  it("should error when using a function name without calling it", () => {
+    expect(() => {
+      buildAntimonyDocument("function test(a); a + a; end; C = 3 + test");
     }).toThrowError(SemanticError);
   });
 });
