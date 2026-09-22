@@ -538,6 +538,15 @@ describe("reactions", () => {
     );
   });
 
+  it("should allow kinetic law set from subvariable", () => {
+    expectModel(
+      "J: A + B -> C; k1; J.kineticLaw = 5",
+      model({
+        J: reaction({ A: null, B: null }, { C: null }, "5"),
+      }),
+    );
+  });
+
   it("should error when trying to overwrite a parameter with a non-initial assignment", () => {
     // this is a little more restrictive then the original Antimony which only errors
     // for rate rules.
