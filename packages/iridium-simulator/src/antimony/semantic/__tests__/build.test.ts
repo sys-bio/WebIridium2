@@ -90,6 +90,8 @@ const expectDocument = (
 
   expect(gotDocument.exportedModel).toBe(expectedDocument.exportedModel);
 
+  console.dir(gotDocument, { depth: 5 });
+
   // check the root model
   for (const [name, expectedModel] of Object.entries(expectedDocument.models)) {
     const gotModel = gotDocument.models.get(name);
@@ -112,6 +114,14 @@ const expectDocument = (
     if (expectedModel.exports) {
       expect(gotModel!.exports).toMatchObject(expectedModel.exports);
     }
+
+    expect(gotModel!.timeConversionFactor).toEqual(
+      expectedModel.timeConversionFactor,
+    );
+    expect(gotModel!.extentConversionFactor).toEqual(
+      expectedModel.extentConversionFactor,
+    );
+    expect(gotModel!.conversionFactor).toEqual(expectedModel.conversionFactor);
   }
 };
 
@@ -1712,6 +1722,56 @@ describe("functions", () => {
   it("should error when using a function name without calling it", () => {
     expect(() => {
       buildAntimonyDocument("function test(a); a + a; end; C = 3 + test");
+    }).toThrowError(SemanticError);
+  });
+});
+
+describe("conversion factors", () => {
+  it("should set model conversion factor", () => {
+    expectModel(
+      "model.conversionFactor = A",
+      model({ A: parameter() }, [], undefined, {
+        conv: "A",
+      }),
+    );
+  });
+
+  it("should set variable conversion factor", () => {
+    expectModel(
+      "A.conversionFactor = B",
+      model({ A: { ...species(), conversionFactor: ["B"] }, B: parameter() }),
+    );
+  });
+
+  it("should error when conversion factor is not a variable", () => {
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = 5");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = time");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = sin");
+    }).toThrowError(SemanticError);
+  });
+
+  it.skip("should error when conversion factor is not constant", () => {
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = B; var B");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = B; species B");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = B; B := 10");
+    }).toThrowError(SemanticError);
+
+    expect(() => {
+      buildAntimonyDocument("A.conversionFactor = B; B' = 10");
     }).toThrowError(SemanticError);
   });
 });

@@ -8,6 +8,7 @@ topLevelStatement : model | functionDefinition | statement;
 statementList : (statement? statementSeparator)+;
 statement : reaction
           | assignment
+          | modelAssignment
           | declaration
           | modelImport
           | event
@@ -67,6 +68,7 @@ stoichiometry : '-'? NUMBER
               | variable;
 
 assignment : variable inCompartment? mod=('\'' | ':')? '=' formula?;
+modelAssignment : MODEL ('.' NAME)+ '=' formula;
 
 declaration     : declarationHead declarationTerm (',' declarationTerm)*;
 declarationHead : CONST_MODIFIER SUBS_ONLY? DECL_WORD

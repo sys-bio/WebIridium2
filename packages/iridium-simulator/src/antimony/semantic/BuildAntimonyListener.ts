@@ -1,4 +1,4 @@
-import { SemanticError } from "../errors";
+import { CompileInvariantError, SemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import { ParserRuleContext } from "antlr4ts";
 import {
@@ -13,6 +13,7 @@ import {
   FunctionDefinitionContext,
   InCompartmentContext,
   InStatementContext,
+  ModelAssignmentContext,
   ModelContext,
   ModelImportContext,
   NameContext,
@@ -536,13 +537,49 @@ export class BuildAntimonyListener implements AntimonyListener {
     variable.variableKind = kind;
   }
 
+  /**
+   * Set the conversionFactor for a variable or model.
+   */
+  #setConversionFactor(
+    object: AntimonyVariable | AntimonyModel,
+    formula: FormulaContext,
+  ): void {
+    if (!(formula instanceof VarContext)) {
+      this.#reportError("Conversion factor must be a variable.", formula);
+      return;
+    }
+
+    const handle = this.#ensureModelObject(formula.variable(), undefined);
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "object") {
+      this.#reportError(
+        `Cannot use ${handle.name} as a conversion factor because it is already a ${handle.kind}.`,
+        formula,
+      );
+      return;
+    } else if (handle.object.kind !== "variable") {
+      this.#reportError(
+        `Cannot use ${handle.name} as a conversion factor because it is already a ${handle.object.kind}.`,
+        formula,
+      );
+      return;
+    }
+
+    if (object.kind === "variable") {
+      this.#setVariableKind(formula, object, "species");
+    }
+
+    object.conversionFactor = getReferenceFromHandle(handle);
+  }
+
   #getOrCreateCompartment(
     compartmentCtx: InCompartmentContext | undefined,
   ): AntimonyReference | null {
     if (!compartmentCtx) {
       return null;
     } else {
-      const handle = this.#ensureNameIsModelObject(
+      const handle = this.#ensureModelObject(
         compartmentCtx.variable(),
         undefined,
         "compartment",
@@ -576,11 +613,25 @@ export class BuildAntimonyListener implements AntimonyListener {
     path: string[],
     {
       getDefaultObject,
-    }: { getDefaultObject?: (name: string) => AntimonyModelObject } = {},
+      isModelAttribute,
+    }: {
+      getDefaultObject?: (name: string) => AntimonyModelObject;
+      isModelAttribute?: boolean;
+    } = {},
     ctx: ParserRuleContext,
   ): NameHandle | undefined {
     const activeModel = this.#getActiveModel();
     let current: NameHandle | undefined;
+
+    if (isModelAttribute) {
+      current = {
+        kind: "object",
+        model: activeModel,
+        object: activeModel,
+        name: activeModel.name,
+      };
+    }
+
     for (let i = 0; i < path.length; i++) {
       const name = path[i];
       if (!current) {
@@ -637,29 +688,50 @@ export class BuildAntimonyListener implements AntimonyListener {
               return;
             } else {
               switch (current.object.kind) {
-                case "model": {
-                  const got = current.object.objects.get(name);
-                  if (got) {
-                    current = resolveObjectAsHandle(
-                      activeModel,
-                      current.object,
-                      got,
-                    );
+                case "model":
+                  if (isModelAttribute) {
+                    if (name === "conversionFactor") {
+                      current = {
+                        kind: "attribute",
+                        object: current.object,
+                        name,
+                      };
+                    } else {
+                      this.#reportError(
+                        `${name} is not an attribute of ${current.name}.`,
+                        ctx,
+                      );
+                      return;
+                    }
                   } else {
-                    this.#reportError(
-                      `${name} is not a subvariable of ${current.object.name}.`,
-                      ctx,
-                    );
-                    return;
+                    const got = current.object.objects.get(name);
+                    if (got) {
+                      current = resolveObjectAsHandle(
+                        activeModel,
+                        current.object,
+                        got,
+                      );
+                    } else {
+                      this.#reportError(
+                        `${name} is not a subvariable of ${current.object.name}.`,
+                        ctx,
+                      );
+                      return;
+                    }
                   }
                   break;
-                }
                 case "variable":
                   if (name === "sboTerm") {
                     current = {
                       kind: "attribute",
                       object: current.object,
                       name: "sboTerm",
+                    };
+                  } else if (name === "conversionFactor") {
+                    current = {
+                      kind: "attribute",
+                      object: current.object,
+                      name: "conversionFactor",
                     };
                   } else {
                     this.#reportError(
@@ -672,6 +744,7 @@ export class BuildAntimonyListener implements AntimonyListener {
                 case "event":
                 case "reaction":
                 case "algebraicRule":
+                case "renameLink":
                   this.#reportError(
                     `${current.name} does not have any subvariables because it is a ${current.kind}.`,
                     ctx,
@@ -718,11 +791,11 @@ export class BuildAntimonyListener implements AntimonyListener {
   /**
    * @returns - a NameHandle for the name or undefined if an error occurred
    */
-  #ensureNameIsModelObject(
+  #ensureModelObject(
     variableCtx: VariableContext,
     compartmentCtx: InCompartmentContext | undefined,
     defaultVariableKind?: VariableKind,
-    isForVariableInFormula = false,
+    allowHandleKind?: NameHandle["kind"],
   ): Required<NameHandle> | undefined {
     const compartment = this.#getOrCreateCompartment(compartmentCtx);
     const handle = this.#resolveName(variableCtx, {
@@ -743,8 +816,8 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!handle) return;
 
     if (handle.kind !== "object") {
-      if (handle.kind === "builtin" && isForVariableInFormula) {
-        return;
+      if (handle.kind === allowHandleKind) {
+        return handle;
       }
 
       this.#reportError(
@@ -770,7 +843,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     return handle as Required<NameHandle>;
   }
 
-  #createNameOrDefault(
+  #getNameOrDefault(
     nameLabelCtx: NameLabelContext | undefined,
     prefix: string,
   ): NameHandle | undefined {
@@ -862,7 +935,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       const exports: AntimonyReference[] = [];
       let isValid = true;
       for (const variableCtx of exportListCtx.variable()) {
-        const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+        const handle = this.#ensureModelObject(variableCtx, undefined);
         if (!handle) {
           isValid = false;
           continue;
@@ -950,10 +1023,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#currentDeclaration) return;
 
     // TODO: is it always OK to re-assign?
-    const handle = this.#ensureNameIsModelObject(
-      ctx.variable(),
-      ctx.inCompartment(),
-    );
+    const handle = this.#ensureModelObject(ctx.variable(), ctx.inCompartment());
 
     if (!handle) {
       return;
@@ -971,20 +1041,31 @@ export class BuildAntimonyListener implements AntimonyListener {
   enterVar(ctx: VarContext): void {
     if (!this.#isActive) return;
 
-    this.#ensureNameIsModelObject(ctx.variable(), undefined, undefined, true);
+    this.#ensureModelObject(ctx.variable(), undefined, undefined, "builtin");
   }
 
   enterAssignment(ctx: AssignmentContext): void {
     if (!this.#isActive) return;
 
-    // TODO: do this properly
-    if (ctx.variable().text.endsWith(".sboTerm")) return;
+    const formula = ctx.formula();
 
-    const handle = this.#ensureNameIsModelObject(
+    const handle = this.#ensureModelObject(
       ctx.variable(),
       ctx.inCompartment(),
+      undefined,
+      "attribute",
     );
     if (!handle) {
+      return;
+    } else if (handle.kind === "attribute") {
+      if (
+        handle.name === "conversionFactor" &&
+        handle.object.kind === "variable"
+      ) {
+        if (formula) {
+          this.#setConversionFactor(handle.object, formula);
+        }
+      }
       return;
     } else if (handle.kind !== "object") {
       this.#reportError(
@@ -998,7 +1079,6 @@ export class BuildAntimonyListener implements AntimonyListener {
     this.#tryUpdateToDeclaration(ctx, object);
 
     const target = getReferenceFromVariable(ctx.variable());
-    const formula = ctx.formula();
 
     const mod = ctx._mod?.text;
     if (mod === ":") {
@@ -1109,13 +1189,32 @@ export class BuildAntimonyListener implements AntimonyListener {
     }
   }
 
+  enterModelAssignment(ctx: ModelAssignmentContext): void {
+    const handle = this.#resolveNamePath(
+      ctx.NAME().map((n) => n.text),
+      { isModelAttribute: true },
+      ctx,
+    );
+    if (!handle) {
+      return;
+    } else if (handle.kind !== "attribute") {
+      this.#reportError("Expecting attribute.", ctx);
+      return;
+    }
+
+    if (handle.object.kind !== "model") {
+      throw new CompileInvariantError("Expecting model as handle object.");
+    }
+
+    if (handle.name === "conversionFactor") {
+      this.#setConversionFactor(handle.object, ctx.formula());
+    }
+  }
+
   #getReactionTerms(ctx: ReactantListContext): AntimonyReactionTerm[] {
     const terms: AntimonyReactionTerm[] = [];
     for (const reactant of ctx.reactant()) {
-      const handle = this.#ensureNameIsModelObject(
-        reactant.variable(),
-        undefined,
-      );
+      const handle = this.#ensureModelObject(reactant.variable(), undefined);
 
       if (!handle) {
         continue;
@@ -1160,7 +1259,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const variable = ctx.variable();
     if (variable) {
-      const handle = this.#ensureNameIsModelObject(variable, undefined);
+      const handle = this.#ensureModelObject(variable, undefined);
       if (!handle) {
         return;
       } else if (handle.kind !== "object") {
@@ -1194,7 +1293,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const nameLabelCtx = ctx.nameLabel();
-    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_J");
+    const handle = this.#getNameOrDefault(ctx.nameLabel(), "_J");
     if (!handle) {
       return;
     } else if (handle.kind !== "object") {
@@ -1267,10 +1366,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const assignments = new Map<AntimonyReference, AntimonyFormula>();
     for (const assignment of assignmentsCtx.eventAssignment()) {
-      const handle = this.#ensureNameIsModelObject(
-        assignment.variable(),
-        undefined,
-      );
+      const handle = this.#ensureModelObject(assignment.variable(), undefined);
       if (!handle) {
         continue;
       } else if (handle.kind !== "object") {
@@ -1310,7 +1406,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       }
     }
 
-    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_E");
+    const handle = this.#getNameOrDefault(ctx.nameLabel(), "_E");
     if (!handle) {
       return;
     } else if (handle.kind !== "object") {
@@ -1342,7 +1438,7 @@ export class BuildAntimonyListener implements AntimonyListener {
   enterAlgebraicRule(ctx: AlgebraicRuleContext): void {
     if (!this.#isActive) return;
 
-    const handle = this.#createNameOrDefault(ctx.nameLabel(), "_alg");
+    const handle = this.#getNameOrDefault(ctx.nameLabel(), "_alg");
     if (!handle) {
       return;
     } else if (handle.kind !== "object") {
@@ -1370,10 +1466,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     if (!this.#isActive) return;
 
     const compartment = this.#getOrCreateCompartment(ctx.inCompartment());
-    const handle = this.#ensureNameIsModelObject(
-      ctx.variable(),
-      ctx.inCompartment(),
-    );
+    const handle = this.#ensureModelObject(ctx.variable(), ctx.inCompartment());
 
     if (!handle) {
       return;
@@ -1517,7 +1610,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     const fromCtx = ctx.variable(0);
     const toCtx = ctx.variable(1);
 
-    const fromHandle = this.#ensureNameIsModelObject(fromCtx, undefined);
+    const fromHandle = this.#ensureModelObject(fromCtx, undefined);
     if (!fromHandle) {
       return;
     } else if (fromHandle.kind !== "object") {
@@ -1552,7 +1645,7 @@ export class BuildAntimonyListener implements AntimonyListener {
     const conversionFactorCtx =
       ctx.conversionFactorLeft() ?? ctx.conversionFactorRight();
     if (conversionFactorCtx) {
-      const handle = this.#ensureNameIsModelObject(
+      const handle = this.#ensureModelObject(
         conversionFactorCtx.variable(),
         undefined,
       );
@@ -1642,7 +1735,7 @@ export class BuildAntimonyListener implements AntimonyListener {
       } else {
         const variableCtx = optionValueCtx.variable();
         if (!variableCtx) continue;
-        const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+        const handle = this.#ensureModelObject(variableCtx, undefined);
         if (!handle) {
           continue;
         } else if (handle.kind !== "object") {
@@ -1718,7 +1811,7 @@ export class BuildAntimonyListener implements AntimonyListener {
 
     const variableCtx = ctx.variable();
 
-    const handle = this.#ensureNameIsModelObject(variableCtx, undefined);
+    const handle = this.#ensureModelObject(variableCtx, undefined);
     if (!handle) {
       return;
     } else if (handle.kind !== "object") {

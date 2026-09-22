@@ -23,6 +23,7 @@ export const model = (parts: {
   algebraicRules?: { [name: string]: DslAlgebraicRule };
   events?: { [name: string]: DslEvent };
   functions?: { [name: string]: DslFunction };
+  conversionFactor?: DslExpression;
 }): IridiumModel => {
   const model = {
     variables: Object.entries(parts?.variables ?? {}).map(([name, data]) => ({
@@ -58,6 +59,8 @@ export const model = (parts: {
       name,
       ...data,
     })),
+
+    conversionFactor: parts.conversionFactor,
   };
 
   return model;

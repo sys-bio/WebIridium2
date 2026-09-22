@@ -7,12 +7,17 @@ export type IridiumModel<Metadata = unknown> = {
   algebraicRules: IridiumAlgebraicRule<Metadata>[];
   events: IridiumEvent<Metadata>[];
   functions: IridiumFunction<Metadata>[];
+  conversionFactor?: IridiumExpression<Metadata>;
 };
 
 export type IridiumVariableValue<Metadata = unknown> =
   | { kind: "initial"; initial: IridiumExpression<Metadata> }
   /** This means the value of the variable is determined by a reaction + initial value. */
-  | { kind: "reaction"; initial: IridiumExpression<Metadata> }
+  | {
+      kind: "reaction";
+      initial: IridiumExpression<Metadata>;
+      conversionFactor?: IridiumExpression<Metadata>;
+    }
   | {
       kind: "rate";
       initial: IridiumExpression<Metadata>;

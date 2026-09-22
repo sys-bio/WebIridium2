@@ -53,6 +53,7 @@ import { ReactantListContext } from "./AntimonyParser";
 import { ReactantContext } from "./AntimonyParser";
 import { StoichiometryContext } from "./AntimonyParser";
 import { AssignmentContext } from "./AntimonyParser";
+import { ModelAssignmentContext } from "./AntimonyParser";
 import { DeclarationContext } from "./AntimonyParser";
 import { DeclarationHeadContext } from "./AntimonyParser";
 import { DeclarationTermContext } from "./AntimonyParser";
@@ -680,6 +681,17 @@ export interface AntimonyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitAssignment?: (ctx: AssignmentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `AntimonyParser.modelAssignment`.
+	 * @param ctx the parse tree
+	 */
+	enterModelAssignment?: (ctx: ModelAssignmentContext) => void;
+	/**
+	 * Exit a parse tree produced by `AntimonyParser.modelAssignment`.
+	 * @param ctx the parse tree
+	 */
+	exitModelAssignment?: (ctx: ModelAssignmentContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `AntimonyParser.declaration`.

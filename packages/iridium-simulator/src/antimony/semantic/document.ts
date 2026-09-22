@@ -67,8 +67,11 @@ export type AntimonyModel = AntimonyObjectBase<"model"> & {
   /** These are models that were imported without a name. */
   unnamedImports: AntimonyModel[];
   exports?: AntimonyReference[];
+  // these are the conversion factors in SBML comp
   timeConversionFactor?: AntimonyConversionFactor;
   extentConversionFactor?: AntimonyConversionFactor;
+  // this is the conversion factor in SBML core
+  conversionFactor?: AntimonyConversionFactor;
 };
 
 export type AntimonyInitialAssignment = {
@@ -104,6 +107,8 @@ export type AntimonyVariable = AntimonyObjectBase<"variable"> &
     isConst: boolean;
     hasSubstanceOnly: boolean;
     assignment?: AntimonyAssignment;
+    // this is the conversion factor in SBML core
+    conversionFactor?: AntimonyConversionFactor;
   };
 
 export type AntimonyReactionTerm = {

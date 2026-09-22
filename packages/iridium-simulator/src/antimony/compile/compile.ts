@@ -220,6 +220,10 @@ class IrBuilder {
     }
     return got;
   }
+
+  setConversionFactor(expr: IridiumExpression<Metadata> | undefined): void {
+    this.#ir.conversionFactor = expr;
+  }
 }
 
 const flattenModel = (
@@ -731,6 +735,12 @@ const compileModel = (
             compileFormulaInModel(variable.assignment.initial)) ??
           defaultValue,
       };
+
+      if (variable.conversionFactor) {
+        value.conversionFactor = compileConversionFactorsInModel([
+          variable.conversionFactor,
+        ]);
+      }
     } else if (variable.assignment?.kind === "initial") {
       value = {
         kind: initialKind,
@@ -852,6 +862,12 @@ const compileModel = (
     }
 
     builder.addEvent(event, iridiumEvent);
+  }
+
+  if (model.conversionFactor) {
+    builder.setConversionFactor(
+      compileConversionFactorsInModel([model.conversionFactor]),
+    );
   }
 };
 

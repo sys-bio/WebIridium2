@@ -1467,6 +1467,39 @@ describe("ir", () => {
       );
     });
   });
+
+  describe("conversion factors", () => {
+    it("should include species conversion factor", () => {
+      expectCompilesTo(
+        "A = 5; J: -> A; k1; A.conversionFactor = B; B = 3",
+        model({
+          variables: {
+            A: {
+              value: {
+                kind: "reaction",
+                initial: expr.num(5),
+                conversionFactor: expr.var("B"),
+              },
+              hasSubstanceOnly: false,
+            },
+            B: parameter(3),
+          },
+          reactions: {
+            J: reaction({}, { A: 1 }, expr.var("k1")),
+          },
+        }),
+      );
+    });
+
+    it("should include model conversion factor", () => {
+      expectCompilesTo(
+        "model.conversionFactor = A",
+        model({
+          conversionFactor: expr.var("A"),
+        }),
+      );
+    });
+  });
 });
 
 describe("wasm", () => {
