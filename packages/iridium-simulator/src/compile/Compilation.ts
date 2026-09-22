@@ -25,6 +25,7 @@ export class Compilation {
   events: Map<string, IridiumEvent>;
   functions: Map<string, IridiumFunction>;
   algebraicRules: IridiumAlgebraicRule[];
+  conversionFactor?: IridiumExpression;
 
   /** Assignment graph for non-initial values. */
   assignmentGraph: AssignmentGraph;
@@ -64,6 +65,7 @@ export class Compilation {
     this.events = new Map(model.events.map((e) => [e.name, e]));
     this.functions = new Map(model.functions.map((e) => [e.name, e]));
     this.algebraicRules = model.algebraicRules;
+    this.conversionFactor = model.conversionFactor;
 
     this.piecewisePieces = new Map();
 

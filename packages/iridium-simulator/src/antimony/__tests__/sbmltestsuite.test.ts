@@ -15,9 +15,6 @@ const UNSUPPORTED_TAGS = [
   "CSymbolDelay",
   "RandomEventExecution",
   "comp:ExternalModelDefinition",
-
-  // Not fully supported by Antimony
-  "ConversionFactors",
 ];
 // Any tags here will show up yellow in the plotSbmlResults plot.
 const WIP_TAGS: string[] = [];

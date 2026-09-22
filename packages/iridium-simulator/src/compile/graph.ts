@@ -297,6 +297,7 @@ export const createAssignmentsGraphFromCompilation = (
     reactions,
     algebraicRules,
     compartments,
+    conversionFactor,
   }: Compilation,
   isForInitialValues?: boolean,
 ): AssignmentGraph => {
@@ -448,13 +449,19 @@ export const createAssignmentsGraphFromCompilation = (
             }
           }
 
-          ydotAssignments.set(
-            variable.name,
+          let rate =
             terms.reduce<IridiumExpression | undefined>(
               (acc, current) => (acc ? expr.add(current, acc) : current),
               undefined,
-            ) ?? expr.num(0),
-          );
+            ) ?? expr.num(0);
+
+          if (variable.value.conversionFactor) {
+            rate = expr.mul(rate, variable.value.conversionFactor);
+          } else if (conversionFactor) {
+            rate = expr.mul(rate, conversionFactor);
+          }
+
+          ydotAssignments.set(variable.name, rate);
         } else {
           ydotAssignments.set(variable.name, expr.num(0));
         }

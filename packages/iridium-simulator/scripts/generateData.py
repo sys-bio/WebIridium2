@@ -27,7 +27,7 @@ class TestParams:
     amounts: list[str] | None = None
 
 
-param_regex = re.compile(r"\b([A-Za-z]+)=([A-Za-z0-9,-\[\]]+)\b")
+param_regex = re.compile(r"\b([A-Za-z]+)=([A-Za-z0-9,-\[\]]+)[\b]?")
 
 def parse_test_params(code: str) -> TestParams:
     first_line = code.splitlines()[0]
@@ -37,7 +37,7 @@ def parse_test_params(code: str) -> TestParams:
 
     params: dict[str, str] = {}
 
-    for match in param_regex.finditer(code):
+    for match in param_regex.finditer(first_line):
         params[match.group(1)] = match.group(2)
 
     selections = None
