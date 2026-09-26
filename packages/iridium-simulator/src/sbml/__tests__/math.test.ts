@@ -90,7 +90,7 @@ describe("csymbol", () => {
   it("should compile time", () => {
     expectExpression(
       `<csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> t </csymbol>`,
-      expr.var("time"),
+      expr.builtinVar("time"),
     );
   });
 
@@ -115,14 +115,14 @@ describe("apply", () => {
   it("should work on apply with one argument", () => {
     expectExpression(
       "<apply><minus /> <cn> 5 </cn></apply>",
-      expr.call("minus", [expr.num(5)]),
+      expr.builtinCall("minus", [expr.num(5)]),
     );
   });
 
   it("should work on apply with multiple arguments", () => {
     expectExpression(
       "<apply><times /> <cn> 5 </cn> <cn> 10 </cn> <cn> 30 </cn></apply>",
-      expr.call("times", [expr.num(5), expr.num(10), expr.num(30)]),
+      expr.builtinCall("times", [expr.num(5), expr.num(10), expr.num(30)]),
     );
   });
 });
@@ -139,9 +139,9 @@ describe("piecewise", () => {
          <ci> x </ci>
         </otherwise>
        </piecewise>`,
-      expr.call("piecewise", [
+      expr.builtinCall("piecewise", [
         expr.num(0),
-        expr.call("lt", [expr.var("x"), expr.num(0)]),
+        expr.builtinCall("lt", [expr.var("x"), expr.num(0)]),
         expr.var("x"),
       ]),
     );
@@ -161,13 +161,13 @@ describe("piecewise", () => {
             <apply><gt/><ci> x </ci> <cn> 0 </cn></apply>
         </piece>
       </piecewise>`,
-      expr.call("piecewise", [
-        expr.call("minus", [expr.var("x")]),
-        expr.call("lt", [expr.var("x"), expr.num(0)]),
+      expr.builtinCall("piecewise", [
+        expr.builtinCall("minus", [expr.var("x")]),
+        expr.builtinCall("lt", [expr.var("x"), expr.num(0)]),
         expr.num(0),
-        expr.call("eq", [expr.var("x"), expr.num(0)]),
+        expr.builtinCall("eq", [expr.var("x"), expr.num(0)]),
         expr.var("x"),
-        expr.call("gt", [expr.var("x"), expr.num(0)]),
+        expr.builtinCall("gt", [expr.var("x"), expr.num(0)]),
       ]),
     );
   });
@@ -192,16 +192,16 @@ describe("piecewise", () => {
           </piecewise>
         </otherwise>
       </piecewise>`,
-      expr.call("piecewise", [
-        expr.call("minus", [expr.var("x")]),
-        expr.call("lt", [expr.var("x"), expr.num(0)]),
+      expr.builtinCall("piecewise", [
+        expr.builtinCall("minus", [expr.var("x")]),
+        expr.builtinCall("lt", [expr.var("x"), expr.num(0)]),
 
-        expr.call("piecewise", [
+        expr.builtinCall("piecewise", [
           expr.num(0),
-          expr.call("eq", [expr.var("x"), expr.num(0)]),
+          expr.builtinCall("eq", [expr.var("x"), expr.num(0)]),
 
           expr.var("x"),
-          expr.call("gt", [expr.var("x"), expr.num(0)]),
+          expr.builtinCall("gt", [expr.var("x"), expr.num(0)]),
         ]),
       ]),
     );
@@ -222,7 +222,7 @@ describe("log", () => {
   it("should compile log", () => {
     expectExpression(
       "<apply><log/><logbase><cn>5</cn></logbase><cn>10</cn></apply>",
-      expr.call("log", [expr.num(5), expr.num(10)]),
+      expr.builtinCall("log", [expr.num(5), expr.num(10)]),
     );
   });
 });
@@ -241,7 +241,7 @@ describe("root", () => {
   it("should compile root with degree", () => {
     expectExpression(
       "<apply><root/><degree><cn>3</cn></degree><cn>8</cn></apply>",
-      expr.call("root", [expr.num(3), expr.num(8)]),
+      expr.builtinCall("root", [expr.num(3), expr.num(8)]),
     );
   });
 });
@@ -261,7 +261,9 @@ describe("semantics", () => {
 
   it("should error with unknown element", () => {
     expect(() => {
-      compileMathMl("<semantics><cn> 5 </cn><unknown>hey</unknown></semantics>");
+      compileMathMl(
+        "<semantics><cn> 5 </cn><unknown>hey</unknown></semantics>",
+      );
     }).toThrowError(SbmlCompileError);
   });
 

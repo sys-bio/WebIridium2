@@ -90,8 +90,6 @@ const expectDocument = (
 
   expect(gotDocument.exportedModel).toBe(expectedDocument.exportedModel);
 
-  console.dir(gotDocument, { depth: 5 });
-
   // check the root model
   for (const [name, expectedModel] of Object.entries(expectedDocument.models)) {
     const gotModel = gotDocument.models.get(name);
@@ -1411,6 +1409,14 @@ describe("model imports", () => {
       expect(() => {
         buildAntimonyDocument(
           "model test; A = 5; end; sub: test(), unknown = 5",
+        );
+      }).toThrowError(SemanticError);
+    });
+
+    it("should error when using builtin as option value", () => {
+      expect(() => {
+        buildAntimonyDocument(
+          "model test; A = 5; end; sub: test(), timeconv = pi",
         );
       }).toThrowError(SemanticError);
     });

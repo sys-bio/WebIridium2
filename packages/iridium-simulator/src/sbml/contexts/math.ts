@@ -231,7 +231,7 @@ export class PiecewiseContext extends Context {
         args.push(this.#otherwise);
       }
 
-      return popContext(expr.call("piecewise", args), true);
+      return popContext(expr.builtinCall("piecewise", args), true);
     }
 
     return;
@@ -300,7 +300,7 @@ export class MathContext extends Context {
     } else if (name === "logbase") {
       const last = this.#stack[this.#stack.length - 1];
       if (
-        last?.kind !== "variable" ||
+        last?.kind !== "builtinVariable" ||
         last.name !== "log" ||
         this.#applyCounts[this.#applyCounts.length - 1] !== 2
       ) {
@@ -312,7 +312,7 @@ export class MathContext extends Context {
     } else if (name === "degree") {
       const last = this.#stack[this.#stack.length - 1];
       if (
-        last?.kind !== "variable" ||
+        last?.kind !== "builtinVariable" ||
         last.name !== "root" ||
         this.#applyCounts[this.#applyCounts.length - 1] !== 2
       ) {
@@ -363,21 +363,23 @@ export class MathContext extends Context {
         throw new SbmlCompileInternalError("<apply> is empty.");
       }
 
-      if (func.kind !== "variable") {
+      if (func.kind !== "variable" && func.kind !== "builtinVariable") {
         throw new SbmlCompileInternalError("Bad <apply>.");
       }
 
-      if (func.name === "rateOf") {
+      if (func.kind === "builtinVariable" && func.name === "rateOf") {
         if (args.length !== 1) {
           throw new SbmlCompileInternalError(
             "rateOf expects exactly one argument.",
           );
         } else if (args[0].kind !== "variable") {
           throw new SbmlCompileInternalError(
-            "The argument to rateOf must be a variable.",
+            "The argument to rateOf must be a symbol inside the model.",
           );
         }
         this.#stack.push(expr.rateOf(args[0].name));
+      } else if (func.kind === "builtinVariable") {
+        this.#stack.push(expr.builtinCall(func.name, args));
       } else {
         this.#stack.push(expr.call(func.name, args));
       }
@@ -385,7 +387,7 @@ export class MathContext extends Context {
       MATHML_CONSTANT_TAGS.has(name) ||
       MATHML_FUNCTION_TAGS.has(name)
     ) {
-      this.#stack.push(expr.var(name));
+      this.#stack.push(expr.builtinVar(name));
     }
 
     if (name === this.#stopOn) {

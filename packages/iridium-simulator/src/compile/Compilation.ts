@@ -133,7 +133,7 @@ export class Compilation {
     condition: IridiumExpression,
   ): number {
     if (this.piecewisePieces.has(branch)) {
-      throw new CompileInvariantError("Duplicate piecewise index.");
+      throw new CompileInvariantError("Duplicate piecewise piece.");
     }
 
     const index = this.piecewisePieces.size;

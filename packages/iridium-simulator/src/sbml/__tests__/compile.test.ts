@@ -26,12 +26,12 @@ test("test", () => {
         _J0: reaction(
           { A: 1 },
           { B: 1 },
-          expr.call("times", [expr.var("k1"), expr.var("A")]),
+          expr.builtinCall("times", [expr.var("k1"), expr.var("A")]),
         ),
         _J1: reaction(
           { B: 1 },
           { C: 1 },
-          expr.call("times", [expr.var("k2"), expr.var("B")]),
+          expr.builtinCall("times", [expr.var("k2"), expr.var("B")]),
         ),
       },
       compartments: {

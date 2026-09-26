@@ -48,6 +48,18 @@ export type IridiumExpressionCall<Metadata = unknown> = {
   args: IridiumExpression<Metadata>[];
   metadata?: Metadata;
 };
+export type IridiumExpressionBuiltinVariable<Metadata = unknown> = Omit<
+  IridiumExpressionVariable<Metadata>,
+  "kind"
+> & {
+  kind: "builtinVariable";
+};
+export type IridiumExpressionBuiltinCall<Metadata = unknown> = Omit<
+  IridiumExpressionCall<Metadata>,
+  "kind"
+> & {
+  kind: "builtinCall";
+};
 
 export type IridiumExpression<Metadata = unknown> =
   | IridiumExpressionNumber<Metadata>
@@ -55,7 +67,9 @@ export type IridiumExpression<Metadata = unknown> =
   | IridiumExpressionRateOf<Metadata>
   | IridiumExpressionBinary<Metadata>
   | IridiumExpressionUnary<Metadata>
-  | IridiumExpressionCall<Metadata>;
+  | IridiumExpressionCall<Metadata>
+  | IridiumExpressionBuiltinCall<Metadata>
+  | IridiumExpressionBuiltinVariable<Metadata>;
 
 export type IridiumExpressionListener<Metadata = unknown> = {
   beforeNumber?: (number: IridiumExpressionNumber<Metadata>) => void;
@@ -75,6 +89,16 @@ export type IridiumExpressionListener<Metadata = unknown> = {
 
   beforeCall?: (call: IridiumExpressionCall<Metadata>) => void;
   afterCall?: (call: IridiumExpressionCall<Metadata>) => void;
+
+  beforeBuiltinVariable?: (
+    variable: IridiumExpressionBuiltinVariable<Metadata>,
+  ) => void;
+  afterBuiltinVariable?: (
+    variable: IridiumExpressionBuiltinVariable<Metadata>,
+  ) => void;
+
+  beforeBuiltinCall?: (call: IridiumExpressionBuiltinCall<Metadata>) => void;
+  afterBuiltinCall?: (call: IridiumExpressionBuiltinCall<Metadata>) => void;
 };
 
 export const walkExpression = <T>(
@@ -105,6 +129,15 @@ export const walkExpression = <T>(
       walkExpression(arg, listener);
     }
     listener?.afterCall?.(expr);
+  } else if (expr.kind === "builtinVariable") {
+    listener?.beforeBuiltinVariable?.(expr);
+    listener?.afterBuiltinVariable?.(expr);
+  } else if (expr.kind === "builtinCall") {
+    listener?.beforeBuiltinCall?.(expr);
+    for (const arg of expr.args) {
+      walkExpression(arg, listener);
+    }
+    listener?.afterBuiltinCall?.(expr);
   }
 };
 
@@ -115,32 +148,43 @@ export type IridiumExpressionVisitor<T, Metadata = unknown> = {
   visitBinary?: (binary: IridiumExpressionBinary<Metadata>) => T;
   visitUnary?: (unary: IridiumExpressionUnary<Metadata>) => T;
   visitCall?: (call: IridiumExpressionCall<Metadata>) => T;
+  visitBuiltinVariable?: (
+    variable: IridiumExpressionBuiltinVariable<Metadata>,
+  ) => T;
+  visitBuiltinCall?: (variable: IridiumExpressionBuiltinCall<Metadata>) => T;
 };
 
 export const visitExpression = <T, Metadata = unknown>(
   expr: IridiumExpression<Metadata>,
   visitor: IridiumExpressionVisitor<T, Metadata>,
 ): T => {
-  if (expr.kind === "number") {
-    if (!visitor.visitNumber) throw new Error("Missing visitNumber");
-    return visitor.visitNumber(expr);
-  } else if (expr.kind === "variable") {
-    if (!visitor.visitVariable) throw new Error("Missing visitVariable");
-    return visitor.visitVariable(expr);
-  } else if (expr.kind === "rateOf") {
-    if (!visitor.visitRateOf) throw new Error("Missing visitRateOf");
-    return visitor.visitRateOf(expr);
-  } else if (expr.kind === "binary") {
-    if (!visitor.visitBinary) throw new Error("Missing visitBinary");
-    return visitor.visitBinary(expr);
-  } else if (expr.kind === "unary") {
-    if (!visitor.visitUnary) throw new Error("Missing visitUnary");
-    return visitor.visitUnary(expr);
-  } else if (expr.kind === "call") {
-    if (!visitor.visitCall) throw new Error("Missing visitCall");
-    return visitor.visitCall(expr);
-  } else {
-    throw new Error("Unknown expression kind");
+  switch (expr.kind) {
+    case "number":
+      if (!visitor.visitNumber) throw new Error("Missing visitNumber");
+      return visitor.visitNumber(expr);
+    case "variable":
+      if (!visitor.visitVariable) throw new Error("Missing visitVariable");
+      return visitor.visitVariable(expr);
+    case "rateOf":
+      if (!visitor.visitRateOf) throw new Error("Missing visitRateOf");
+      return visitor.visitRateOf(expr);
+    case "binary":
+      if (!visitor.visitBinary) throw new Error("Missing visitBinary");
+      return visitor.visitBinary(expr);
+    case "unary":
+      if (!visitor.visitUnary) throw new Error("Missing visitUnary");
+      return visitor.visitUnary(expr);
+    case "call":
+      if (!visitor.visitCall) throw new Error("Missing visitCall");
+      return visitor.visitCall(expr);
+    case "builtinVariable":
+      if (!visitor.visitBuiltinVariable)
+        throw new Error("Missing visitBuiltinVariable");
+      return visitor.visitBuiltinVariable(expr);
+    case "builtinCall":
+      if (!visitor.visitBuiltinCall)
+        throw new Error("Missing visitBuiltinCall");
+      return visitor.visitBuiltinCall(expr);
   }
 };
 
@@ -150,6 +194,7 @@ export const prettyIridiumExpressionToString = (
   switch (expr.kind) {
     case "number":
       return expr.value.toString();
+    case "builtinVariable":
     case "variable":
       return expr.name;
     case "rateOf":
@@ -168,6 +213,7 @@ export const prettyIridiumExpressionToString = (
         prettyIridiumExpressionToString(expr.right) +
         ")"
       );
+    case "builtinCall":
     case "call":
       return (
         "(" +

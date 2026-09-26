@@ -25,7 +25,7 @@ import type {
 } from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/reference";
 import { CompileError } from "../errors";
-import { RATE_OF_NAME } from "../../runtime/builtins";
+import { isBuiltinName, RATE_OF_NAME } from "../../runtime/builtins";
 
 export type ResolveReferenceFn = (
   reference: AntimonyReference,
@@ -79,23 +79,24 @@ export const compileConversionFactors = (
       }
     } else {
       const [name, factorFactors] = resolveReference(factor);
+      const kind = isBuiltinName(name) ? "builtinVariable" : "variable";
 
       if (!current) {
-        current = { kind: "variable", name };
+        current = { kind, name };
       } else {
         current = {
           kind: "binary",
           op: "mul",
           left: current,
           right: {
-            kind: "variable",
+            kind,
             name,
           },
         };
       }
 
       if (factorFactors) {
-        current = wrapConversionFactorExpr(current, factorFactors);
+        current = wrapConversionFactorExpr(current!, factorFactors);
       }
     }
   }
@@ -130,7 +131,7 @@ export const compileStoichiometry = (
 
     return wrapConversionFactorExpr(
       {
-        kind: "variable",
+        kind: isBuiltinName(name) ? "builtinVariable" : "variable",
         name,
         metadata: { tree: stoichiometry },
       },
@@ -183,7 +184,7 @@ class FormulaCompilerListener implements AntimonyListener {
     }
 
     this.#stack.push({
-      kind: "call",
+      kind: isBuiltinName(name) ? "builtinCall" : "call",
       args,
       name,
       metadata: { tree: ctx },
@@ -214,7 +215,7 @@ class FormulaCompilerListener implements AntimonyListener {
     this.#stack.push(
       wrapConversionFactorExpr(
         {
-          kind: "variable",
+          kind: isBuiltinName(name) ? "builtinVariable" : "variable",
           name: name,
           metadata: { tree: ctx },
         },

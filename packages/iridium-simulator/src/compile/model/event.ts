@@ -259,6 +259,9 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
       }
     },
     visitCall(expr) {
+      visitNonBooleanExpression(expr);
+    },
+    visitBuiltinCall(expr) {
       const { name, args } = expr;
       if (name === "and") {
         visitLogicalVariadicFunction(true, "and", args);
@@ -333,6 +336,13 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
       } else {
         visitNonBooleanExpression(expr);
       }
+    },
+    visitBuiltinVariable(expr) {
+      // TODO: can't this just be completely inlined ?
+      visitNonBooleanExpression(expr);
+    },
+    visitRateOf(expr) {
+      visitNonBooleanExpression(expr);
     },
   };
 

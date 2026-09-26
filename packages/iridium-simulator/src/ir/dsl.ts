@@ -247,6 +247,14 @@ export const expr = {
     name,
     metadata,
   }),
+  builtinVar: <T = unknown>(
+    name: string,
+    metadata?: T,
+  ): IridiumExpression<T> => ({
+    kind: "builtinVariable",
+    name,
+    metadata,
+  }),
   rateOf: <T = unknown>(name: string, metadata?: T): IridiumExpression<T> => ({
     kind: "rateOf",
     name,
@@ -419,4 +427,9 @@ export const expr = {
     args: IridiumExpression<T>[],
     metadata?: T,
   ): IridiumExpression<T> => ({ kind: "call", name, args, metadata }),
+  builtinCall: <T = unknown>(
+    name: string,
+    args: IridiumExpression<T>[],
+    metadata?: T,
+  ): IridiumExpression<T> => ({ kind: "builtinCall", name, args, metadata }),
 } as const;

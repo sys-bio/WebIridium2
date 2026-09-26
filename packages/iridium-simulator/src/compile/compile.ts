@@ -136,7 +136,7 @@ export const getReferencedFunctions = (
   let isWalkingFunction = false;
   const referenced = new Set<string>();
   const listener: IridiumExpressionListener = {
-    beforeCall(expr) {
+    beforeBuiltinCall(expr) {
       const { name } = expr;
       if (name === PIECEWISE_NAME) {
         if (shouldTrackPiecewise && !isWalkingFunction) {
@@ -181,18 +181,6 @@ export const getReferencedFunctions = (
         predefinedFuncDefs[name].kind !== "inline"
       ) {
         referenced.add(name);
-      } else if (
-        name === "eq" ||
-        name === "lt" ||
-        name === "gt" ||
-        name === "le" ||
-        name === "ge"
-      ) {
-        referenced.add(AND_RESERVED_NAME);
-      } else if (name === "log") {
-        referenced.add("ln");
-      } else if (name === "root") {
-        referenced.add(POW_RESERVED_NAME);
       }
     },
     beforeBinary({ op }) {
@@ -261,6 +249,8 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
       throw new CompileInvariantError(
         `Attempt to compile inline function: ${func.name}`,
       );
+    } else if (func.kind === "macro") {
+      // ignore it
     }
   }
 
@@ -282,7 +272,7 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
   importSection.emitExternMemoryType(1);
 
   for (const func of importedFunctions) {
-    functionTable.add(func.name, { arity: func.params.length });
+    functionTable.addBuiltin(func.name);
 
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
 
@@ -295,7 +285,9 @@ export const compileFunctions = (funcs: WasmFunction[]): Uint8Array => {
     const funcTypeIndex = typeTable.addFunc(func.params, func.results);
     const funcIndex = func.isExported
       ? functionTable.addExported(func.name)
-      : functionTable.add(func.name, { arity: func.params.length });
+      : func.isUserDefined
+        ? functionTable.addUser(func.name, { arity: func.params.length })
+        : functionTable.addBuiltin(func.name);
 
     functionSection.emitUint(funcTypeIndex);
 

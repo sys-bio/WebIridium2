@@ -55,45 +55,75 @@ export class IndexSymbolTable {
  * accessed by `get`. (since these are meant for external code).
  */
 export class FunctionTable {
-  #indexes: Map<string, number>;
-  #infos: Map<string, FunctionInfo>;
+  #userIndexes: Map<string, number>;
+  #builtinIndexes: Map<string, number>;
+  #userInfos: Map<string, FunctionInfo>;
   #currentIndex: number;
 
   constructor() {
-    this.#indexes = new Map();
-    this.#infos = new Map();
+    this.#userIndexes = new Map();
+    this.#builtinIndexes = new Map();
+    this.#userInfos = new Map();
     this.#currentIndex = 0;
   }
 
-  get(funcName: string): number {
-    const index = this.#indexes.get(funcName);
+  /** Gets the index of a user-defined function. */
+  getUser(funcName: string): number {
+    const index = this.#userIndexes.get(funcName);
     if (index === undefined) {
       throw new Error(`Missing: ${funcName}`);
     }
     return index;
   }
 
-  getInfo(funcName: string): FunctionInfo | undefined {
-    return this.#infos.get(funcName);
-  }
-
-  add(funcName: string, info?: FunctionInfo): number {
-    if (this.#indexes.has(funcName)) throw new Error(`Duplicate: ${funcName}`);
-
-    const index = this.#currentIndex++;
-    this.#indexes.set(funcName, index);
-    if (info) {
-      this.#infos.set(funcName, info);
+  /** Gets the index of a built-in function. */
+  getBuiltin(funcName: string): number {
+    const index = this.#builtinIndexes.get(funcName);
+    if (index === undefined) {
+      throw new Error(`Missing built-in: ${funcName}`);
     }
     return index;
   }
 
+  /** Gets the function info a user-defined function. */
+  getUserInfo(funcName: string): FunctionInfo | undefined {
+    return this.#userInfos.get(funcName);
+  }
+
+  /** Adds a user-defined function. */
+  addUser(funcName: string, info: FunctionInfo): number {
+    if (this.#userIndexes.has(funcName))
+      throw new Error(`Duplicate user function: ${funcName}`);
+
+    const index = this.#currentIndex++;
+    this.#userIndexes.set(funcName, index);
+    this.#userInfos.set(funcName, info);
+    return index;
+  }
+
+  /** Adds a built-in function. */
+  addBuiltin(funcName: string): number {
+    if (this.#builtinIndexes.has(funcName))
+      throw new Error(`Duplicate built-in: ${funcName}`);
+
+    const index = this.#currentIndex++;
+    this.#builtinIndexes.set(funcName, index);
+    return index;
+  }
+
+  /** Adds an exported function (which is one that cannot be referred to within the assembly). */
   addExported(_funcName: string): number {
     return this.#currentIndex++;
   }
 
-  has(funcName: string): boolean {
-    return this.#indexes.has(funcName);
+  /** Checks if the user-defined function exists. */
+  hasUser(funcName: string): boolean {
+    return this.#userIndexes.has(funcName);
+  }
+
+  /** Checks if the built-in function exists. */
+  hasBuiltin(funcName: string): boolean {
+    return this.#builtinIndexes.has(funcName);
   }
 }
 

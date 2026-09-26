@@ -72,20 +72,23 @@ describe("binary", () => {
   });
 
   it("should compile and function", () => {
-    expectCompile(expr.call("and", [expr.num(1), expr.num(2)]), (emitter) => {
-      emitter.emitF64ConstOp(1);
-      emitter.emitF64ConstOp(0);
-      emitter.emitByte(OpCode.f64ne);
-      emitter.emitByte(OpCode.if);
-      emitter.emitByte(ValType.i32);
-      emitter.emitF64ConstOp(2);
-      emitter.emitF64ConstOp(0);
-      emitter.emitByte(OpCode.f64ne);
-      emitter.emitByte(OpCode.else);
-      emitter.emitI32ConstOp(0);
-      emitter.emitByte(OpCode.end);
-      emitter.emitByte(OpCode.f64convert_u_i32);
-    });
+    expectCompile(
+      expr.builtinCall("and", [expr.num(1), expr.num(2)]),
+      (emitter) => {
+        emitter.emitF64ConstOp(1);
+        emitter.emitF64ConstOp(0);
+        emitter.emitByte(OpCode.f64ne);
+        emitter.emitByte(OpCode.if);
+        emitter.emitByte(ValType.i32);
+        emitter.emitF64ConstOp(2);
+        emitter.emitF64ConstOp(0);
+        emitter.emitByte(OpCode.f64ne);
+        emitter.emitByte(OpCode.else);
+        emitter.emitI32ConstOp(0);
+        emitter.emitByte(OpCode.end);
+        emitter.emitByte(OpCode.f64convert_u_i32);
+      },
+    );
   });
 
   it("should error with call incorrect arguments", async () => {

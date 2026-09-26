@@ -1,9 +1,17 @@
+import {
+  visitExpression,
+  type IridiumBinaryOperator,
+  type IridiumExpression,
+  type IridiumExpressionBuiltinCall,
+  type IridiumExpressionVisitor,
+} from "../ir/ast.ts";
 import type {
   BuiltinFunctionName,
   builtinFunctions,
 } from "../runtime/builtins.ts";
 import { OpCode, ValType } from "./codes";
 import Emitter from "./Emitter";
+import type { Scope } from "./scope.ts";
 import { LocalsSymbolTable, type FunctionTable } from "./symbolTables.ts";
 
 export type ImportedFunction = {
@@ -22,6 +30,7 @@ export type CompiledFunction = {
    * is accessible from the WASM module.
    */
   isExported: boolean;
+  isUserDefined?: boolean;
   name: string;
   params: ValType[];
   results: ValType[];
@@ -35,7 +44,23 @@ export type InlineFunction = {
   emit: (emitter: Emitter) => void;
 };
 
-export type WasmFunction = ImportedFunction | CompiledFunction | InlineFunction;
+export type MacroFunction = {
+  kind: "macro";
+  name: string;
+  depends?: string[];
+  visit: (
+    call: IridiumExpressionBuiltinCall,
+    emitter: Emitter,
+    visitor: IridiumExpressionVisitor<void>,
+    scope: Scope,
+  ) => void;
+};
+
+export type WasmFunction =
+  | ImportedFunction
+  | CompiledFunction
+  | InlineFunction
+  | MacroFunction;
 
 export type FunctionInfo = {
   description?: string;
@@ -61,7 +86,7 @@ const createReciprocal = (functionName: string) => {
     emitter.emitByte(OpCode.localget);
     emitter.emitUint(0);
 
-    emitter.emitCallOp(functionsTable.get(functionName));
+    emitter.emitCallOp(functionsTable.getBuiltin(functionName));
 
     emitter.emitByte(OpCode.f64div);
 
@@ -84,7 +109,7 @@ const createInverseReciprocal = (functionName: string) => {
 
     emitter.emitByte(OpCode.f64div);
 
-    emitter.emitCallOp(functionsTable.get(functionName));
+    emitter.emitCallOp(functionsTable.getBuiltin(functionName));
 
     emitter.emitByte(OpCode.end);
 
@@ -139,19 +164,54 @@ const createBooleanFunction = (
   };
 };
 
-type IsNonVariadicBuiltin<Name extends BuiltinFunctionName> =
-  (typeof builtinFunctions)[Name] extends { arity: number } ? Name : never;
+const flattenComparisonFunction = (
+  { args, metadata }: IridiumExpressionBuiltinCall,
+  op: IridiumBinaryOperator,
+): IridiumExpression => {
+  let current: IridiumExpression | undefined;
+  let last = args[0];
+  for (let i = 1; i < args.length; i++) {
+    const main: IridiumExpression = {
+      kind: "binary",
+      op,
+      left: last,
+      right: args[i],
+      metadata,
+    };
+
+    if (current) {
+      current = {
+        kind: "binary",
+        op: "and",
+        left: current,
+        right: main,
+        metadata,
+      };
+    } else {
+      current = main;
+    }
+
+    last = args[i];
+  }
+
+  return current!;
+};
+
+type IsVariadicFunction<Name extends keyof typeof builtinFunctions> =
+  (typeof builtinFunctions)[Name] extends { arity: { min: number } }
+    ? Name
+    : never;
 
 // this ugly type is to ensure we have a definition for every builtin that is non-variadic
 const builtinFunctionDefinitions: {
-  [Name in BuiltinFunctionName as IsNonVariadicBuiltin<Name>]: (typeof builtinFunctions)[Name] extends {
-    arity: number;
-  }
-    ?
+  [Name in BuiltinFunctionName as Name extends typeof PIECEWISE_NAME
+    ? never
+    : Name]: Name extends IsVariadicFunction<Name>
+    ? Extract<WasmFunction, { kind: "macro" }> & { name: Name }
+    :
         | (Extract<WasmFunction, { kind: "import" }> & { name: Name })
         | (Extract<WasmFunction, { kind: "compile" }> & { name: Name })
-        | (Extract<WasmFunction, { kind: "inline" }> & { name: Name })
-    : never;
+        | (Extract<WasmFunction, { kind: "inline" }> & { name: Name });
 } = {
   neq: {
     kind: "inline",
@@ -559,6 +619,237 @@ const builtinFunctionDefinitions: {
     results: [ValType.f64],
     js: Math.atan,
   },
+
+  // macros
+  and: {
+    kind: "macro",
+    name: "and",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 0) {
+        emitter.emitF64ConstOp(1);
+      } else {
+        for (let i = 0; i < expr.args.length; i++) {
+          if (i > 0) {
+            emitter.emitByte(OpCode.if);
+            emitter.emitByte(ValType.i32);
+          }
+
+          visitExpression(expr.args[i], visitor);
+
+          emitter.emitF64ConstOp(0);
+          emitter.emitByte(OpCode.f64ne);
+        }
+
+        for (let i = 0; i < expr.args.length - 1; i++) {
+          emitter.emitByte(OpCode.else);
+          emitter.emitI32ConstOp(0);
+          emitter.emitByte(OpCode.end);
+        }
+
+        emitter.emitByte(OpCode.f64convert_u_i32);
+      }
+    },
+  },
+  or: {
+    kind: "macro",
+    name: "or",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 0) {
+        emitter.emitF64ConstOp(0);
+      } else {
+        for (let i = 0; i < expr.args.length; i++) {
+          if (i > 0) {
+            emitter.emitByte(OpCode.if);
+            emitter.emitByte(ValType.i32);
+          }
+
+          visitExpression(expr.args[i], visitor);
+
+          emitter.emitF64ConstOp(0);
+          emitter.emitByte(OpCode.f64eq);
+        }
+
+        for (let i = 0; i < expr.args.length - 1; i++) {
+          emitter.emitByte(OpCode.else);
+          emitter.emitI32ConstOp(0);
+          emitter.emitByte(OpCode.end);
+        }
+
+        emitter.emitByte(OpCode.i32eqz);
+        emitter.emitByte(OpCode.f64convert_u_i32);
+      }
+    },
+  },
+  xor: {
+    kind: "macro",
+    name: "xor",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 0) {
+        emitter.emitF64ConstOp(0);
+      } else {
+        for (let i = 0; i < expr.args.length; i++) {
+          visitExpression(expr.args[i], visitor);
+
+          emitter.emitF64ConstOp(0);
+          emitter.emitByte(OpCode.f64ne);
+
+          if (i > 0) {
+            emitter.emitByte(OpCode.i32xor);
+          }
+        }
+
+        emitter.emitByte(OpCode.f64convert_u_i32);
+      }
+    },
+  },
+  plus: {
+    kind: "macro",
+    name: "plus",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 0) {
+        emitter.emitF64ConstOp(0);
+      } else {
+        for (let i = 0; i < expr.args.length; i++) {
+          visitExpression(expr.args[i], visitor);
+          if (i > 0) {
+            emitter.emitByte(OpCode.f64add);
+          }
+        }
+      }
+    },
+  },
+  times: {
+    kind: "macro",
+    name: "times",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 0) {
+        emitter.emitF64ConstOp(1);
+      } else {
+        for (let i = 0; i < expr.args.length; i++) {
+          visitExpression(expr.args[i], visitor);
+          if (i > 0) {
+            emitter.emitByte(OpCode.f64mul);
+          }
+        }
+      }
+    },
+  },
+  minus: {
+    kind: "macro",
+    name: "minus",
+    visit: (expr, emitter, visitor) => {
+      if (expr.args.length === 1) {
+        visitExpression(expr.args[0], visitor);
+        emitter.emitByte(OpCode.f64neg);
+      } else {
+        visitExpression(expr.args[0], visitor);
+        visitExpression(expr.args[1], visitor);
+        emitter.emitByte(OpCode.f64min);
+      }
+    },
+  },
+  max: {
+    kind: "macro",
+    name: "max",
+    visit: (expr, emitter, visitor) => {
+      for (let i = 0; i < expr.args.length; i++) {
+        visitExpression(expr.args[i], visitor);
+        if (i > 0) {
+          emitter.emitByte(OpCode.f64max);
+        }
+      }
+    },
+  },
+  min: {
+    kind: "macro",
+    name: "min",
+    visit: (expr, emitter, visitor) => {
+      for (let i = 0; i < expr.args.length; i++) {
+        visitExpression(expr.args[i], visitor);
+        if (i > 0) {
+          emitter.emitByte(OpCode.f64min);
+        }
+      }
+    },
+  },
+  eq: {
+    kind: "macro",
+    name: "eq",
+    depends: [AND_RESERVED_NAME],
+    visit: (expr, _emitter, visitor) => {
+      visitExpression(flattenComparisonFunction(expr, "eq"), visitor);
+    },
+  },
+  lt: {
+    kind: "macro",
+    name: "lt",
+    depends: [AND_RESERVED_NAME],
+    visit: (expr, _emitter, visitor) => {
+      visitExpression(flattenComparisonFunction(expr, "lt"), visitor);
+    },
+  },
+  gt: {
+    kind: "macro",
+    name: "gt",
+    depends: [AND_RESERVED_NAME],
+    visit: (expr, _emitter, visitor) => {
+      visitExpression(flattenComparisonFunction(expr, "gt"), visitor);
+    },
+  },
+  leq: {
+    kind: "macro",
+    name: "leq",
+    depends: [AND_RESERVED_NAME],
+    visit: (expr, _emitter, visitor) => {
+      visitExpression(flattenComparisonFunction(expr, "le"), visitor);
+    },
+  },
+  geq: {
+    kind: "macro",
+    name: "geq",
+    depends: [AND_RESERVED_NAME],
+    visit: (expr, _emitter, visitor) => {
+      visitExpression(flattenComparisonFunction(expr, "ge"), visitor);
+    },
+  },
+  log: {
+    kind: "macro",
+    name: "log",
+    depends: ["ln"],
+    visit: (expr, emitter, visitor, scope) => {
+      if (expr.args.length === 1) {
+        visitExpression(expr.args[0], visitor);
+        scope.emitBuiltinCallOp(emitter, "ln");
+        emitter.emitF64ConstOp(Math.log(10));
+      } else {
+        visitExpression(expr.args[1], visitor);
+        scope.emitBuiltinCallOp(emitter, "ln");
+        visitExpression(expr.args[0], visitor);
+        scope.emitBuiltinCallOp(emitter, "ln");
+      }
+      emitter.emitByte(OpCode.f64div);
+    },
+  },
+  root: {
+    kind: "macro",
+    name: "root",
+    depends: [POW_RESERVED_NAME],
+    visit: (expr, emitter, visitor, scope) => {
+      if (expr.args.length === 1) {
+        visitExpression(expr.args[0], visitor);
+      } else {
+        visitExpression(expr.args[1], visitor);
+      }
+      emitter.emitF64ConstOp(1);
+      if (expr.args.length === 1) {
+        emitter.emitF64ConstOp(2);
+      } else {
+        visitExpression(expr.args[0], visitor);
+      }
+      emitter.emitByte(OpCode.f64div);
+      scope.emitBuiltinCallOp(emitter, POW_RESERVED_NAME);
+    },
+  },
 };
 
 const otherFunctionDefinitionsList: WasmFunction[] = [
@@ -608,7 +899,7 @@ const otherFunctionDefinitionsList: WasmFunction[] = [
       emitter.emitByte(OpCode.localget);
       emitter.emitUint(1);
 
-      emitter.emitCallOp(functionTable.get("rem"));
+      emitter.emitCallOp(functionTable.getBuiltin("rem"));
 
       emitter.emitByte(OpCode.end);
       return emitter.getOutput();

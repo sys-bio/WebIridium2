@@ -149,6 +149,17 @@ describe("ir", () => {
       );
     });
 
+    it("should compile built-in function call", () => {
+      expectCompilesTo(
+        "A = eq(1, 2, 3)",
+        variables({
+          A: parameter(
+            expr.builtinCall("eq", [expr.num(1), expr.num(2), expr.num(3)]),
+          ),
+        }),
+      );
+    });
+
     it("should compile negation", () => {
       expectCompilesTo(
         "A = -A",
@@ -524,7 +535,7 @@ describe("ir", () => {
               B: parameter(0),
             },
             events: {
-              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+              E: event(expr.gt(expr.builtinVar("time"), expr.num(5)), {
                 B: expr.num(5),
               }),
             },
@@ -832,7 +843,7 @@ describe("ir", () => {
             B: parameter(0),
           },
           events: {
-            E: event(expr.gt(expr.var("time"), expr.num(3)), {
+            E: event(expr.gt(expr.builtinVar("time"), expr.num(3)), {
               B: expr.num(3),
             }),
           },
@@ -1171,7 +1182,7 @@ describe("ir", () => {
           "E: at time > 5: A = 3; A is B / conv",
           model({
             events: {
-              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+              E: event(expr.gt(expr.builtinVar("time"), expr.num(5)), {
                 B: expr.mul(expr.num(3), expr.var("conv")),
               }),
             },
@@ -1184,7 +1195,7 @@ describe("ir", () => {
           "E: at time > 5: B = 3; A is B / conv",
           model({
             events: {
-              E: event(expr.gt(expr.var("time"), expr.num(5)), {
+              E: event(expr.gt(expr.builtinVar("time"), expr.num(5)), {
                 B: expr.num(3),
               }),
             },
@@ -1401,7 +1412,7 @@ describe("ir", () => {
             sub__A: parameter(0),
           },
           events: {
-            sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
+            sub__E: event(expr.gt(expr.builtinVar("time"), expr.num(5)), {
               sub__A: expr.num(5),
             }),
           },
@@ -1418,7 +1429,7 @@ describe("ir", () => {
             sub__B: parameter(0),
           },
           events: {
-            sub__E: event(expr.gt(expr.var("time"), expr.num(5)), {
+            sub__E: event(expr.gt(expr.builtinVar("time"), expr.num(5)), {
               sub__B: expr.num(10),
             }),
           },

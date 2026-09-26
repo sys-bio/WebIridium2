@@ -1,7 +1,7 @@
 import {
   visitExpression,
-  type IridiumBinaryOperator,
   type IridiumExpression,
+  type IridiumExpressionBuiltinCall,
   type IridiumExpressionCall,
   type IridiumExpressionVisitor,
 } from "../ir/ast";
@@ -14,11 +14,11 @@ import {
   OR_RESERVED_NAME,
   PIECEWISE_NAME,
   POW_RESERVED_NAME,
-  inlineFunctions,
   predefinedFuncDefs,
   type Arity,
   type FunctionInfo,
   type InlineFunction,
+  type WasmFunction,
 } from "./functions";
 import { CompileError, CompileInvariantError } from "./errors";
 import { EVENTS_PARAM } from "../names";
@@ -44,37 +44,41 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   }
 };
 
-const flattenComparisonFunction = (
-  { args, metadata }: IridiumExpressionCall,
-  op: IridiumBinaryOperator,
-): IridiumExpression => {
-  let current: IridiumExpression | undefined;
-  let last = args[0];
-  for (let i = 1; i < args.length; i++) {
-    const main: IridiumExpression = {
-      kind: "binary",
-      op,
-      left: last,
-      right: args[i],
-      metadata,
-    };
-
-    if (current) {
-      current = {
-        kind: "binary",
-        op: "and",
-        left: current,
-        right: main,
-        metadata,
-      };
-    } else {
-      current = main;
-    }
-
-    last = args[i];
+const checkArity = (
+  expr: IridiumExpressionCall | IridiumExpressionBuiltinCall,
+  scope: Scope,
+): void => {
+  let arity: Arity | undefined;
+  if (expr.kind === "builtinCall") {
+    arity = (builtinFunctions as Record<string, FunctionInfo | undefined>)[
+      expr.name
+    ]?.arity;
+  } else {
+    arity = scope.getUserFunctionInfo(expr.name)?.arity;
   }
 
-  return current!;
+  if (!arity) {
+    throw new CompileError(`Unknown function: ${expr.name}.`, expr);
+  } else if (typeof arity === "number") {
+    if (expr.args.length !== arity) {
+      throw new CompileError(
+        `${expr.name} expects ${arity} arguments, got ${expr.args.length}.`,
+        expr,
+      );
+    }
+  } else {
+    if (expr.args.length < arity.min) {
+      throw new CompileError(
+        `${expr.name} expects at least ${arity.min} arguments, got ${expr.args.length}.`,
+        expr,
+      );
+    } else if (arity.max !== undefined && expr.args.length > arity.max) {
+      throw new CompileError(
+        `${expr.name} expects at most ${arity.min} arguments, got ${expr.args.length}.`,
+        expr,
+      );
+    }
+  }
 };
 
 /**
@@ -141,16 +145,16 @@ export const emitExpression = (
           emitter.emitByte(OpCode.f64div);
           break;
         case "mod":
-          scope.emitCallOp(emitter, MOD_RESERVED_NAME);
+          scope.emitBuiltinCallOp(emitter, MOD_RESERVED_NAME);
           break;
         case "pow":
-          scope.emitCallOp(emitter, POW_RESERVED_NAME);
+          scope.emitBuiltinCallOp(emitter, POW_RESERVED_NAME);
           break;
         case "and":
-          scope.emitCallOp(emitter, AND_RESERVED_NAME);
+          scope.emitBuiltinCallOp(emitter, AND_RESERVED_NAME);
           break;
         case "or":
-          scope.emitCallOp(emitter, OR_RESERVED_NAME);
+          scope.emitBuiltinCallOp(emitter, OR_RESERVED_NAME);
           break;
         case "eq":
         case "neq":
@@ -164,38 +168,20 @@ export const emitExpression = (
       }
     },
     visitCall: (expr) => {
-      let arity: Arity | undefined;
-      if (Object.hasOwn(builtinFunctions, expr.name)) {
-        arity = (builtinFunctions as Record<string, FunctionInfo | undefined>)[
-          expr.name
-        ]?.arity;
-      } else {
-        arity = scope.getFunctionInfo(expr.name)?.arity;
+      checkArity(expr, scope);
+      for (const arg of expr.args) {
+        visitExpression(arg, visitor);
       }
 
-      if (!arity) {
-        throw new CompileError(`Unknown function: ${expr.name}.`, expr);
-      } else if (typeof arity === "number") {
-        if (expr.args.length !== arity) {
-          throw new CompileError(
-            `${expr.name} expects ${arity} arguments, got ${expr.args.length}.`,
-            expr,
-          );
-        }
-      } else {
-        if (expr.args.length < arity.min) {
-          throw new CompileError(
-            `${expr.name} expects at least ${arity.min} arguments, got ${expr.args.length}.`,
-            expr,
-          );
-        } else if (arity.max !== undefined && expr.args.length > arity.max) {
-          throw new CompileError(
-            `${expr.name} expects at most ${arity.min} arguments, got ${expr.args.length}.`,
-            expr,
-          );
-        }
-      }
+      scope.emitUserCallOp(emitter, expr.name);
+    },
+    visitBuiltinVariable: (expr) => {
+      scope.emitLoadBuiltin(emitter, expr);
+    },
+    visitBuiltinCall: (expr) => {
+      checkArity(expr, scope);
 
+      // very special case
       if (expr.name === PIECEWISE_NAME) {
         const hasFallback = expr.args.length % 2 === 1;
 
@@ -277,162 +263,24 @@ export const emitExpression = (
             emitter.emitByte(OpCode.end);
           }
         }
-      } else if (expr.name === "and") {
-        if (expr.args.length === 0) {
-          emitter.emitF64ConstOp(1);
-        } else {
-          for (let i = 0; i < expr.args.length; i++) {
-            if (i > 0) {
-              emitter.emitByte(OpCode.if);
-              emitter.emitByte(ValType.i32);
-            }
-
-            visitExpression(expr.args[i], visitor);
-
-            emitter.emitF64ConstOp(0);
-            emitter.emitByte(OpCode.f64ne);
-          }
-
-          for (let i = 0; i < expr.args.length - 1; i++) {
-            emitter.emitByte(OpCode.else);
-            emitter.emitI32ConstOp(0);
-            emitter.emitByte(OpCode.end);
-          }
-
-          emitter.emitByte(OpCode.f64convert_u_i32);
-        }
-      } else if (expr.name === "or") {
-        if (expr.args.length === 0) {
-          emitter.emitF64ConstOp(0);
-        } else {
-          for (let i = 0; i < expr.args.length; i++) {
-            if (i > 0) {
-              emitter.emitByte(OpCode.if);
-              emitter.emitByte(ValType.i32);
-            }
-
-            visitExpression(expr.args[i], visitor);
-
-            emitter.emitF64ConstOp(0);
-            emitter.emitByte(OpCode.f64eq);
-          }
-
-          for (let i = 0; i < expr.args.length - 1; i++) {
-            emitter.emitByte(OpCode.else);
-            emitter.emitI32ConstOp(0);
-            emitter.emitByte(OpCode.end);
-          }
-
-          emitter.emitByte(OpCode.i32eqz);
-          emitter.emitByte(OpCode.f64convert_u_i32);
-        }
-      } else if (expr.name === "xor") {
-        if (expr.args.length === 0) {
-          emitter.emitF64ConstOp(0);
-        } else {
-          for (let i = 0; i < expr.args.length; i++) {
-            visitExpression(expr.args[i], visitor);
-
-            emitter.emitF64ConstOp(0);
-            emitter.emitByte(OpCode.f64ne);
-
-            if (i > 0) {
-              emitter.emitByte(OpCode.i32xor);
-            }
-          }
-
-          emitter.emitByte(OpCode.f64convert_u_i32);
-        }
-      } else if (expr.name === "plus") {
-        if (expr.args.length === 0) {
-          emitter.emitF64ConstOp(0);
-        } else {
-          for (let i = 0; i < expr.args.length; i++) {
-            visitExpression(expr.args[i], visitor);
-            if (i > 0) {
-              emitter.emitByte(OpCode.f64add);
-            }
-          }
-        }
-      } else if (expr.name === "times") {
-        if (expr.args.length === 0) {
-          emitter.emitF64ConstOp(1);
-        } else {
-          for (let i = 0; i < expr.args.length; i++) {
-            visitExpression(expr.args[i], visitor);
-            if (i > 0) {
-              emitter.emitByte(OpCode.f64mul);
-            }
-          }
-        }
-      } else if (expr.name === "minus") {
-        if (expr.args.length === 1) {
-          visitExpression(expr.args[0], visitor);
-          emitter.emitByte(OpCode.f64neg);
-        } else {
-          visitExpression(expr.args[0], visitor);
-          visitExpression(expr.args[1], visitor);
-          emitter.emitByte(OpCode.f64min);
-        }
-      } else if (expr.name === "max") {
-        for (let i = 0; i < expr.args.length; i++) {
-          visitExpression(expr.args[i], visitor);
-          if (i > 0) {
-            emitter.emitByte(OpCode.f64max);
-          }
-        }
-      } else if (expr.name === "min") {
-        for (let i = 0; i < expr.args.length; i++) {
-          visitExpression(expr.args[i], visitor);
-          if (i > 0) {
-            emitter.emitByte(OpCode.f64min);
-          }
-        }
-      } else if (expr.name === "eq") {
-        visitExpression(flattenComparisonFunction(expr, "eq"), visitor);
-      } else if (expr.name === "lt") {
-        visitExpression(flattenComparisonFunction(expr, "lt"), visitor);
-      } else if (expr.name === "gt") {
-        visitExpression(flattenComparisonFunction(expr, "gt"), visitor);
-      } else if (expr.name === "leq") {
-        visitExpression(flattenComparisonFunction(expr, "le"), visitor);
-      } else if (expr.name === "geq") {
-        visitExpression(flattenComparisonFunction(expr, "ge"), visitor);
-      } else if (expr.name === "log") {
-        if (expr.args.length === 1) {
-          visitExpression(expr.args[0], visitor);
-          scope.emitCallOp(emitter, "ln");
-          emitter.emitF64ConstOp(Math.log(10));
-        } else {
-          visitExpression(expr.args[1], visitor);
-          scope.emitCallOp(emitter, "ln");
-          visitExpression(expr.args[0], visitor);
-          scope.emitCallOp(emitter, "ln");
-        }
-        emitter.emitByte(OpCode.f64div);
-      } else if (expr.name === "root") {
-        if (expr.args.length === 1) {
-          visitExpression(expr.args[0], visitor);
-        } else {
-          visitExpression(expr.args[1], visitor);
-        }
-        emitter.emitF64ConstOp(1);
-        if (expr.args.length === 1) {
-          emitter.emitF64ConstOp(2);
-        } else {
-          visitExpression(expr.args[0], visitor);
-        }
-        emitter.emitByte(OpCode.f64div);
-        scope.emitCallOp(emitter, POW_RESERVED_NAME);
       } else {
-        for (const arg of expr.args) {
-          visitExpression(arg, visitor);
+        const definition = predefinedFuncDefs[expr.name];
+        if (!definition) {
+          throw new CompileError("Unknown built-in function.", expr);
         }
 
-        if (inlineFunctions.has(expr.name)) {
-          (predefinedFuncDefs[expr.name] as InlineFunction).emit(emitter);
+        if (definition.kind === "macro") {
+          definition.visit(expr, emitter, visitor, scope);
         } else {
-          scope.emitCallOp(emitter, expr.name);
+          for (const arg of expr.args) {
+            visitExpression(arg, visitor);
+          }
+
+          if (definition.kind === "inline") {
+            (predefinedFuncDefs[expr.name] as InlineFunction).emit(emitter);
+          } else {
+            scope.emitBuiltinCallOp(emitter, expr.name);
+          }
         }
       }
     },

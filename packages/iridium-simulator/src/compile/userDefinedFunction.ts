@@ -17,6 +17,7 @@ export const compileAllUserDefinedFunctions = (
     result.push({
       kind: "compile",
       isExported: false,
+      isUserDefined: true,
       name: func.name,
       params: func.parameters.map((_) => ValType.f64),
       results: [ValType.f64],
@@ -58,10 +59,7 @@ export const checkNoRecursiveCalls = (functions: IridiumFunction[]): void => {
 
     walkExpression(func.body, {
       afterCall({ name }) {
-        // unvisited right now is just all the user-defined function names
-        if (unvisited.has(name)) {
-          vertices.add(name);
-        }
+        vertices.add(name);
       },
     });
 

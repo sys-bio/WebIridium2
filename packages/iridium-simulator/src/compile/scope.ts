@@ -14,6 +14,7 @@ import { OpCode } from "./codes";
 import { builtinConstants } from "../runtime/builtins.ts";
 import { MEM_ALIGNMENT, SIZEOF_DOUBLE } from "./constants";
 import type {
+  IridiumExpressionBuiltinVariable,
   IridiumExpressionRateOf,
   IridiumExpressionVariable,
 } from "../ir/ast";
@@ -21,9 +22,14 @@ import type { FunctionInfo } from "./functions.ts";
 
 export interface Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void;
+  emitLoadBuiltin(
+    emitter: Emitter,
+    expr: IridiumExpressionBuiltinVariable,
+  ): void;
   emitLoadRate(emitter: Emitter, expr: IridiumExpressionRateOf): void;
-  emitCallOp(emitter: Emitter, name: string): void;
-  getFunctionInfo(name: string): FunctionInfo | undefined;
+  emitUserCallOp(emitter: Emitter, name: string): void;
+  emitBuiltinCallOp(emitter: Emitter, name: string): void;
+  getUserFunctionInfo(name: string): FunctionInfo | undefined;
 }
 
 export class GlobalScope implements Scope {
@@ -78,15 +84,7 @@ export class GlobalScope implements Scope {
    * @returns if the name was found
    */
   emitLoadVariableFromName(emitter: Emitter, name: string): boolean {
-    if (name === TIME_NAME) {
-      emitter.emitByte(OpCode.localget);
-      emitter.emitUint(this.localsTable.getParam(T_PARAM));
-      return true;
-    } else if (Object.hasOwn(builtinConstants, name)) {
-      emitter.emitByte(OpCode.f64const);
-      emitter.emitFloat64(builtinConstants[name].value);
-      return true;
-    } else if (
+    if (
       this.#compilation.yTable.has(name) ||
       this.#compilation.pTable.has(name)
     ) {
@@ -106,6 +104,21 @@ export class GlobalScope implements Scope {
   emitLoadVariable(emitter: Emitter, expr: IridiumExpressionVariable): void {
     if (!this.emitLoadVariableFromName(emitter, expr.name)) {
       throw new CompileError(`Unbound name: ${expr.name}`, expr.metadata);
+    }
+  }
+
+  emitLoadBuiltin(
+    emitter: Emitter,
+    expr: IridiumExpressionBuiltinVariable,
+  ): void {
+    if (expr.name === TIME_NAME) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(this.localsTable.getParam(T_PARAM));
+    } else if (Object.hasOwn(builtinConstants, expr.name)) {
+      emitter.emitByte(OpCode.f64const);
+      emitter.emitFloat64(builtinConstants[expr.name].value);
+    } else {
+      throw new CompileError(`Unknown built-in: ${expr.name}`, expr.metadata);
     }
   }
 
@@ -134,57 +147,47 @@ export class GlobalScope implements Scope {
   }
 
   emitLoadRateFromName(emitter: Emitter, name: string): boolean {
-    if (name === TIME_NAME) {
-      // TODO: no idea if this is right
-      emitter.emitF64ConstOp(1);
-      return true;
-    } else if (Object.hasOwn(builtinConstants, name)) {
-      // TODO: does the spec allow this
-      emitter.emitF64ConstOp(0);
-      return true;
-    } else {
-      const variable = this.#compilation.variables.get(name);
-      if (!variable) return false;
+    const variable = this.#compilation.variables.get(name);
+    if (!variable) return false;
 
-      switch (variable.value.kind) {
-        case "assignment":
-        case "algebraic":
-          // Can't get the rate of these.
-          return false;
-        case "initial":
-          emitter.emitF64ConstOp(0);
-          return true;
-        case "reaction":
-        case "rate": {
-          this.#emitLoadRateUnsafe(emitter, variable.name);
+    switch (variable.value.kind) {
+      case "assignment":
+      case "algebraic":
+        // Can't get the rate of these.
+        return false;
+      case "initial":
+        emitter.emitF64ConstOp(0);
+        return true;
+      case "reaction":
+      case "rate": {
+        this.#emitLoadRateUnsafe(emitter, variable.name);
 
-          const compartment = this.#compilation.compartments.get(name);
-          if (variable && !variable.hasSubstanceOnly && compartment) {
-            this.emitConvertToConcentration(emitter, compartment.name);
+        const compartment = this.#compilation.compartments.get(name);
+        if (variable && !variable.hasSubstanceOnly && compartment) {
+          this.emitConvertToConcentration(emitter, compartment.name);
 
-            // a = amount, c = concentration, C = compartment (in amount)
-            // c = a/C so dc/dt = (C * da/dt - a * dCA/dt) / C^2
-            // simplfies to dc/dt = da/dt / C - c * dCA/dt / C
-            // since we already have the left term, we just need to complete the right term
-            if (
-              compartment.value.kind === "rate" ||
-              compartment.value.kind === "reaction"
-            ) {
-              if (!this.emitLoadVariableFromName(emitter, variable.name))
-                return false;
+          // a = amount, c = concentration, C = compartment (in amount)
+          // c = a/C so dc/dt = (C * da/dt - a * dCA/dt) / C^2
+          // simplfies to dc/dt = da/dt / C - c * dCA/dt / C
+          // since we already have the left term, we just need to complete the right term
+          if (
+            compartment.value.kind === "rate" ||
+            compartment.value.kind === "reaction"
+          ) {
+            if (!this.emitLoadVariableFromName(emitter, variable.name))
+              return false;
 
-              this.#emitLoadRateUnsafe(emitter, compartment.name);
-              emitter.emitByte(OpCode.f64mul);
+            this.#emitLoadRateUnsafe(emitter, compartment.name);
+            emitter.emitByte(OpCode.f64mul);
 
-              this.#emitLoadVariableUnsafe(emitter, compartment.name);
-              emitter.emitByte(OpCode.f64div);
+            this.#emitLoadVariableUnsafe(emitter, compartment.name);
+            emitter.emitByte(OpCode.f64div);
 
-              emitter.emitByte(OpCode.f64sub);
-            }
+            emitter.emitByte(OpCode.f64sub);
           }
-
-          return true;
         }
+
+        return true;
       }
     }
   }
@@ -198,8 +201,12 @@ export class GlobalScope implements Scope {
     }
   }
 
-  emitCallOp(emitter: Emitter, name: string): void {
-    emitter.emitCallOp(this.functionTable.get(name));
+  emitUserCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.functionTable.getUser(name));
+  }
+
+  emitBuiltinCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.functionTable.getBuiltin(name));
   }
 
   emitConvertToConcentration(emitter: Emitter, compartment: string): void {
@@ -212,8 +219,8 @@ export class GlobalScope implements Scope {
     emitter.emitByte(OpCode.f64mul);
   }
 
-  getFunctionInfo(name: string): FunctionInfo | undefined {
-    return this.functionTable.getInfo(name);
+  getUserFunctionInfo(name: string): FunctionInfo | undefined {
+    return this.functionTable.getUserInfo(name);
   }
 }
 
@@ -235,15 +242,36 @@ export class FunctionScope implements Scope {
     }
   }
 
+  emitLoadBuiltin(
+    emitter: Emitter,
+    expr: IridiumExpressionBuiltinVariable,
+  ): void {
+    if (expr.name === TIME_NAME) {
+      throw new CompileError(
+        "time is not available inside a function scope.",
+        expr,
+      );
+    } else if (Object.hasOwn(builtinConstants, expr.name)) {
+      emitter.emitByte(OpCode.f64const);
+      emitter.emitFloat64(builtinConstants[expr.name].value);
+    } else {
+      throw new CompileError(`Unknown built-in: ${expr.name}`, expr.metadata);
+    }
+  }
+
   emitLoadRate(_emitter: Emitter, expr: IridiumExpressionRateOf): void {
     throw new CompileError("rateOf not allowed function body.", expr);
   }
 
-  emitCallOp(emitter: Emitter, name: string): void {
-    emitter.emitCallOp(this.#functionTable.get(name));
+  emitUserCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.#functionTable.getUser(name));
   }
 
-  getFunctionInfo(name: string): FunctionInfo | undefined {
-    return this.#functionTable.getInfo(name);
+  emitBuiltinCallOp(emitter: Emitter, name: string): void {
+    emitter.emitCallOp(this.#functionTable.getBuiltin(name));
+  }
+
+  getUserFunctionInfo(name: string): FunctionInfo | undefined {
+    return this.#functionTable.getUserInfo(name);
   }
 }
