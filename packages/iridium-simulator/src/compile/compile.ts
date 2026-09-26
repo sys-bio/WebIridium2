@@ -181,6 +181,14 @@ export const getReferencedFunctions = (
         predefinedFuncDefs[name].kind !== "inline"
       ) {
         referenced.add(name);
+      } else if (
+        name === "eq" ||
+        name === "lt" ||
+        name === "gt" ||
+        name === "le" ||
+        name === "ge"
+      ) {
+        referenced.add(AND_RESERVED_NAME);
       }
     },
     beforeBinary({ op }) {

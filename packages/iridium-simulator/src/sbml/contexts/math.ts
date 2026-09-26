@@ -154,11 +154,13 @@ export class SymbolContext extends Context {
 export class MathContext extends Context {
   #stack: IridiumExpression[];
   #applyCounts: number[];
+  #isForPiecewise: boolean;
 
-  constructor(builder: Builder) {
+  constructor(builder: Builder, isForPiecewise = false) {
     super(builder);
     this.#stack = [];
     this.#applyCounts = [];
+    this.#isForPiecewise = isForPiecewise;
   }
 
   onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
@@ -263,6 +265,9 @@ export class MathContext extends Context {
           );
         }
         this.#stack.push(expr.rateOf(args[0].name));
+
+        if (this.#isForPiecewise && this.#stack.length === 1) {
+        }
       } else {
         this.#stack.push(expr.call(func.name, args));
       }

@@ -164,8 +164,8 @@ export const builtinFunctions = {
   },
   neq: {
     description:
-      "Returns true if all arguments are different and false otherwise.",
-    arity: { min: 2 },
+      "Returns true if both arguments are different and false otherwise.",
+    arity: 2,
   },
   gt: {
     description:

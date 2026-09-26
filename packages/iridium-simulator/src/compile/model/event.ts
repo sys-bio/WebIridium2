@@ -299,7 +299,19 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
       } else if (name === "eq") {
         visitComparisonVariadicFunction("eq", expr.args, expr);
       } else if (name === "neq") {
-        visitComparisonVariadicFunction("neq", expr.args, expr);
+        if (expr.args.length !== 2) {
+          throw new CompileError("neq expects 2 arguments.", expr);
+        }
+
+        treeStack.push({
+          kind: "not",
+          child: conditions.length,
+        });
+        conditions.push({
+          op: "neq",
+          left: expr.args[0],
+          right: expr.args[1],
+        });
       } else if (name === "lt") {
         visitComparisonVariadicFunction("lt", expr.args, expr);
       } else if (name === "gt") {

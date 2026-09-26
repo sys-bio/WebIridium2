@@ -1,0 +1,15 @@
+## start=0 end=20 points=200 atol=1e-12 rtol=1e-6 selections=A,B,C,D,E,F,H,I,J,K,L,M
+
+A = eq(1, 2, 3, 4, 5)
+B = neq(1, 2)
+C = gt(1, 2, 3, 4, 5)
+D = lt(1, 2, 3, 4, 5)
+E = geq(1, 2, 3, 4, 5)
+F = leq(1, 2, 3, 4, 5)
+
+H = eq(5, 4, 3, 2, 1)
+I = neq(5, 4)
+J = gt(5, 4, 3, 2, 1)
+K = lt(5, 4, 3, 2, 1)
+L = geq(5, 4, 3, 2, 1)
+M = leq(5, 4, 3, 2, 1)

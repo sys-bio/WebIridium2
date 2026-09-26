@@ -153,6 +153,14 @@ const builtinFunctionDefinitions: {
         | (Extract<WasmFunction, { kind: "inline" }> & { name: Name })
     : never;
 } = {
+  neq: {
+    kind: "inline",
+    name: "neq",
+    emit: (emitter) => {
+      emitter.emitByte(OpCode.f64ne);
+      emitter.emitByte(OpCode.f64convert_u_i32);
+    },
+  },
   abs: {
     kind: "inline",
     name: "abs",

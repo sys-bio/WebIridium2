@@ -2,6 +2,7 @@ import {
   visitExpression,
   type IridiumBinaryOperator,
   type IridiumExpression,
+  type IridiumExpressionCall,
   type IridiumExpressionVisitor,
 } from "../ir/ast";
 import { OpCode, ValType } from "./codes";
@@ -44,7 +45,7 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
 };
 
 const flattenComparisonFunction = (
-  args: IridiumExpression[],
+  { args, metadata }: IridiumExpressionCall,
   op: IridiumBinaryOperator,
 ): IridiumExpression => {
   let current: IridiumExpression | undefined;
@@ -55,6 +56,7 @@ const flattenComparisonFunction = (
       op,
       left: last,
       right: args[i],
+      metadata,
     };
 
     if (current) {
@@ -63,6 +65,7 @@ const flattenComparisonFunction = (
         op: "and",
         left: current,
         right: main,
+        metadata,
       };
     } else {
       current = main;
@@ -384,17 +387,15 @@ export const emitExpression = (
           }
         }
       } else if (expr.name === "eq") {
-        visitExpression(flattenComparisonFunction(expr.args, "eq"), visitor);
-      } else if (expr.name === "neq") {
-        visitExpression(flattenComparisonFunction(expr.args, "neq"), visitor);
+        visitExpression(flattenComparisonFunction(expr, "eq"), visitor);
       } else if (expr.name === "lt") {
-        visitExpression(flattenComparisonFunction(expr.args, "lt"), visitor);
+        visitExpression(flattenComparisonFunction(expr, "lt"), visitor);
       } else if (expr.name === "gt") {
-        visitExpression(flattenComparisonFunction(expr.args, "gt"), visitor);
+        visitExpression(flattenComparisonFunction(expr, "gt"), visitor);
       } else if (expr.name === "leq") {
-        visitExpression(flattenComparisonFunction(expr.args, "le"), visitor);
+        visitExpression(flattenComparisonFunction(expr, "le"), visitor);
       } else if (expr.name === "geq") {
-        visitExpression(flattenComparisonFunction(expr.args, "ge"), visitor);
+        visitExpression(flattenComparisonFunction(expr, "ge"), visitor);
       } else {
         for (const arg of expr.args) {
           visitExpression(arg, visitor);
