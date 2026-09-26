@@ -30,7 +30,7 @@ const compileMathMl = (mathml: string): IridiumExpression | undefined => {
       }
     }
   }
-  const stateMachine = new ContextStateMachine(builder, new DefaultContext());
+  const stateMachine = new ContextStateMachine(new DefaultContext());
   const parser = new SaxParser(stateMachine.getParserOptions());
 
   parser.parse("<math>" + mathml + "</math>");

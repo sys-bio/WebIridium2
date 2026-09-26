@@ -7,104 +7,153 @@ import {
   MATHML_CONSTANT_TAGS,
   MATHML_FUNCTION_TAGS,
 } from "../mathmlData";
-import { Context, popContext, type ContextResult } from "./base";
+import { Context, popContext, pushContext, type ContextResult } from "./base";
 
 // TODO: implement <semantics>
 
 type NumberType = "real" | "e-notation" | "integer" | "rational";
 
-type NumberContext = {
-  kind: "number";
-  type: NumberType;
-  base: number;
-  first?: number;
-  second?: number;
-  hasSep: boolean;
-};
+class NumberContext extends Context {
+  #type: NumberType;
+  #base: number;
+  #first?: number;
+  #second?: number;
+  #hitSep?: boolean;
 
-const updateNumberContext = (context: NumberContext, text: string): void => {
-  switch (context.type) {
-    case "real": {
-      const got = Number(text);
-      if (Number.isNaN(got)) {
-        throw new SbmlCompileInternalError("Invalid number.");
+  constructor(builder: Builder, type: NumberType, base: number) {
+    super(builder);
+    this.#type = type;
+    this.#base = base;
+  }
+
+  onStartElement(
+    name: string,
+    _attrs: UnknownAttrs,
+  ): ContextResult | undefined {
+    if (name === "sep") {
+      if (this.#hitSep) {
+        throw new SbmlCompileInternalError("Found an extra <sep />.");
       }
-      context.first = got;
-      break;
+      this.#hitSep = true;
+    } else {
+      throw new SbmlCompileError("Unexpected element.");
     }
-    case "e-notation": {
-      if (context.hasSep) {
-        const got = parseInt(text);
-        if (Number.isNaN(got)) {
-          throw new SbmlCompileInternalError("Invalid integer.");
-        }
-        context.second = got;
-      } else {
+    return;
+  }
+
+  onText(text: string): ContextResult | undefined {
+    switch (this.#type) {
+      case "real": {
         const got = Number(text);
         if (Number.isNaN(got)) {
           throw new SbmlCompileInternalError("Invalid number.");
         }
-        context.first = got;
+        this.#first = got;
+        break;
       }
-      break;
-    }
-    case "integer": {
-      const got = parseInt(text, context.base);
-      if (Number.isNaN(got)) {
-        throw new SbmlCompileInternalError("Invalid integer.");
+      case "e-notation": {
+        if (this.#hitSep) {
+          const got = parseInt(text);
+          if (Number.isNaN(got)) {
+            throw new SbmlCompileInternalError("Invalid integer.");
+          }
+          this.#second = got;
+        } else {
+          const got = Number(text);
+          if (Number.isNaN(got)) {
+            throw new SbmlCompileInternalError("Invalid number.");
+          }
+          this.#first = got;
+        }
+        break;
       }
-      context.first = got;
-      break;
-    }
-    case "rational": {
-      const got = parseInt(text, context.base);
-      if (Number.isNaN(got)) {
-        throw new SbmlCompileInternalError("Invalid integer.");
+      case "integer": {
+        const got = parseInt(text, this.#base);
+        if (Number.isNaN(got)) {
+          throw new SbmlCompileInternalError("Invalid integer.");
+        }
+        this.#first = got;
+        break;
       }
+      case "rational": {
+        const got = parseInt(text, this.#base);
+        if (Number.isNaN(got)) {
+          throw new SbmlCompileInternalError("Invalid integer.");
+        }
 
-      if (context.hasSep) {
-        context.second = got;
-      } else {
-        context.first = got;
+        if (this.#hitSep) {
+          this.#second = got;
+        } else {
+          this.#first = got;
+        }
+        break;
       }
-      break;
+    }
+    return;
+  }
+
+  onEndElement(name: string): ContextResult | undefined {
+    if (name !== "cn") return;
+    switch (this.#type) {
+      case "real":
+        if (this.#first === undefined)
+          throw new SbmlCompileInternalError("Missing number.");
+        return popContext(expr.num(this.#first));
+      case "e-notation":
+        if (this.#first === undefined)
+          throw new SbmlCompileInternalError("Missing mantissa.");
+        if (this.#second === undefined)
+          throw new SbmlCompileInternalError("Missing exponent.");
+        return popContext(expr.num(this.#first * this.#base ** this.#second));
+      case "integer":
+        if (this.#first === undefined)
+          throw new SbmlCompileInternalError("Missing integer.");
+        return popContext(expr.num(this.#first));
+      case "rational":
+        if (this.#first === undefined)
+          throw new SbmlCompileInternalError("Missing numerator.");
+        if (this.#second === undefined)
+          throw new SbmlCompileInternalError("Missing denominator.");
+        return popContext(expr.num(this.#first / this.#second));
     }
   }
-};
+}
 
-const getNumberFromContext = (context: NumberContext): number => {
-  switch (context.type) {
-    case "real":
-      if (context.first === undefined)
-        throw new SbmlCompileInternalError("Missing number.");
-      return context.first;
-    case "e-notation":
-      if (context.first === undefined)
-        throw new SbmlCompileInternalError("Missing mantissa.");
-      if (context.second === undefined)
-        throw new SbmlCompileInternalError("Missing exponent.");
-      return context.first * context.base ** context.second;
-    case "integer":
-      if (context.first === undefined)
-        throw new SbmlCompileInternalError("Missing integer.");
-      return context.first;
-    case "rational":
-      if (context.first === undefined)
-        throw new SbmlCompileInternalError("Missing numerator.");
-      if (context.second === undefined)
-        throw new SbmlCompileInternalError("Missing denominator.");
-      return context.first / context.second;
+export class IdentifierContext extends Context {
+  #text?: string;
+  constructor(builder: Builder) {
+    super(builder);
   }
-};
+  onText(name: string): ContextResult | undefined {
+    this.#text = name.trim();
+    return;
+  }
+  onEndElement(name: string): ContextResult | undefined {
+    if (name !== "ci")
+      throw new SbmlCompileInternalError("Unexpected element.");
+    if (this.#text === undefined)
+      throw new SbmlCompileInternalError("Missing text.");
+    return popContext(expr.var(this.#text));
+  }
+}
+
+export class SymbolContext extends Context {
+  #url: string;
+  constructor(builder: Builder, url: string) {
+    super(builder);
+    this.#url = url;
+  }
+  onEndElement(name: string): ContextResult | undefined {
+    if (name !== "csymbol") return;
+    const expr = CSYMBOL_DEFINITION_URLS.get(this.#url);
+    if (!expr) throw new SbmlCompileInternalError("Unknown definitionURL");
+    return popContext({ ...expr });
+  }
+}
 
 export class MathContext extends Context {
   #stack: IridiumExpression[];
   #applyCounts: number[];
-  #inside:
-    | { kind: "identifier"; text?: string }
-    | NumberContext
-    | { kind: "symbol"; url: string }
-    | undefined;
 
   constructor(builder: Builder) {
     super(builder);
@@ -120,7 +169,7 @@ export class MathContext extends Context {
     if (name === "apply") {
       this.#applyCounts.push(0);
     } else if (name === "ci") {
-      this.#inside = { kind: "identifier" };
+      return pushContext(new IdentifierContext(this.builder));
     } else if (name === "cn") {
       let type: NumberType = "real";
       if ("type" in attrs) {
@@ -149,16 +198,14 @@ export class MathContext extends Context {
           );
       }
 
-      this.#inside = { kind: "number", type, base, hasSep: false };
-    } else if (name === "sep") {
-      if (this.#inside?.kind === "number") {
-        this.#inside.hasSep = true;
-      }
+      return pushContext(new NumberContext(this.builder, type, base));
     } else if (name === "csymbol") {
-      this.#inside = {
-        kind: "symbol",
-        url: this.builder.getString(attrs, "definitionURL"),
-      };
+      return pushContext(
+        new SymbolContext(
+          this.builder,
+          this.builder.getString(attrs, "definitionURL"),
+        ),
+      );
     } else if (
       MATHML_CONSTANT_TAGS.has(name) ||
       MATHML_FUNCTION_TAGS.has(name)
@@ -171,16 +218,10 @@ export class MathContext extends Context {
     return;
   }
 
-  onText(text: string): ContextResult | undefined {
-    switch (this.#inside?.kind) {
-      case "identifier":
-        this.#inside.text = text.trim();
-        break;
-      case "number":
-        updateNumberContext(this.#inside, text);
-        break;
+  onPop(_context: Context, result?: unknown): void {
+    if (result) {
+      this.#stack.push(result as IridiumExpression);
     }
-    return;
   }
 
   onEndElement(name: string): ContextResult | undefined {
@@ -224,24 +265,6 @@ export class MathContext extends Context {
         this.#stack.push(expr.rateOf(args[0].name));
       } else {
         this.#stack.push(expr.call(func.name, args));
-      }
-    } else if (name === "ci") {
-      if (
-        this.#inside?.kind === "identifier" &&
-        this.#inside.text !== undefined
-      ) {
-        this.#stack.push(expr.var(this.#inside.text));
-      }
-    } else if (name === "cn") {
-      if (this.#inside?.kind === "number") {
-        this.#stack.push(expr.num(getNumberFromContext(this.#inside)));
-      }
-    } else if (name === "csymbol") {
-      if (this.#inside?.kind === "symbol") {
-        const expr = CSYMBOL_DEFINITION_URLS.get(this.#inside.url);
-        if (expr) {
-          this.#stack.push({ ...expr });
-        }
       }
     } else if (
       MATHML_CONSTANT_TAGS.has(name) ||

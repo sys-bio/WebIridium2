@@ -7,11 +7,9 @@ import type { IridiumModel } from "../ir/model";
 
 export class ContextStateMachine {
   #contexts: Context[] = [];
-  #builder: Builder;
 
-  constructor(builder: Builder, defaultContext: Context) {
+  constructor(defaultContext: Context) {
     this.#contexts = [defaultContext];
-    this.#builder = builder;
   }
 
   applyResult(result: ContextResult | undefined): void {
@@ -45,7 +43,7 @@ export class ContextStateMachine {
       onStartElement(name, attrs) {
         try {
           const current = contexts[contexts.length - 1];
-          applyResult(current.onStartElement(name, attrs as UnknownAttrs));
+          applyResult(current.onStartElement?.(name, attrs as UnknownAttrs));
         } catch (err) {
           if (err instanceof SbmlCompileInternalError) {
             throw new SbmlCompileError(
@@ -111,10 +109,7 @@ class DefaultSbmlContext extends Context {
 
 export const compileSbml = (sbmlText: string): IridiumModel => {
   const builder = new Builder();
-  const stateMachine = new ContextStateMachine(
-    builder,
-    new DefaultSbmlContext(builder),
-  );
+  const stateMachine = new ContextStateMachine(new DefaultSbmlContext(builder));
 
   const parser = new SaxParser(stateMachine.getParserOptions());
 

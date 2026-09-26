@@ -19,11 +19,8 @@ export abstract class Context {
     this.builder = builder;
   }
 
-  abstract onStartElement(
-    name: string,
-    attrs: UnknownAttrs,
-  ): ContextResult | undefined;
-  onText?(name: string): ContextResult | undefined;
+  onStartElement?(name: string, attrs: UnknownAttrs): ContextResult | undefined;
+  onText?(text: string): ContextResult | undefined;
   onEndElement?(name: string): ContextResult | undefined;
 
   onPop?(context: Context, result?: unknown): void;
