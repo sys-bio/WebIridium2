@@ -189,6 +189,10 @@ export const getReferencedFunctions = (
         name === "ge"
       ) {
         referenced.add(AND_RESERVED_NAME);
+      } else if (name === "log") {
+        referenced.add("ln");
+      } else if (name === "root") {
+        referenced.add(POW_RESERVED_NAME);
       }
     },
     beforeBinary({ op }) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { IridiumExpression } from "../../ir/ast";
+import { type IridiumExpression } from "../../ir/ast";
 import { Builder, type UnknownAttrs } from "../builder";
 import SaxParser from "@nodable/sax";
 import { ContextStateMachine } from "../compile";
@@ -123,6 +123,125 @@ describe("apply", () => {
     expectExpression(
       "<apply><times /> <cn> 5 </cn> <cn> 10 </cn> <cn> 30 </cn></apply>",
       expr.call("times", [expr.num(5), expr.num(10), expr.num(30)]),
+    );
+  });
+});
+
+describe("piecewise", () => {
+  it("should parse piecewise", () => {
+    expectExpression(
+      `<piecewise>
+        <piece>
+         <cn> 0 </cn>
+         <apply><lt/><ci> x </ci> <cn> 0 </cn></apply>
+        </piece>
+        <otherwise>
+         <ci> x </ci>
+        </otherwise>
+       </piecewise>`,
+      expr.call("piecewise", [
+        expr.num(0),
+        expr.call("lt", [expr.var("x"), expr.num(0)]),
+        expr.var("x"),
+      ]),
+    );
+
+    expectExpression(
+      `<piecewise>
+        <piece>
+            <apply><minus/><ci> x </ci></apply>
+            <apply><lt/><ci> x </ci> <cn> 0 </cn></apply>
+        </piece>
+        <piece>
+            <cn> 0 </cn>
+            <apply><eq/><ci> x </ci> <cn> 0 </cn></apply>
+        </piece>
+        <piece>
+            <ci> x </ci>
+            <apply><gt/><ci> x </ci> <cn> 0 </cn></apply>
+        </piece>
+      </piecewise>`,
+      expr.call("piecewise", [
+        expr.call("minus", [expr.var("x")]),
+        expr.call("lt", [expr.var("x"), expr.num(0)]),
+        expr.num(0),
+        expr.call("eq", [expr.var("x"), expr.num(0)]),
+        expr.var("x"),
+        expr.call("gt", [expr.var("x"), expr.num(0)]),
+      ]),
+    );
+  });
+
+  it.only("should parse nested piecewise", () => {
+    expectExpression(
+      `<piecewise>
+        <piece>
+          <apply><minus/><ci>x</ci></apply>
+          <apply><lt/><ci>x</ci><cn>0</cn></apply>
+        </piece>
+        <otherwise>
+          <piecewise>
+            <piece>
+              <cn>0</cn>
+              <apply><eq/><ci>x</ci><cn>0</cn></apply>
+            </piece>
+            <piece>
+              <ci>x</ci>
+              <apply><gt/><ci>x</ci><cn>0</cn></apply>
+            </piece>
+          </piecewise>
+        </otherwise>
+      </piecewise>`,
+      expr.call("piecewise", [
+        expr.call("minus", [expr.var("x")]),
+        expr.call("lt", [expr.var("x"), expr.num(0)]),
+
+        expr.call("piecewise", [
+          expr.num(0),
+          expr.call("eq", [expr.var("x"), expr.num(0)]),
+
+          expr.var("x"),
+          expr.call("gt", [expr.var("x"), expr.num(0)]),
+        ]),
+      ]),
+    );
+  });
+});
+
+describe("log", () => {
+  it("should error with bad logbase", () => {
+    expect(() => {
+      compileMathMl("<logbase> <cn> 5 </cn> </logbase>");
+    }).toThrowError(SbmlCompileError);
+
+    expect(() => {
+      compileMathMl("<log/> <logbase> <cn> 5 </cn> </logbase>");
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should compile log", () => {
+    expectExpression(
+      "<apply><log/><logbase><cn>5</cn></logbase><cn>10</cn></apply>",
+      expr.call("log", [expr.num(5), expr.num(10)]),
+    );
+  });
+});
+
+describe("root", () => {
+  it("should error with bad degree", () => {
+    expect(() => {
+      compileMathMl("<degree><cn>2</cn></degree>");
+    }).toThrowError(SbmlCompileError);
+
+    expect(() => {
+      compileMathMl("<root/><degree><cn>2</cn></degree>");
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should compile root with degree", () => {
+    expectExpression(
+      "<apply><root/><degree><cn>3</cn></degree><cn>8</cn></apply>",
+      expr.call("root", [expr.num(3), expr.num(8)]),
     );
   });
 });

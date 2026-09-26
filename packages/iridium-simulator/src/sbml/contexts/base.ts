@@ -1,15 +1,21 @@
 import type { Builder, UnknownAttrs } from "../builder";
 
 export type ContextResult =
-  | { kind: "push"; context: Context }
-  | { kind: "pop"; value?: unknown };
+  | { kind: "push"; context: Context; shouldRepeatLastEvent: boolean }
+  | { kind: "pop"; value?: unknown; shouldRepeatLastEvent: boolean };
 
-export const pushContext = (context: Context): ContextResult => {
-  return { kind: "push", context };
+export const pushContext = (
+  context: Context,
+  shouldRepeatLastEvent = false,
+): ContextResult => {
+  return { kind: "push", context, shouldRepeatLastEvent };
 };
 
-export const popContext = (value?: unknown): ContextResult => {
-  return { kind: "pop", value };
+export const popContext = (
+  value?: unknown,
+  shouldRepeatLastEvent = false,
+): ContextResult => {
+  return { kind: "pop", value, shouldRepeatLastEvent };
 };
 
 export abstract class Context {

@@ -84,7 +84,6 @@ export class ReactionContext extends Context {
   }
 
   onPop(context: Context, result?: unknown): void {
-    console.log(result);
     if (this.#inside === "kineticLaw" && context instanceof MathContext) {
       this.#kineticLaw = result as IridiumExpression;
     }

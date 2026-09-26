@@ -98,28 +98,31 @@ class NumberContext extends Context {
       case "real":
         if (this.#first === undefined)
           throw new SbmlCompileInternalError("Missing number.");
-        return popContext(expr.num(this.#first));
+        return popContext(expr.num(this.#first), true);
       case "e-notation":
         if (this.#first === undefined)
           throw new SbmlCompileInternalError("Missing mantissa.");
         if (this.#second === undefined)
           throw new SbmlCompileInternalError("Missing exponent.");
-        return popContext(expr.num(this.#first * this.#base ** this.#second));
+        return popContext(
+          expr.num(this.#first * this.#base ** this.#second),
+          true,
+        );
       case "integer":
         if (this.#first === undefined)
           throw new SbmlCompileInternalError("Missing integer.");
-        return popContext(expr.num(this.#first));
+        return popContext(expr.num(this.#first), true);
       case "rational":
         if (this.#first === undefined)
           throw new SbmlCompileInternalError("Missing numerator.");
         if (this.#second === undefined)
           throw new SbmlCompileInternalError("Missing denominator.");
-        return popContext(expr.num(this.#first / this.#second));
+        return popContext(expr.num(this.#first / this.#second), true);
     }
   }
 }
 
-export class IdentifierContext extends Context {
+class IdentifierContext extends Context {
   #text?: string;
   constructor(builder: Builder) {
     super(builder);
@@ -133,11 +136,11 @@ export class IdentifierContext extends Context {
       throw new SbmlCompileInternalError("Unexpected element.");
     if (this.#text === undefined)
       throw new SbmlCompileInternalError("Missing text.");
-    return popContext(expr.var(this.#text));
+    return popContext(expr.var(this.#text), true);
   }
 }
 
-export class SymbolContext extends Context {
+class SymbolContext extends Context {
   #url: string;
   constructor(builder: Builder, url: string) {
     super(builder);
@@ -147,20 +150,105 @@ export class SymbolContext extends Context {
     if (name !== "csymbol") return;
     const expr = CSYMBOL_DEFINITION_URLS.get(this.#url);
     if (!expr) throw new SbmlCompileInternalError("Unknown definitionURL");
-    return popContext({ ...expr });
+    return popContext({ ...expr }, true);
+  }
+}
+
+type Piece = {
+  value: IridiumExpression;
+  condition: IridiumExpression;
+};
+
+export class PiecewiseContext extends Context {
+  #pieces: Piece[];
+  #otherwise?: IridiumExpression;
+  #currentPiece?: Partial<Piece> & {
+    isOtherwise: boolean;
+  };
+
+  constructor(builder: Builder) {
+    super(builder);
+    this.#pieces = [];
+  }
+
+  onStartElement(
+    name: string,
+    _attrs: UnknownAttrs,
+  ): ContextResult | undefined {
+    if (this.#currentPiece) {
+      return pushContext(new MathContext(this.builder, name), true);
+    }
+
+    if (name === "piece" || this.#currentPiece) {
+      this.#currentPiece = { isOtherwise: false };
+    } else if (name === "otherwise") {
+      if (this.#otherwise) {
+        throw new SbmlCompileInternalError("Got multiple <otherwise>.");
+      }
+
+      this.#currentPiece = { isOtherwise: true };
+    }
+  }
+
+  onPop(_context: Context, result?: unknown): void {
+    if (this.#currentPiece) {
+      if (!this.#currentPiece.value) {
+        this.#currentPiece.value = result as IridiumExpression;
+      } else if (!this.#currentPiece.isOtherwise) {
+        this.#currentPiece.condition = result as IridiumExpression;
+      } else {
+        throw new SbmlCompileError("Bad result.");
+      }
+    }
+  }
+
+  onEndElement(name: string): ContextResult | undefined {
+    if (name === "piece") {
+      if (
+        this.#currentPiece?.value &&
+        this.#currentPiece?.condition &&
+        !this.#currentPiece.isOtherwise
+      ) {
+        this.#pieces.push(this.#currentPiece as Piece);
+      } else {
+        throw new SbmlCompileInternalError("Bad <piece>.");
+      }
+      this.#currentPiece = undefined;
+    } else if (name === "otherwise") {
+      if (this.#currentPiece?.value && this.#currentPiece.isOtherwise) {
+        this.#otherwise = this.#currentPiece.value;
+      } else {
+        throw new SbmlCompileInternalError("Bad <otherwise>.");
+      }
+    } else if (name === "piecewise") {
+      const args = [];
+
+      for (const piece of this.#pieces) {
+        args.push(piece.value);
+        args.push(piece.condition);
+      }
+
+      if (this.#otherwise) {
+        args.push(this.#otherwise);
+      }
+
+      return popContext(expr.call("piecewise", args), true);
+    }
+
+    return;
   }
 }
 
 export class MathContext extends Context {
   #stack: IridiumExpression[];
   #applyCounts: number[];
-  #isForPiecewise: boolean;
+  #stopOn: string;
 
-  constructor(builder: Builder, isForPiecewise = false) {
+  constructor(builder: Builder, stopOn: string = "math") {
     super(builder);
     this.#stack = [];
     this.#applyCounts = [];
-    this.#isForPiecewise = isForPiecewise;
+    this.#stopOn = stopOn;
   }
 
   onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
@@ -208,6 +296,32 @@ export class MathContext extends Context {
           this.builder.getString(attrs, "definitionURL"),
         ),
       );
+    } else if (name === "piecewise") {
+      return pushContext(new PiecewiseContext(this.builder));
+    } else if (name === "logbase") {
+      const last = this.#stack[this.#stack.length - 1];
+      if (
+        last?.kind !== "variable" ||
+        last.name !== "log" ||
+        this.#applyCounts[this.#applyCounts.length - 1] !== 2
+      ) {
+        throw new SbmlCompileInternalError(
+          "<logbase> must be the second argument of a <log> application.",
+        );
+      }
+      return pushContext(new MathContext(this.builder, "logbase"), true);
+    } else if (name === "degree") {
+      const last = this.#stack[this.#stack.length - 1];
+      if (
+        last?.kind !== "variable" ||
+        last.name !== "root" ||
+        this.#applyCounts[this.#applyCounts.length - 1] !== 2
+      ) {
+        throw new SbmlCompileInternalError(
+          "<degree> must be the second argument of a <log> application.",
+        );
+      }
+      return pushContext(new MathContext(this.builder, "degree"), true);
     } else if (
       MATHML_CONSTANT_TAGS.has(name) ||
       MATHML_FUNCTION_TAGS.has(name)
@@ -227,9 +341,7 @@ export class MathContext extends Context {
   }
 
   onEndElement(name: string): ContextResult | undefined {
-    if (name === "math") {
-      return popContext(this.#stack.pop());
-    } else if (name === "apply") {
+    if (name === "apply") {
       const children = [];
       const count = this.#applyCounts.pop();
       if (count === undefined)
@@ -265,9 +377,6 @@ export class MathContext extends Context {
           );
         }
         this.#stack.push(expr.rateOf(args[0].name));
-
-        if (this.#isForPiecewise && this.#stack.length === 1) {
-        }
       } else {
         this.#stack.push(expr.call(func.name, args));
       }
@@ -276,6 +385,16 @@ export class MathContext extends Context {
       MATHML_FUNCTION_TAGS.has(name)
     ) {
       this.#stack.push(expr.var(name));
+    }
+
+    if (name === this.#stopOn) {
+      if (name === "apply" && this.#stack.length !== 1) {
+        return;
+      } else if (name !== "apply" && this.#stack.length !== 1) {
+        throw new SbmlCompileInternalError("Ill-formed math.");
+      }
+
+      return popContext(this.#stack[0]);
     }
   }
 }

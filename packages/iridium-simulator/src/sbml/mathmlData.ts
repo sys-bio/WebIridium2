@@ -1,8 +1,6 @@
 import type { IridiumExpression } from "../ir/ast";
 import { expr } from "../ir/dsl";
 
-// TODO: implement ROOT and LOG
-
 export const CSYMBOL_DEFINITION_URLS = new Map<string, IridiumExpression>([
   ["http://www.sbml.org/sbml/symbols/time", expr.var("time")],
   ["http://www.sbml.org/sbml/symbols/delay", expr.var("delay")],
@@ -38,6 +36,8 @@ export const MATHML_FUNCTION_TAGS = new Map<string, IridiumExpression>([
 
   ["exp", expr.var("exp")],
   ["ln", expr.var("ln")],
+  ["log", expr.var("log")],
+  ["root", expr.var("root")],
 
   ["sin", expr.var("sin")],
   ["cos", expr.var("cos")],

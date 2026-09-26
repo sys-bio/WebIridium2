@@ -87,9 +87,19 @@ export const builtinFunctions = {
     description: "The natural logarithm.",
     arity: 1,
   },
+  log: {
+    description:
+      "Returns the log of the second argument with the base of the first argument. If only one argument is provided, a default base of 10 is used.",
+    arity: { min: 1, max: 2 },
+  },
   log10: {
     description: "The logarithm function with base 10",
     arity: 1,
+  },
+  root: {
+    description:
+      "Returns the root of the second argument where the first argument is the degree. If only one argument is provided, a default degree of 2 is used.",
+    arity: { min: 1, max: 2 },
   },
   max: {
     description: "Returns the argument with the maximum value.",

@@ -70,6 +70,8 @@ const flattenComparisonFunction = (
     } else {
       current = main;
     }
+
+    last = args[i];
   }
 
   return current!;
@@ -396,6 +398,32 @@ export const emitExpression = (
         visitExpression(flattenComparisonFunction(expr, "le"), visitor);
       } else if (expr.name === "geq") {
         visitExpression(flattenComparisonFunction(expr, "ge"), visitor);
+      } else if (expr.name === "log") {
+        if (expr.args.length === 1) {
+          visitExpression(expr.args[0], visitor);
+          scope.emitCallOp(emitter, "ln");
+          emitter.emitF64ConstOp(Math.log(10));
+        } else {
+          visitExpression(expr.args[1], visitor);
+          scope.emitCallOp(emitter, "ln");
+          visitExpression(expr.args[0], visitor);
+          scope.emitCallOp(emitter, "ln");
+        }
+        emitter.emitByte(OpCode.f64div);
+      } else if (expr.name === "root") {
+        if (expr.args.length === 1) {
+          visitExpression(expr.args[0], visitor);
+        } else {
+          visitExpression(expr.args[1], visitor);
+        }
+        emitter.emitF64ConstOp(1);
+        if (expr.args.length === 1) {
+          emitter.emitF64ConstOp(2);
+        } else {
+          visitExpression(expr.args[0], visitor);
+        }
+        emitter.emitByte(OpCode.f64div);
+        scope.emitCallOp(emitter, POW_RESERVED_NAME);
       } else {
         for (const arg of expr.args) {
           visitExpression(arg, visitor);

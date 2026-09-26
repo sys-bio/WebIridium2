@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 base_dir = Path(__file__).parent
-expected_dir = (base_dir / "../src/__tests__/results").resolve()
-expected_dir2 = (base_dir / "../src/__tests__/sbmlTestSuite").resolve()
+expected_dir = (base_dir / "../src/antimony/__tests__/results").resolve()
+expected_dir2 = (base_dir / "../src/antimony/__tests__/sbmlTestSuite").resolve()
 our_dir = (base_dir / "../simResults").resolve()
 
 
