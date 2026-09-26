@@ -8,8 +8,7 @@ import {
   MATHML_FUNCTION_TAGS,
 } from "../mathmlData";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
-
-// TODO: implement <semantics>
+import { SemanticsContext } from "./semantics";
 
 type NumberType = "real" | "e-notation" | "integer" | "rational";
 
@@ -309,7 +308,7 @@ export class MathContext extends Context {
           "<logbase> must be the second argument of a <log> application.",
         );
       }
-      return pushContext(new MathContext(this.builder, "logbase"), true);
+      return pushContext(new MathContext(this.builder, "logbase"), false);
     } else if (name === "degree") {
       const last = this.#stack[this.#stack.length - 1];
       if (
@@ -318,10 +317,12 @@ export class MathContext extends Context {
         this.#applyCounts[this.#applyCounts.length - 1] !== 2
       ) {
         throw new SbmlCompileInternalError(
-          "<degree> must be the second argument of a <log> application.",
+          "<degree> must be the second argument of a <root> application.",
         );
       }
-      return pushContext(new MathContext(this.builder, "degree"), true);
+      return pushContext(new MathContext(this.builder, "degree"), false);
+    } else if (name === "semantics") {
+      return pushContext(new SemanticsContext(this.builder));
     } else if (
       MATHML_CONSTANT_TAGS.has(name) ||
       MATHML_FUNCTION_TAGS.has(name)

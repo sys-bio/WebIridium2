@@ -172,7 +172,7 @@ describe("piecewise", () => {
     );
   });
 
-  it.only("should parse nested piecewise", () => {
+  it("should parse nested piecewise", () => {
     expectExpression(
       `<piecewise>
         <piece>
@@ -242,6 +242,59 @@ describe("root", () => {
     expectExpression(
       "<apply><root/><degree><cn>3</cn></degree><cn>8</cn></apply>",
       expr.call("root", [expr.num(3), expr.num(8)]),
+    );
+  });
+});
+
+describe("semantics", () => {
+  it("should error when there is no child", () => {
+    expect(() => {
+      compileMathMl("<semantics></semantics>");
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when the first child is not a math one", () => {
+    expect(() => {
+      compileMathMl("<semantics><annotation>hey</annotation></semantics>");
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error with unknown element", () => {
+    expect(() => {
+      compileMathMl("<semantics><cn> 5 </cn><unknown>hey</unknown></semantics>");
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should have the value of its first child", () => {
+    expectExpression(
+      "<semantics><cn>3</cn><annotation>idk</annotation></semantics>",
+      expr.num(3),
+    );
+  });
+
+  it("should support nested annotation-xml", () => {
+    expectExpression(
+      `
+<semantics>
+  <cn> 3 </cn>
+  <annotation-xml>
+    <semantics>
+      <cn> 3 </cn>
+      <annotation-xml>
+        <semantics>
+          <cn> 3 </cn>
+          <annotation-xml>
+            <semantics>
+              <cn> 3 </cn>
+              <annotation-xml>idk</annotation-xml>
+            </semantics>
+          </annotation-xml>
+        </semantics>
+      </annotation-xml>
+    </semantics>
+  </annotation-xml>
+</semantics>`,
+      expr.num(3),
     );
   });
 });
