@@ -60,6 +60,9 @@ const toComparableModel = (model: IridiumModel): Record<string, unknown> => {
   deleteMetadataFromArray(model.events);
   deleteMetadataFromArray(model.compartments);
   deleteMetadataFromArray(model.functions);
+  if (model.conversionFactor) {
+    deleteMetadata(model.conversionFactor);
+  }
 
   return {
     variables: Object.fromEntries(model.variables.map((v) => [v.name, v])),
@@ -67,6 +70,7 @@ const toComparableModel = (model: IridiumModel): Record<string, unknown> => {
     events: Object.fromEntries(model.events.map((v) => [v.name, v])),
     compartments: model.compartments,
     functions: model.functions,
+    conversionFactor: model.conversionFactor,
   };
 };
 

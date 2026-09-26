@@ -172,6 +172,10 @@ const copyAntimonyObject = (
         ];
       }
 
+      if (copy.conversionFactor && typeof copy.conversionFactor !== "number") {
+        copy.conversionFactor = [referencePrefix, ...copy.conversionFactor];
+      }
+
       return copy;
     }
     case "variable": {

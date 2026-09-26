@@ -42,7 +42,7 @@ export type FunctionInfo = {
   arity: Arity;
 };
 
-export type Arity = number | { min: number };
+export type Arity = number | { min: number; max?: number };
 
 export const PIECEWISE_NAME = "piecewise";
 export const AND_RESERVED_NAME = "$reserved_and";
@@ -307,6 +307,11 @@ const builtinFunctionDefinitions: {
 
       return emitter.getOutput();
     },
+  },
+  divide: {
+    kind: "inline",
+    name: "divide",
+    emit: (emitter) => emitter.emitByte(OpCode.f64div),
   },
   sqrt: {
     kind: "inline",

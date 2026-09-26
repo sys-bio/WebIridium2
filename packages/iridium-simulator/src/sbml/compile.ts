@@ -1,77 +1,122 @@
 import { SaxParser } from "@nodable/sax";
-import type { Context, ContextResult } from "./contexts/base";
+import { Context, pushContext, type ContextResult } from "./contexts/base";
 import { SbmlCompileError, SbmlCompileInternalError } from "./errors";
 import { Builder, type UnknownAttrs } from "./builder";
 import { SbmlContext } from "./contexts/sbml";
 import type { IridiumModel } from "../ir/model";
 
-export const compileSbml = (sbmlText: string): IridiumModel => {
-  const contexts: Context[] = [];
-  const builder = new Builder();
+export class ContextStateMachine {
+  #contexts: Context[] = [];
+  #builder: Builder;
 
-  const applyResult = (result: ContextResult | undefined): void => {
+  constructor(builder: Builder, defaultContext: Context) {
+    this.#contexts = [defaultContext];
+    this.#builder = builder;
+  }
+
+  applyResult(result: ContextResult | undefined): void {
     if (result?.kind === "push") {
-      contexts.push(result.context);
+      this.#contexts.push(result.context);
     } else if (result?.kind === "pop") {
-      const last = contexts.pop();
+      const last = this.#contexts.pop();
 
-      const current = contexts[contexts.length - 1];
+      const current = this.#contexts[this.#contexts.length - 1];
+      if (!current) {
+        throw new SbmlCompileInternalError("Invalid state: no more contexts.");
+      }
+
       if (current && last) {
         current.onPop?.(last, result.value);
       }
     }
-  };
+  }
 
-  const parser = new SaxParser({
-    fxpOptions: {
-      skip: {
-        attributes: false,
+  getParserOptions() {
+    const contexts = this.#contexts;
+    const applyResult = this.applyResult.bind(this);
+
+    return {
+      fxpOptions: {
+        skip: {
+          attributes: false,
+        },
       },
-    },
-    onStartElement(name, attrs) {
-      try {
-        if (contexts.length > 0) {
+
+      onStartElement(name, attrs) {
+        try {
           const current = contexts[contexts.length - 1];
           applyResult(current.onStartElement(name, attrs as UnknownAttrs));
-        } else {
-          if (name === "sbml") {
-            if (attrs.level === "3" && attrs.version === "2") {
-              applyResult({ kind: "push", context: new SbmlContext(builder) });
-            } else {
-              throw new SbmlCompileInternalError(
-                `Not supported. Level: ${attrs.level as string}. Version: ${attrs.version as string}.`,
-              );
-            }
+        } catch (err) {
+          if (err instanceof SbmlCompileInternalError) {
+            throw new SbmlCompileError(
+              // eslint-disable-next-line
+              `at ${this.matcher!.toString()}: ${err.message}`,
+            );
           }
-        }
-      } catch (err) {
-        if (err instanceof SbmlCompileInternalError) {
-          throw new SbmlCompileError(
-            // eslint-disable-next-line
-            `at ${this.matcher!.toString()}: ${err.message}`,
-          );
-        }
 
-        throw err;
-      }
-    },
-    onText(text) {
-      if (contexts.length > 0) {
-        const current = contexts[contexts.length - 1];
-        if (current.onText) {
-          applyResult(current.onText(text));
+          throw err;
         }
-      }
-    },
-    onEndElement(name, _closeMeta) {
-      if (contexts.length > 0) {
-        const current = contexts[contexts.length - 1];
-        if (current.onEndElement) {
-          applyResult(current.onEndElement(name));
+      },
+      onText(text) {
+        try {
+          const current = contexts[contexts.length - 1];
+          applyResult(current.onText?.(text));
+        } catch (err) {
+          if (err instanceof SbmlCompileInternalError) {
+            throw new SbmlCompileError(
+              // eslint-disable-next-line
+              `at ${this.matcher!.toString()}: ${err.message}`,
+            );
+          }
+
+          throw err;
         }
+      },
+      onEndElement(name, _closeMeta) {
+        try {
+          const current = contexts[contexts.length - 1];
+          applyResult(current.onEndElement?.(name));
+        } catch (err) {
+          if (err instanceof SbmlCompileInternalError) {
+            throw new SbmlCompileError(
+              // eslint-disable-next-line
+              `at ${this.matcher!.toString()}: ${err.message}`,
+            );
+          }
+
+          throw err;
+        }
+      },
+    } as ConstructorParameters<typeof SaxParser>[0];
+  }
+}
+
+class DefaultSbmlContext extends Context {
+  constructor(builder: Builder) {
+    super(builder);
+  }
+
+  onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
+    if (name === "sbml") {
+      if (attrs.level === "3" && attrs.version === "2") {
+        return pushContext(new SbmlContext(this.builder));
+      } else {
+        throw new SbmlCompileInternalError(
+          `Not supported. Level: ${attrs.level as string}. Version: ${attrs.version as string}.`,
+        );
       }
-    },
-  });
+    }
+  }
+}
+
+export const compileSbml = (sbmlText: string): IridiumModel => {
+  const builder = new Builder();
+  const stateMachine = new ContextStateMachine(
+    builder,
+    new DefaultSbmlContext(builder),
+  );
+
+  const parser = new SaxParser(stateMachine.getParserOptions());
 
   parser.parse(sbmlText);
 

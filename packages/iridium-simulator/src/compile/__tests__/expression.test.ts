@@ -97,6 +97,12 @@ describe("binary", () => {
       compileExpression(expr.call("min", []));
     }).toThrowError(CompileError);
 
+    expect(() => {
+      compileExpression(
+        expr.call("minus", [expr.num(1), expr.num(1), expr.num(1)]),
+      );
+    }).toThrowError(CompileError);
+
     await expect(
       compile(
         model({

@@ -80,15 +80,7 @@ const SET_ASSIGNMENTS_PARAMS = [
 ];
 const SET_ASSIGNMENTS_RESULTS: ValType[] = [];
 
-type ComparisonOperator =
-  | "and"
-  | "or"
-  | "lt"
-  | "le"
-  | "gt"
-  | "ge"
-  | "eq"
-  | "neq";
+type ComparisonOperator = "lt" | "le" | "gt" | "ge" | "eq" | "neq";
 
 /**
  * Simple conditions express your normal comparison expressions.
@@ -269,11 +261,11 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
     visitCall(expr) {
       const { name, args } = expr;
       if (name === "and") {
-        visitVariadicFunction(true, "and", args);
+        visitLogicalVariadicFunction(true, "and", args);
       } else if (name === "or") {
-        visitVariadicFunction(false, "or", args);
+        visitLogicalVariadicFunction(false, "or", args);
       } else if (name === "xor") {
-        visitVariadicFunction(false, "xor", args);
+        visitLogicalVariadicFunction(false, "xor", args);
       } else if (name === "implies") {
         if (args.length !== 2) {
           throw new CompileError(
@@ -304,6 +296,18 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
           kind: "not",
           child,
         });
+      } else if (name === "eq") {
+        visitComparisonVariadicFunction("eq", expr.args, expr);
+      } else if (name === "neq") {
+        visitComparisonVariadicFunction("neq", expr.args, expr);
+      } else if (name === "lt") {
+        visitComparisonVariadicFunction("lt", expr.args, expr);
+      } else if (name === "gt") {
+        visitComparisonVariadicFunction("gt", expr.args, expr);
+      } else if (name === "leq") {
+        visitComparisonVariadicFunction("le", expr.args, expr);
+      } else if (name === "geq") {
+        visitComparisonVariadicFunction("ge", expr.args, expr);
       } else {
         visitNonBooleanExpression(expr);
       }
@@ -325,7 +329,7 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
     conditions.push({ expression });
   };
 
-  const visitVariadicFunction = (
+  const visitLogicalVariadicFunction = (
     defaultValue: boolean,
     kind: "or" | "xor" | "and",
     args: IridiumExpression[],
@@ -341,6 +345,43 @@ const createInternalEvent = (root: IridiumExpression): InternalEvent => {
           const left = treeStack.pop()!;
           treeStack.push({ kind, left, right });
         }
+      }
+    }
+  };
+
+  const visitComparisonVariadicFunction = (
+    op: ComparisonOperator,
+    args: IridiumExpression[],
+    callExpr: IridiumExpression,
+  ): void => {
+    if (args.length < 2) {
+      throw new CompileError("Requires 2+ arguments.", callExpr);
+    } else if (args.length === 2) {
+      conditions.push({
+        op,
+        left: args[0],
+        right: args[1],
+      });
+      treeStack.push(conditions.length - 1);
+    } else {
+      for (let i = 1; i < args.length - 1; i++) {
+        const left = conditions.length;
+        conditions.push({
+          op,
+          left: args[i - 1],
+          right: args[i],
+        });
+        const right = conditions.length;
+        conditions.push({
+          op,
+          left: args[i],
+          right: args[i + 1],
+        });
+        treeStack.push({
+          kind: "and",
+          left,
+          right,
+        });
       }
     }
   };

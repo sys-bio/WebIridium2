@@ -1,5 +1,6 @@
 import {
   visitExpression,
+  type IridiumBinaryOperator,
   type IridiumExpression,
   type IridiumExpressionVisitor,
 } from "../ir/ast";
@@ -40,6 +41,35 @@ export const emitComparisonOperator = (emitter: Emitter, op: string): void => {
   } else {
     throw new Error(`unknown comparison op: ${op}`);
   }
+};
+
+const flattenComparisonFunction = (
+  args: IridiumExpression[],
+  op: IridiumBinaryOperator,
+): IridiumExpression => {
+  let current: IridiumExpression | undefined;
+  let last = args[0];
+  for (let i = 1; i < args.length; i++) {
+    const main: IridiumExpression = {
+      kind: "binary",
+      op,
+      left: last,
+      right: args[i],
+    };
+
+    if (current) {
+      current = {
+        kind: "binary",
+        op: "and",
+        left: current,
+        right: main,
+      };
+    } else {
+      current = main;
+    }
+  }
+
+  return current!;
 };
 
 /**
@@ -151,6 +181,11 @@ export const emitExpression = (
         if (expr.args.length < arity.min) {
           throw new CompileError(
             `${expr.name} expects at least ${arity.min} arguments, got ${expr.args.length}.`,
+            expr,
+          );
+        } else if (arity.max !== undefined && expr.args.length > arity.max) {
+          throw new CompileError(
+            `${expr.name} expects at most ${arity.min} arguments, got ${expr.args.length}.`,
             expr,
           );
         }
@@ -325,6 +360,15 @@ export const emitExpression = (
             }
           }
         }
+      } else if (expr.name === "minus") {
+        if (expr.args.length === 1) {
+          visitExpression(expr.args[0], visitor);
+          emitter.emitByte(OpCode.f64neg);
+        } else {
+          visitExpression(expr.args[0], visitor);
+          visitExpression(expr.args[1], visitor);
+          emitter.emitByte(OpCode.f64min);
+        }
       } else if (expr.name === "max") {
         for (let i = 0; i < expr.args.length; i++) {
           visitExpression(expr.args[i], visitor);
@@ -339,6 +383,18 @@ export const emitExpression = (
             emitter.emitByte(OpCode.f64min);
           }
         }
+      } else if (expr.name === "eq") {
+        visitExpression(flattenComparisonFunction(expr.args, "eq"), visitor);
+      } else if (expr.name === "neq") {
+        visitExpression(flattenComparisonFunction(expr.args, "neq"), visitor);
+      } else if (expr.name === "lt") {
+        visitExpression(flattenComparisonFunction(expr.args, "lt"), visitor);
+      } else if (expr.name === "gt") {
+        visitExpression(flattenComparisonFunction(expr.args, "gt"), visitor);
+      } else if (expr.name === "leq") {
+        visitExpression(flattenComparisonFunction(expr.args, "le"), visitor);
+      } else if (expr.name === "geq") {
+        visitExpression(flattenComparisonFunction(expr.args, "ge"), visitor);
       } else {
         for (const arg of expr.args) {
           visitExpression(arg, visitor);

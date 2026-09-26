@@ -51,6 +51,8 @@ export const builtinConstants: Readonly<Record<string, BuiltinConstantInfo>> = {
 
 export type BuiltinFunctionName = keyof typeof builtinFunctions;
 
+// TODO: add divide
+
 export const builtinFunctions = {
   piecewise: {
     description: "TODO: explain this",
@@ -101,6 +103,11 @@ export const builtinFunctions = {
     description: "Returns sum of its arguments.",
     arity: { min: 0 },
   },
+  minus: {
+    description:
+      "Returns the first argument minus the second. If only one argument, returns the negative version of it.",
+    arity: { min: 1, max: 2 },
+  },
   quotient: {
     description:
       "Returns the integer quotient of dividing the first operand by the second.",
@@ -109,6 +116,10 @@ export const builtinFunctions = {
   rem: {
     description:
       "Returns the remainder from dividing the first operand by the second.",
+    arity: 2,
+  },
+  divide: {
+    description: "Returns the first argument divided by the second",
     arity: 2,
   },
   sqrt: {
@@ -144,6 +155,37 @@ export const builtinFunctions = {
     description:
       "Returns false if the first argument is true and the second argument is false, otherwise returns true.",
     arity: 2,
+  },
+
+  // Comparison
+  eq: {
+    description: "Returns true if all arguments are equal and false otherwise.",
+    arity: { min: 2 },
+  },
+  neq: {
+    description:
+      "Returns true if all arguments are different and false otherwise.",
+    arity: { min: 2 },
+  },
+  gt: {
+    description:
+      "Returns true if every argument is greater than every argument after it and false otherwise.",
+    arity: { min: 2 },
+  },
+  lt: {
+    description:
+      "Returns true if every argument is less than every argument after it and false otherwise.",
+    arity: { min: 2 },
+  },
+  geq: {
+    description:
+      "Returns true if every argument is greater than or equal every argument after it and false otherwise.",
+    arity: { min: 2 },
+  },
+  leq: {
+    description:
+      "Returns true if every argument is less than or equal every argument after it and false otherwise.",
+    arity: { min: 2 },
   },
 
   // Trig
