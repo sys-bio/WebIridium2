@@ -1,5 +1,6 @@
 import type { IridiumExpression } from "../../ir/ast";
 import { expr } from "../../ir/dsl";
+import type { IridiumVariableValue } from "../../ir/model";
 import type { Builder, UnknownAttrs } from "../builder";
 import { Context, pushContext, type ContextResult } from "./base";
 import { ReactionContext } from "./reaction";
@@ -22,11 +23,26 @@ export class SbmlContext extends Context {
           this.builder.constants.add(id);
         }
 
-        this.builder.createCompartmentList(id);
-        this.builder.addVariable({
+        this.builder.addCompartment({
           name: id,
           hasSubstanceOnly: false,
           value: { kind: "initial", initial: expr.num(size) },
+        });
+
+        break;
+      }
+      case "parameter": {
+        const id = this.builder.getId(attrs);
+        const value =
+          "value" in attrs ? this.builder.getNumber(attrs, "value") : 0;
+        const isConstant = this.builder.getBool(attrs, "constant");
+
+        if (isConstant) this.builder.constants.add(id);
+
+        this.builder.addParameter({
+          name: id,
+          hasSubstanceOnly: false,
+          value: { kind: "initial", initial: expr.num(value) },
         });
 
         break;
@@ -43,6 +59,15 @@ export class SbmlContext extends Context {
           "boundaryCondition",
         );
         const isConstant = this.builder.getBool(attrs, "constant");
+        // TODO: check the conversion factor is a parameter and that it is constant?
+        const conversionFactor =
+          "conversionFactor" in attrs
+            ? this.builder.getString(attrs, "conversionFactor")
+            : undefined;
+        // TODO: add this in a validation pass ? (or just ignore it I guess)
+        // if (conversionFactor !== undefined && (!this.builder.parameters.has(conversionFactor) || !this.builder.constants.has(conversionFactor))) {
+        //   throw new SbmlCompileInternalError("Bad conversionFactor");
+        // }
 
         if (isConstant) this.builder.constants.add(id);
         if (isBoundaryCondition) this.builder.boundaryConditions.add(id);
@@ -72,30 +97,25 @@ export class SbmlContext extends Context {
           initial = expr.num(0);
         }
 
+        let value: IridiumVariableValue;
+        if (isBoundaryCondition || isConstant) {
+          value = { kind: "initial", initial };
+        } else {
+          value = {
+            kind: "reaction",
+            initial,
+            conversionFactor:
+              conversionFactor !== undefined
+                ? expr.var(conversionFactor)
+                : undefined,
+          };
+        }
+
         this.builder.addToCompartmentList(compartment, id);
         this.builder.addSpecies({
           name: id,
           hasSubstanceOnly,
-          value: {
-            kind: isBoundaryCondition || isConstant ? "initial" : "reaction",
-            initial,
-          },
-        });
-
-        break;
-      }
-      case "parameter": {
-        const id = this.builder.getId(attrs);
-        const value =
-          "value" in attrs ? this.builder.getNumber(attrs, "value") : 0;
-        const isConstant = this.builder.getBool(attrs, "constant");
-
-        if (isConstant) this.builder.constants.add(id);
-
-        this.builder.addVariable({
-          name: id,
-          hasSubstanceOnly: false,
-          value: { kind: "initial", initial: expr.num(value) },
+          value,
         });
 
         break;

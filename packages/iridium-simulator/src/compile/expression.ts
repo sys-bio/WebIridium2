@@ -18,7 +18,6 @@ import {
   type Arity,
   type FunctionInfo,
   type InlineFunction,
-  type WasmFunction,
 } from "./functions";
 import { CompileError, CompileInvariantError } from "./errors";
 import { EVENTS_PARAM } from "../names";

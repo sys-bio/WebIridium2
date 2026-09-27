@@ -12,6 +12,7 @@ export class Builder {
   constants: Set<string>;
 
   species: Map<string, IridiumVariable>;
+  parameters: Map<string, IridiumVariable>;
 
   #compartmentArrays: Map<string, string[]>;
 
@@ -30,6 +31,7 @@ export class Builder {
     this.constants = new Set();
 
     this.species = new Map();
+    this.parameters = new Map();
 
     this.#compartmentArrays = new Map();
   }
@@ -66,17 +68,25 @@ export class Builder {
     return compartment;
   }
 
-  getString(attrs: UnknownAttrs, key: string): string {
+  getString(attrs: UnknownAttrs, key: string, defaultValue?: string): string {
     const value = attrs[key];
-    if (value === undefined)
-      throw new SbmlCompileInternalError(`missing "${key}".`);
+    if (value === undefined) {
+      if (defaultValue === undefined) {
+        throw new SbmlCompileInternalError(`missing "${key}".`);
+      } else {
+        return defaultValue;
+      }
+    }
     return value;
   }
 
-  getBool(attrs: UnknownAttrs, key: string): boolean {
+  getBool(attrs: UnknownAttrs, key: string, defaultValue?: boolean): boolean {
     const value = attrs[key];
-    if (value === undefined)
-      throw new SbmlCompileInternalError(`missing "${key}".`);
+    if (value === undefined) {
+      if (defaultValue === undefined)
+        throw new SbmlCompileInternalError(`missing "${key}".`);
+      else return defaultValue;
+    }
     if (value === "true" || value === "1") {
       return true;
     } else if (value === "false" || value === "0") {
@@ -86,10 +96,13 @@ export class Builder {
     }
   }
 
-  getNumber(attrs: UnknownAttrs, key: string): number {
+  getNumber(attrs: UnknownAttrs, key: string, defaultValue?: number): number {
     const value = attrs[key];
-    if (value === undefined)
-      throw new SbmlCompileInternalError(`missing "${key}".`);
+    if (value === undefined) {
+      if (defaultValue === undefined)
+        throw new SbmlCompileInternalError(`missing "${key}".`);
+      else return defaultValue;
+    }
     const number = Number(value);
     if (Number.isNaN(number)) {
       throw new SbmlCompileInternalError(`"${key}" must be number.`);
@@ -98,13 +111,20 @@ export class Builder {
     }
   }
 
-  createCompartmentList(id: string): void {
-    const list: string[] = [];
-    this.#compartmentArrays.set(id, list);
-    this.ir.compartments.push({
-      containerVariable: id,
-      containedVariables: list,
-    });
+  getUniqueLocalParameterId(reactionId: string, parameterId: string): string {
+    let i = 0;
+    let id: string;
+    do {
+      id = `$local;${reactionId};${parameterId}`;
+      if (i > 0) {
+        id += ";" + i;
+      }
+      i += 1;
+    } while (this.ids.has(id));
+
+    this.ids.add(id);
+
+    return id;
   }
 
   addToCompartmentList(compartment: string, id: string): void {
@@ -116,7 +136,18 @@ export class Builder {
     this.species.set(variable.name, variable);
   }
 
-  addVariable(variable: IridiumVariable): void {
+  addParameter(variable: IridiumVariable): void {
     this.ir.variables.push(variable);
+    this.parameters.set(variable.name, variable);
+  }
+
+  addCompartment(variable: IridiumVariable): void {
+    this.ir.variables.push(variable);
+    const list: string[] = [];
+    this.#compartmentArrays.set(variable.name, list);
+    this.ir.compartments.push({
+      containerVariable: variable.name,
+      containedVariables: list,
+    });
   }
 }
