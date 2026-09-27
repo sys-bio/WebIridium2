@@ -13,6 +13,8 @@ export class Builder {
 
   species: Map<string, IridiumVariable>;
   parameters: Map<string, IridiumVariable>;
+  compartments: Map<string, IridiumVariable>;
+  speciesReferences: Map<string, IridiumVariable>;
 
   #compartmentArrays: Map<string, string[]>;
 
@@ -32,6 +34,8 @@ export class Builder {
 
     this.species = new Map();
     this.parameters = new Map();
+    this.compartments = new Map();
+    this.speciesReferences = new Map();
 
     this.#compartmentArrays = new Map();
   }
@@ -45,8 +49,7 @@ export class Builder {
     return id;
   }
 
-  getRef(attrs: UnknownAttrs, key?: string): string {
-    key ??= "symbol";
+  getRef(attrs: UnknownAttrs, key: string): string {
     const ref = attrs[key];
     if (ref === undefined)
       throw new SbmlCompileInternalError(`missing "${key}".`);
@@ -143,11 +146,18 @@ export class Builder {
 
   addCompartment(variable: IridiumVariable): void {
     this.ir.variables.push(variable);
+    this.compartments.set(variable.name, variable);
+
     const list: string[] = [];
     this.#compartmentArrays.set(variable.name, list);
     this.ir.compartments.push({
       containerVariable: variable.name,
       containedVariables: list,
     });
+  }
+
+  addSpeciesReference(variable: IridiumVariable): void {
+    this.ir.variables.push(variable);
+    this.speciesReferences.set(variable.name, variable);
   }
 }

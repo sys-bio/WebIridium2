@@ -346,6 +346,182 @@ describe("species", () => {
   });
 });
 
+describe("initial assignment", () => {
+  it("should update parameters", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="true"/>
+      <parameter id="B" value="10" constant="true"/>
+      <parameter id="C" constant="true"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> B </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+      <initialAssignment symbol="C">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(expr.builtinCall("plus", [expr.var("B"), expr.num(5)])),
+          B: parameter(10),
+          C: parameter(expr.builtinCall("plus", [expr.var("A"), expr.num(5)])),
+        },
+      }),
+    );
+  });
+
+  it("should update species", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="B" value="10" constant="true"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> B </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+  </model>
+</sbml>
+`,
+      model({
+        variables: {
+          A: species(expr.builtinCall("plus", [expr.var("B"), expr.num(5)])),
+          B: parameter(10),
+        },
+        compartments: {
+          default_compartment: ["A"],
+        },
+      }),
+    );
+  });
+
+  it("should update compartment", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment id="A" spatialDimensions="3" constant="true"/>
+    </listOfCompartments>
+    <listOfParameters>
+      <parameter id="B" value="10" constant="true"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> B </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(expr.builtinCall("plus", [expr.var("B"), expr.num(5)])),
+          B: parameter(10),
+        },
+        compartments: {
+          A: [],
+        },
+      }),
+    );
+  });
+
+  it("should error with unknown symbol", () => {
+    expect(() => {
+      compileSbml(`
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfInitialAssignments>
+      <initialAssignment symbol="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> B </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when assigning to reaction", () => {
+    expect(() => {
+      compileSbml(`
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfReactions>
+      <reaction id="J" reversible="true">
+        <listOfReactants>
+          <speciesReference species="A" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <ci> k1 </ci>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="J">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> B </ci>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+});
+
 describe("reactions", () => {
   it("should add reactants", () => {
     expectModel(

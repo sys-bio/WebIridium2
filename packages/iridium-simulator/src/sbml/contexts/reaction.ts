@@ -91,7 +91,7 @@ export class ReactionContext extends Context {
 
           if (isConstant) this.builder.constants.add(id);
 
-          this.builder.addParameter({
+          this.builder.addSpeciesReference({
             name: id,
             hasSubstanceOnly: false,
             value: { kind: "initial", initial: expr.num(stoichiometry) },

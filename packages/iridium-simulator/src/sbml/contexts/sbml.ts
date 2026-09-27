@@ -4,6 +4,7 @@ import type { IridiumVariableValue } from "../../ir/model";
 import type { Builder, UnknownAttrs } from "../builder";
 import { Context, pushContext, type ContextResult } from "./base";
 import { ReactionContext } from "./reaction";
+import { RuleContext } from "./rule";
 
 export class SbmlContext extends Context {
   constructor(builder: Builder) {
@@ -119,6 +120,10 @@ export class SbmlContext extends Context {
         });
 
         break;
+      }
+      case "initialAssignment": {
+        const symbol = this.builder.getRef(attrs, "symbol");
+        return pushContext(new RuleContext(this.builder, "initial", symbol));
       }
       case "reaction": {
         const id = this.builder.getId(attrs);
