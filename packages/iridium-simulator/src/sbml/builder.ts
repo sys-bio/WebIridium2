@@ -1,4 +1,9 @@
-import type { IridiumModel, IridiumVariable } from "../ir/model";
+import { walkExpression, type IridiumExpressionListener } from "../ir/ast";
+import type {
+  IridiumAlgebraicRule,
+  IridiumModel,
+  IridiumVariable,
+} from "../ir/model";
 import { SbmlCompileInternalError } from "./errors";
 
 export type UnknownAttr = number | string | boolean;
@@ -130,6 +135,22 @@ export class Builder {
     return id;
   }
 
+  getUniqueAlgebraicRuleId(): string {
+    let i = 0;
+    let id: string;
+    do {
+      id = `$algebraic`;
+      if (i > 0) {
+        id += ";" + i;
+      }
+      i += 1;
+    } while (this.ids.has(id));
+
+    this.ids.add(id);
+
+    return id;
+  }
+
   addToCompartmentList(compartment: string, id: string): void {
     this.#compartmentArrays.get(compartment)!.push(id);
   }
@@ -159,5 +180,46 @@ export class Builder {
   addSpeciesReference(variable: IridiumVariable): void {
     this.ir.variables.push(variable);
     this.speciesReferences.set(variable.name, variable);
+  }
+
+  addAlgebraicRule(rule: IridiumAlgebraicRule): void {
+    this.ir.algebraicRules.push(rule);
+  }
+
+  getVariable(id: string): IridiumVariable | undefined {
+    return (
+      this.parameters.get(id) ??
+      this.species.get(id) ??
+      this.compartments.get(id) ??
+      this.speciesReferences.get(id)
+    );
+  }
+
+  isConstant(id: string): boolean {
+    return this.constants.has(id);
+  }
+
+  isBoundary(id: string): boolean {
+    return this.boundaryConditions.has(id);
+  }
+
+  getOutput(): IridiumModel {
+    const listener: IridiumExpressionListener = {
+      afterVariable: ({ name }) => {
+        if (this.isConstant(name)) return;
+
+        const variable = this.getVariable(name);
+        if (variable) {
+          if (variable.value.kind !== "initial") return;
+          variable.value = { ...variable.value, kind: "algebraic" };
+        }
+      },
+    };
+
+    for (const rule of this.ir.algebraicRules) {
+      walkExpression(rule.expression, listener);
+    }
+
+    return this.ir;
   }
 }

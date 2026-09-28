@@ -145,5 +145,5 @@ export const compileSbml = (sbmlText: string): IridiumModel => {
 
   parser.parse(sbmlText);
 
-  return builder.ir;
+  return builder.getOutput();
 };

@@ -4,7 +4,8 @@ import type { IridiumVariableValue } from "../../ir/model";
 import type { Builder, UnknownAttrs } from "../builder";
 import { Context, pushContext, type ContextResult } from "./base";
 import { ReactionContext } from "./reaction";
-import { RuleContext } from "./rule";
+import { AssignmentContext } from "./assignment";
+import { AlgebraicContext } from "./algebraic";
 
 export class SbmlContext extends Context {
   constructor(builder: Builder) {
@@ -99,7 +100,7 @@ export class SbmlContext extends Context {
         }
 
         let value: IridiumVariableValue;
-        if (isBoundaryCondition || isConstant) {
+        if (conversionFactor === undefined) {
           value = { kind: "initial", initial };
         } else {
           value = {
@@ -122,8 +123,42 @@ export class SbmlContext extends Context {
         break;
       }
       case "initialAssignment": {
+        if ("id" in attrs) {
+          this.builder.getId(attrs);
+        }
+
         const symbol = this.builder.getRef(attrs, "symbol");
-        return pushContext(new RuleContext(this.builder, "initial", symbol));
+        return pushContext(
+          new AssignmentContext(this.builder, "initial", symbol),
+        );
+      }
+      case "assignmentRule": {
+        if ("id" in attrs) {
+          this.builder.getId(attrs);
+        }
+
+        const variable = this.builder.getRef(attrs, "variable");
+        return pushContext(
+          new AssignmentContext(this.builder, "assignment", variable),
+        );
+      }
+      case "rateRule": {
+        if ("id" in attrs) {
+          this.builder.getId(attrs);
+        }
+
+        const variable = this.builder.getRef(attrs, "variable");
+        return pushContext(
+          new AssignmentContext(this.builder, "rate", variable),
+        );
+      }
+      case "algebraicRule": {
+        let id: string | undefined;
+        if ("id" in attrs) {
+          id = this.builder.getId(attrs);
+        }
+
+        return pushContext(new AlgebraicContext(this.builder, id));
       }
       case "reaction": {
         const id = this.builder.getId(attrs);

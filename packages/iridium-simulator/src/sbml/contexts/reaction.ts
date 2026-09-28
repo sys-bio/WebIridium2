@@ -57,7 +57,7 @@ export class ReactionContext extends Context {
           value: { kind: "initial", initial: expr.num(value) },
         });
       } else {
-        throw new SbmlCompileInternalError("Unexpected element.");
+        // throw new SbmlCompileInternalError("Unexpected element.");
       }
     } else if (this.#inside === "kineticLaw") {
       if (name === "math") {
@@ -65,7 +65,7 @@ export class ReactionContext extends Context {
       } else if (name === "listOfLocalParameters") {
         this.#inside = "listOfLocalParameters";
       } else {
-        throw new SbmlCompileInternalError("Unexpected element.");
+        // throw new SbmlCompileInternalError("Unexpected element.");
       }
     } else if (this.#inside === "listOfModifierSpeciesReferences") {
       // ignore everything we don't use this
@@ -79,10 +79,15 @@ export class ReactionContext extends Context {
       } else if (name === "speciesReference") {
         const id = "id" in attrs ? this.builder.getId(attrs) : undefined;
         const species = this.builder.getRef(attrs, "species");
-        if (!this.builder.species.has(species))
+        const speciesVar = this.builder.species.get(species);
+        if (!speciesVar) {
           throw new SbmlCompileInternalError(
             "speciesReference must refer to a species.",
           );
+        } else if (speciesVar.value.kind === "initial") {
+          speciesVar.value = { ...speciesVar.value, kind: "reaction" };
+        }
+
         const stoichiometry = this.builder.getNumber(attrs, "stoichiometry", 1);
 
         let reactionTerm: IridiumReactionTerm;

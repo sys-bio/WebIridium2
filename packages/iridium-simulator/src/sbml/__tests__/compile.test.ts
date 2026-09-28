@@ -1,7 +1,17 @@
 import { expect, describe, it } from "vitest";
 import { compileSbml } from "../compile";
 import type { IridiumModel } from "../../ir/model";
-import { expr, model, parameter, reaction, species } from "../../ir/dsl";
+import {
+  algebraicRule,
+  algebraicVariable,
+  assignmentVariable,
+  expr,
+  model,
+  parameter,
+  rateVariable,
+  reaction,
+  species,
+} from "../../ir/dsl";
 
 import defaultModel from "./timeCourses/default.xml?raw";
 import { toComparableModel } from "../../testingUtils/ir";
@@ -176,7 +186,7 @@ describe("species", () => {
 </sbml>`,
       model({
         variables: {
-          S: species(0),
+          S: parameter(0),
         },
         compartments: {
           default_compartment: ["S"],
@@ -200,7 +210,7 @@ describe("species", () => {
 </sbml>`,
       model({
         variables: {
-          S: species(10),
+          S: parameter(10),
         },
         compartments: {
           default_compartment: ["S"],
@@ -224,7 +234,7 @@ describe("species", () => {
 </sbml>`,
       model({
         variables: {
-          S: species(expr.div(expr.num(10), expr.var("default_compartment"))),
+          S: parameter(expr.div(expr.num(10), expr.var("default_compartment"))),
         },
         compartments: {
           default_compartment: ["S"],
@@ -251,7 +261,7 @@ describe("species", () => {
           S: {
             hasSubstanceOnly: true,
             value: {
-              kind: "reaction",
+              kind: "initial",
               initial: expr.mul(expr.num(10), expr.var("default_compartment")),
             },
           },
@@ -281,7 +291,7 @@ describe("species", () => {
           S: {
             hasSubstanceOnly: true,
             value: {
-              kind: "reaction",
+              kind: "initial",
               initial: expr.num(10),
             },
           },
@@ -419,7 +429,7 @@ describe("initial assignment", () => {
 `,
       model({
         variables: {
-          A: species(expr.builtinCall("plus", [expr.var("B"), expr.num(5)])),
+          A: parameter(expr.builtinCall("plus", [expr.var("B"), expr.num(5)])),
           B: parameter(10),
         },
         compartments: {
@@ -519,6 +529,536 @@ describe("initial assignment", () => {
   </model>
 </sbml>`);
     }).toThrowError(SbmlCompileError);
+  });
+});
+
+describe("rate rule", () => {
+  it("should update value of parameter", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="0" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: rateVariable(expr.num(0), expr.num(1)),
+        },
+      }),
+    );
+  });
+
+  it("should update value of boundary species", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" initialConcentration="1" hasOnlySubstanceUnits="false" boundaryCondition="true" constant="false"/>
+    </listOfSpecies>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: rateVariable(expr.num(1), expr.num(1)),
+        },
+        compartments: {
+          default_compartment: ["A"],
+        },
+      }),
+    );
+  });
+
+  it("should merge with initial assignment", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+    </listOfParameters>
+    <listOfInitialAssignments>
+      <initialAssignment symbol="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <pi/>
+            <cn type="integer"> 5 </cn>
+          </apply>
+        </math>
+      </initialAssignment>
+    </listOfInitialAssignments>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: rateVariable(
+            expr.builtinCall("plus", [expr.builtinVar("pi"), expr.num(5)]),
+            expr.num(3),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should error when trying to set rate of reaction", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfReactions>
+      <reaction id="J" reversible="true" />
+    </listOfReactions>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when trying to set rate of const object", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="0" constant="true"/>
+    </listOfParameters>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when trying to set rate of object with assignment rule", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfReactions>
+      <reaction id="J" reversible="true" />
+    </listOfReactions>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </assignmentRule>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it.skip("should error when trying to set rate of floating species", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" initialConcentration="1" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+});
+
+describe("assignment rule", () => {
+  it("should update value of parameter", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="5" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 5 </cn>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: assignmentVariable(expr.num(5)),
+        },
+      }),
+    );
+  });
+
+  it("should update value of boundary species", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" initialConcentration="5" hasOnlySubstanceUnits="false" boundaryCondition="true" constant="false"/>
+    </listOfSpecies>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 5 </cn>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: assignmentVariable(expr.num(5)),
+        },
+        compartments: {
+          default_compartment: ["A"],
+        },
+      }),
+    );
+  });
+
+  it.skip("should error when trying to set value of floating species", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" initialConcentration="5" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 5 </cn>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when trying to assign const object", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="5" constant="true"/>
+    </listOfParameters>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 5 </cn>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when trying to assign to object with rate rule", () => {
+    expect(() => {
+      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfReactions>
+      <reaction id="J" reversible="true" />
+    </listOfReactions>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </assignmentRule>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 3 </cn>
+        </math>
+      </rateRule>
+    </listOfRules>
+  </model>
+</sbml>`);
+    }).toThrowError(SbmlCompileError);
+  });
+});
+
+describe("algebraic rule", () => {
+  it("should add algebraic rule and update variable kinds", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <algebraicRule id="alg">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <ci> B </ci>
+          </apply>
+        </math>
+      </algebraicRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: algebraicVariable(1),
+          B: algebraicVariable(1),
+        },
+        algebraicRules: {
+          alg: algebraicRule(
+            expr.builtinCall("plus", [expr.var("A"), expr.var("B")]),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should not update variable with assignment rule to have algebraic value kind", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <assignmentRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </assignmentRule>
+      <algebraicRule id="alg">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <ci> B </ci>
+          </apply>
+        </math>
+      </algebraicRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: assignmentVariable(expr.num(1)),
+          B: algebraicVariable(1),
+        },
+        algebraicRules: {
+          alg: algebraicRule(
+            expr.builtinCall("plus", [expr.var("A"), expr.var("B")]),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should not update variable with rate rule to have algebraic value kind", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="0" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <rateRule variable="A">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn type="integer"> 1 </cn>
+        </math>
+      </rateRule>
+      <algebraicRule id="alg">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <ci> B </ci>
+          </apply>
+        </math>
+      </algebraicRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: rateVariable(expr.num(0), expr.num(1)),
+          B: algebraicVariable(1),
+        },
+        algebraicRules: {
+          alg: algebraicRule(
+            expr.builtinCall("plus", [expr.var("A"), expr.var("B")]),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should not update const variable to have algebraic value kind", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="true"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfRules>
+      <algebraicRule id="alg">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <ci> B </ci>
+          </apply>
+        </math>
+      </algebraicRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(1),
+          B: algebraicVariable(1),
+        },
+        algebraicRules: {
+          alg: algebraicRule(
+            expr.builtinCall("plus", [expr.var("A"), expr.var("B")]),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should update boundary species to have algebraic value kind but not floating species", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfCompartments>
+      <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="A" compartment="default_compartment" initialConcentration="1" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="B" compartment="default_compartment" initialConcentration="1" hasOnlySubstanceUnits="false" boundaryCondition="true" constant="false"/>
+    </listOfSpecies>
+    <listOfReactions>
+      <reaction id="J" reversible="true">
+        <listOfReactants>
+          <speciesReference species="A" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <ci> k1 </ci>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+    <listOfRules>
+      <algebraicRule id="alg">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <plus/>
+            <ci> A </ci>
+            <ci> B </ci>
+          </apply>
+        </math>
+      </algebraicRule>
+    </listOfRules>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: species(1),
+          B: algebraicVariable(1),
+        },
+        algebraicRules: {
+          alg: algebraicRule(
+            expr.builtinCall("plus", [expr.var("A"), expr.var("B")]),
+          ),
+        },
+        compartments: {
+          default_compartment: ["A", "B"],
+        },
+      }),
+    );
   });
 });
 
