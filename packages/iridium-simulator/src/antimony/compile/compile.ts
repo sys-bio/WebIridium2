@@ -31,7 +31,7 @@ import {
   wrapConversionFactorExpr,
 } from "./formula";
 import type { Metadata } from "./metadata";
-import { CompileError, CompileInvariantError } from "../errors";
+import { AntimonyCompileError, AntimonyCompileInvariantError } from "../errors";
 import { FormulaContext, NameContext, VariableContext } from "../grammar";
 import { buildAntimonyDocument } from "../semantic/semantic";
 import {
@@ -50,12 +50,12 @@ const INVALID_BOOLEAN_MESSAGE =
  */
 const evaluateBoolean = (formula: FormulaContext): boolean => {
   if (formula.childCount !== 1) {
-    throw new CompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+    throw new AntimonyCompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
   }
 
   const child = formula.getChild(0);
   if (!(child instanceof NameContext)) {
-    throw new CompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+    throw new AntimonyCompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
   }
 
   if (child.text === "true") {
@@ -63,7 +63,7 @@ const evaluateBoolean = (formula: FormulaContext): boolean => {
   } else if (child.text === "false") {
     return false;
   } else {
-    throw new CompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
+    throw new AntimonyCompileError(INVALID_BOOLEAN_MESSAGE, { tree: formula });
   }
 };
 
@@ -203,7 +203,7 @@ class IrBuilder {
 
   addFunction(source: AntimonyObject, func: IridiumFunction<Metadata>): void {
     if (this.#names.has(func.name)) {
-      throw new CompileInvariantError(
+      throw new AntimonyCompileInvariantError(
         `Name collision with function name '${func.name}'.`,
       );
     }
@@ -216,7 +216,7 @@ class IrBuilder {
   getNameOf(source: AntimonyObject): string {
     const got = this.#sources.get(source);
     if (!got) {
-      throw new CompileInvariantError(`Object ${source.name} missing name.`);
+      throw new AntimonyCompileInvariantError(`Object ${source.name} missing name.`);
     }
     return got;
   }
@@ -284,7 +284,7 @@ const flattenModel = (
         case "renameLink":
           break;
         default:
-          throw new CompileInvariantError(
+          throw new AntimonyCompileInvariantError(
             `Unknown object kind: ${(object as AntimonyObject).kind}.`,
           );
       }
@@ -339,7 +339,7 @@ const compileModel = (
         }
         return [reference[0], undefined];
       } else if (document.functions.has(reference[0])) {
-        throw new CompileError(
+        throw new AntimonyCompileError(
           `${reference[0]} is a function and cannot be used as a variable.`,
           { tree: ctx },
         );
@@ -350,7 +350,7 @@ const compileModel = (
       resolveReferenceWithModelInfo(model, reference, resolveScope);
 
     if (object.kind !== "variable" && object.kind !== "reaction") {
-      throw new CompileError(
+      throw new AntimonyCompileError(
         `${object.name} is a ${object.kind} and cannot be used in a math expression.`,
         { tree: ctx },
       );
@@ -717,7 +717,7 @@ const compileModel = (
         variable.assignment?.kind === "rule" ||
         variable.assignment?.kind === "rate"
       ) {
-        throw new CompileError(
+        throw new AntimonyCompileError(
           `Species cannot be simultaneously involved in a reaction and determined by a rate/assignment rule`,
           {
             tree:

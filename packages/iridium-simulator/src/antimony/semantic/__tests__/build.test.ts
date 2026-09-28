@@ -19,7 +19,7 @@ import {
 
 import defaultModel from "@/assets/default.ant?raw";
 import { ParserRuleContext } from "antlr4ts";
-import { SemanticError } from "../../errors.ts";
+import { AntimonySemanticError } from "../../errors.ts";
 import { DEFAULT_MODEL_NAME } from "../BuildAntimonyListener.ts";
 
 /**
@@ -230,25 +230,25 @@ describe("assignments", () => {
   it("should error when trying to set rate then rule", () => {
     expect(() => {
       buildAntimonyDocument("A'=5; A:=5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to set rule then rate", () => {
     expect(() => {
       buildAntimonyDocument("A:=5; A'=5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to set rule then initial", () => {
     expect(() => {
       buildAntimonyDocument("A:=5; A=5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should not error when trying to set initial then rule", () => {
     expect(() => {
       buildAntimonyDocument("A=5; A:=5");
-    }).not.toThrowError(SemanticError);
+    }).not.toThrowError(AntimonySemanticError);
   });
 
   it("should assign trigger for events", () => {
@@ -272,7 +272,7 @@ describe("assignments", () => {
   it("should error when trying assign to a function", () => {
     expect(() => {
       buildAntimonyDocument("function a(b); b; end; a = 3");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   describe("with no rhs", () => {
@@ -324,7 +324,7 @@ describe("assignments", () => {
     it("should error when trying to delete rule assignment with empty initial", () => {
       expect(() => {
         buildAntimonyDocument("species A := 5; A = ;");
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
   });
 });
@@ -402,7 +402,7 @@ describe("declarations", () => {
   it("should not let you update species to compartment", () => {
     expect(() => {
       buildAntimonyDocument("species A = 0; const compartment A = 5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should not override const if not specified", () => {
@@ -427,19 +427,19 @@ describe("declarations", () => {
   it("should not allow substanceOnly on compartment", () => {
     expect(() => {
       buildAntimonyDocument("substanceOnly compartment A");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should forbid declaring built-in constant", () => {
     expect(() => {
       buildAntimonyDocument("species true");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should forbid declaring built-in function", () => {
     expect(() => {
       buildAntimonyDocument("species piecewise");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should allow const events and reactions with no effect", () => {
@@ -457,7 +457,7 @@ describe("declarations", () => {
       buildAntimonyDocument(
         "E: at A > 3: A = 3; J: A + B -> C; 1; substanceOnly E, A",
       ),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow converting events or reactions to species", () => {
@@ -465,7 +465,7 @@ describe("declarations", () => {
       buildAntimonyDocument(
         "E: at A > 3: A = 3; J: A + B -> C; 1; species E, A",
       ),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow converting events or reactions to compartments", () => {
@@ -473,25 +473,25 @@ describe("declarations", () => {
       buildAntimonyDocument(
         "E: at A > 3: A = 3; J: A + B -> C; 1; compartment E, A",
       ),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow rate assignments on reactions", () => {
     expect(() =>
       buildAntimonyDocument("J: A + B -> C; k1; J' = 3"),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow rate assignments on events", () => {
     expect(() =>
       buildAntimonyDocument("E: at time > 3: A = 3; E' = 3"),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow assignment rules on reactions", () => {
     expect(() =>
       buildAntimonyDocument("J: A + B -> C; k1; J := 3"),
-    ).toThrowError(SemanticError);
+    ).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -550,11 +550,11 @@ describe("reactions", () => {
     // for rate rules.
     expect(() => {
       buildAntimonyDocument("A := 5; A: ->;");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A' = 5; A: ->;");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should not error when trying to overwrite a parameter with initial assignment", () => {
@@ -581,31 +581,31 @@ describe("stoichiometries", () => {
   it("should error when trying to use one in two places", () => {
     expect(() => {
       buildAntimonyDocument("n A + n B -> C; k1");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to use a species as a stoichiometry", () => {
     expect(() => {
       buildAntimonyDocument("species n; n A + B -> C; k1");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to use a built-in as a stoichiometry", () => {
     expect(() => {
       buildAntimonyDocument("pi A + B -> C; k1");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to use a compartment as a stoichiometry", () => {
     expect(() => {
       buildAntimonyDocument("compartment n; n A + B -> C; k1");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to use a reaction as a stoichiometry", () => {
     expect(() => {
       buildAntimonyDocument("J: ->; ; J A + B -> C; k1");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -656,19 +656,19 @@ describe("events", () => {
   it("should error for invalid option", () => {
     expect(() => {
       buildAntimonyDocument("at 5, t = false: A = 0");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when using reaction in event assignment", () => {
     expect(() => {
       buildAntimonyDocument("J: A + B -> C; k1; E: at time > 5: J = 5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when using event in event assignment", () => {
     expect(() => {
       buildAntimonyDocument("E1: at time > 5: A = 10; E2: at time > 5: E1 = 5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when using submodel in event assignment", () => {
@@ -676,13 +676,13 @@ describe("events", () => {
       buildAntimonyDocument(
         "model test; A = 5; end; sub: test(); E: at time > 5: sub = 5",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to overwrite a reaction with an event", () => {
     expect(() => {
       buildAntimonyDocument("J: A + B -> C; k1; J: at time > 5: A = 5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -756,7 +756,7 @@ describe("subvariable name labels", () => {
       buildAntimonyDocument(
         "model A; C = 5; end; sub: A(); sub.D: A + B -> C; k1",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to update objects of different types", () => {
@@ -764,7 +764,7 @@ describe("subvariable name labels", () => {
       buildAntimonyDocument(
         "model A; species C = 5; end; sub: A(); sub.C: A + B -> C; k1",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -875,7 +875,7 @@ describe("compartments", () => {
   it("should not let you set built-in compartment", () => {
     expect(() => {
       buildAntimonyDocument("true in comp");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -1043,19 +1043,19 @@ describe("model imports", () => {
       buildAntimonyDocument(
         `${exampleModelString}; model example2(); A: example(); end; A: example2(); A: example()`,
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to import itself", () => {
     expect(() => {
       buildAntimonyDocument("model test; A: test(); end");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to import with a name already owned by a variable", () => {
     expect(() => {
       buildAntimonyDocument(`${exampleModelString}; A = 3; A: example()`);
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to import with a name already owned by an event", () => {
@@ -1063,7 +1063,7 @@ describe("model imports", () => {
       buildAntimonyDocument(
         `${exampleModelString}; A: at time > 3: B = 0; A: example()`,
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should allow reactions between imported models", () => {
@@ -1117,19 +1117,19 @@ describe("model imports", () => {
   it("should not allow adding to imported models", () => {
     expect(() => {
       buildAntimonyDocument(`${exampleModelString}; A: example(); A.D = 3`);
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow adding to imported models", () => {
     expect(() => {
       buildAntimonyDocument(`${exampleModelString}; A: example(); A.D = 3`);
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should not allow using imported models inside reactions", () => {
     expect(() => {
       buildAntimonyDocument(`${exampleModelString}; A: example(); A + B -> C;`);
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   describe("export list", () => {
@@ -1284,7 +1284,7 @@ describe("model imports", () => {
     it("should error when import list has more names than export list", () => {
       expect(() => {
         buildAntimonyDocument(`model test(A) A = 5; end; sub: test(A, B)`);
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains subvariable", () => {
@@ -1292,7 +1292,7 @@ describe("model imports", () => {
         buildAntimonyDocument(
           `model test2() B = 5; end; model test(sub.A) sub: test2(); end`,
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains model", () => {
@@ -1300,25 +1300,25 @@ describe("model imports", () => {
         buildAntimonyDocument(
           `model test2() B = 5; end; model test(sub) sub: test2(); end`,
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains a built-in constant", () => {
       expect(() => {
         buildAntimonyDocument(`model test(pi); end`);
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains a built-in function", () => {
       expect(() => {
         buildAntimonyDocument(`model test(sin); end`);
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains a function name", () => {
       expect(() => {
         buildAntimonyDocument(`function t() 5; end; model test(t); end`);
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when export list contains a subvariable", () => {
@@ -1326,7 +1326,7 @@ describe("model imports", () => {
         buildAntimonyDocument(
           `model test2(); B = 5; end; model test(A.B); A: test2(); end`,
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
   });
 
@@ -1410,7 +1410,7 @@ describe("model imports", () => {
         buildAntimonyDocument(
           "model test; A = 5; end; sub: test(), unknown = 5",
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should error when using builtin as option value", () => {
@@ -1418,7 +1418,7 @@ describe("model imports", () => {
         buildAntimonyDocument(
           "model test; A = 5; end; sub: test(), timeconv = pi",
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
   });
 });
@@ -1537,7 +1537,7 @@ describe("renaming", () => {
       buildAntimonyDocument(
         "model example(); A = 3; end; A: example(); A is B",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should throw error when trying to rename non-existent variabe in submodel", () => {
@@ -1545,19 +1545,19 @@ describe("renaming", () => {
       buildAntimonyDocument(
         "model example(); A = 3; end; A: example(); A.fake is B",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should throw error when trying to rename species to existing compartment", () => {
     expect(() => {
       buildAntimonyDocument("compartment A; species B; A is B");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should throw error when trying to rename compartment to existing species", () => {
     expect(() => {
       buildAntimonyDocument("compartment A; species B; B is A");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   describe("with existing objects", () => {
@@ -1586,13 +1586,13 @@ describe("renaming", () => {
     it("should throw error when trying to rename reaction to existing variable", () => {
       expect(() => {
         buildAntimonyDocument("J: A + B -> C; k1; D = 3; J is D");
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should throw error when trying to rename event to existing variable", () => {
       expect(() => {
         buildAntimonyDocument("E: at time > 3: D = 3; E is D");
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
 
     it("should throw error when trying to rename event to existing reaction", () => {
@@ -1600,7 +1600,7 @@ describe("renaming", () => {
         buildAntimonyDocument(
           "E: at time > 3: A = 3; J: A + B -> C; k1; E is J",
         );
-      }).toThrowError(SemanticError);
+      }).toThrowError(AntimonySemanticError);
     });
   });
 
@@ -1626,10 +1626,10 @@ describe("renaming", () => {
 
     it("should error when renaming to itself with conversion factor", () => {
       expect(() => buildAntimonyDocument("A * conv is A")).toThrowError(
-        SemanticError,
+        AntimonySemanticError,
       );
       expect(() => buildAntimonyDocument("A is A / conv")).toThrowError(
-        SemanticError,
+        AntimonySemanticError,
       );
     });
   });
@@ -1691,7 +1691,7 @@ describe("deleting", () => {
   it("should error when trying to delete variable not in submodel", () => {
     expect(() => {
       buildAntimonyDocument("A = 5; delete A");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete non-existent variable in submodel", () => {
@@ -1699,37 +1699,37 @@ describe("deleting", () => {
       buildAntimonyDocument(
         "model test(); A = 5; end; sub: test(); delete sub.fake",
       );
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete reaction not in submodel", () => {
     expect(() => {
       buildAntimonyDocument("J: A + B -> C; k1; delete J");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete event not in submodel", () => {
     expect(() => {
       buildAntimonyDocument("E: at time > 3: A = 5; delete E");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete submodel", () => {
     expect(() => {
       buildAntimonyDocument("model test; A = 5; end; sub: test(); delete test");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete a builtin", () => {
     expect(() => {
       buildAntimonyDocument("delete time");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it("should error when trying to delete a function", () => {
     expect(() => {
       buildAntimonyDocument("function test(); 5; end; delete test");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -1737,7 +1737,7 @@ describe("functions", () => {
   it("should error when using a function name without calling it", () => {
     expect(() => {
       buildAntimonyDocument("function test(a); a + a; end; C = 3 + test");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -1761,33 +1761,33 @@ describe("conversion factors", () => {
   it("should error when conversion factor is not a variable", () => {
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = 5");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = time");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = sin");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 
   it.skip("should error when conversion factor is not constant", () => {
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = B; var B");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = B; species B");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = B; B := 10");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
 
     expect(() => {
       buildAntimonyDocument("A.conversionFactor = B; B' = 10");
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });
 
@@ -1802,6 +1802,6 @@ describe("annotations", () => {
   it("should not allow multiple strings in `is`", () => {
     expect(() => {
       buildAntimonyDocument('species A; A is "dog", "cat"');
-    }).toThrowError(SemanticError);
+    }).toThrowError(AntimonySemanticError);
   });
 });

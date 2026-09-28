@@ -24,7 +24,7 @@ import type {
   AntimonyReference,
 } from "../semantic/document";
 import { getReferenceFromVariable } from "../semantic/reference";
-import { CompileError } from "../errors";
+import { AntimonyCompileError } from "../errors";
 import { isBuiltinName, RATE_OF_NAME } from "../../runtime/builtins";
 
 export type ResolveReferenceFn = (
@@ -170,7 +170,7 @@ class FormulaCompilerListener implements AntimonyListener {
 
     if (name === RATE_OF_NAME) {
       if (args.length !== 1 || args[0].kind !== "variable") {
-        throw new CompileError(
+        throw new AntimonyCompileError(
           `${RATE_OF_NAME} must be called with an object ID as its only argument.`,
           { tree: ctx },
         );

@@ -1,4 +1,4 @@
-import { SemanticError } from "../errors";
+import { AntimonySemanticError } from "../errors";
 import type { AntimonyListener } from "../generated/AntimonyListener";
 import { ParserRuleContext } from "antlr4ts";
 import {
@@ -444,7 +444,7 @@ export class BuildAntimonyListener implements AntimonyListener {
   }
 
   #reportError(message: string, tree: ParserRuleContext): void {
-    const error = new SemanticError(message, { tree });
+    const error = new AntimonySemanticError(message, { tree });
     if (this.#diagnostics) {
       this.#diagnostics.push(error);
     } else {

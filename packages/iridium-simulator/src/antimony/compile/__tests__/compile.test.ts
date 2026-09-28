@@ -15,7 +15,7 @@ import {
   algebraicRule,
   algebraicVariable,
 } from "../../../ir/dsl";
-import { CompileError } from "../../errors";
+import { AntimonyCompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
 import { compileToIridium } from "../../compile/compile";
 import defaultModel from "../../__tests__/results/default.ant?raw";
@@ -57,7 +57,7 @@ describe("ir", () => {
   it("should throw when trying to compile rate- and reaction-defined species", () => {
     expect(() => {
       compileToIr("species A; A' = 5; A -> B; 3");
-    }).toThrowError(CompileError);
+    }).toThrowError(AntimonyCompileError);
   });
 
   describe("formulas", () => {
@@ -218,13 +218,13 @@ describe("ir", () => {
       it("should error when called with more than one argument", () => {
         expect(() => {
           compileToIr("A = rateOf(B, C)");
-        }).toThrowError(CompileError);
+        }).toThrowError(AntimonyCompileError);
       });
 
       it("should error when called with non-variable argument", () => {
         expect(() => {
           compileToIr("A = rateOf(5)");
-        }).toThrowError(CompileError);
+        }).toThrowError(AntimonyCompileError);
       });
     });
   });
@@ -712,14 +712,14 @@ describe("ir", () => {
     it("should error when using imported model name inside formula", () => {
       expect(() => {
         compileToIr("model test; A = 3; end; t: test(); C = 5 + t");
-      }).toThrowError(CompileError);
+      }).toThrowError(AntimonyCompileError);
     });
 
     // TODO: Probably should re-enable this test as to not diverge to much. Main Antimony doesn't support this (might be a bug?)
     it.skip("should error when using imported model variable inside formula", () => {
       expect(() => {
         compileToIr("model test; A = 3; end; t: test(); C = 5 + t.A");
-      }).toThrowError(CompileError);
+      }).toThrowError(AntimonyCompileError);
     });
   });
 

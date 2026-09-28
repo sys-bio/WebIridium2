@@ -13,8 +13,8 @@ export class ParseTreeError extends Error {
   }
 }
 
-export class SemanticError extends ParseTreeError {}
+export class AntimonySemanticError extends ParseTreeError {}
 
-export class CompileError extends ParseTreeError {}
+export class AntimonyCompileError extends ParseTreeError {}
 
-export class CompileInvariantError extends Error {}
+export class AntimonyCompileInvariantError extends Error {}
