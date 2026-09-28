@@ -54,7 +54,7 @@ export class ReactionContext extends Context {
 
         const mappedId = this.#builder.getUniqueLocalParameterId(this.#id, id);
         this.#localParameters.set(id, mappedId);
-        this.#builder.ir.variables.push({
+        this.#builder.addHiddenVariable({
           name: mappedId,
           hasSubstanceOnly: false,
           value: { kind: "initial", initial: expr.num(value) },
@@ -82,7 +82,7 @@ export class ReactionContext extends Context {
       } else if (name === "speciesReference") {
         const id = "id" in attrs ? this.#builder.getId(attrs) : undefined;
         const species = this.#builder.getRef(attrs, "species");
-        const speciesVar = this.#builder.species.get(species);
+        const speciesVar = this.#builder.getSpecies(species);
         if (!speciesVar) {
           throw new SbmlCompileInternalError(
             "speciesReference must refer to a species.",
@@ -97,7 +97,7 @@ export class ReactionContext extends Context {
         if (id !== undefined) {
           const isConstant = getBool(attrs, "constant");
 
-          if (isConstant) this.#builder.constants.add(id);
+          if (isConstant) this.#builder.addConstant(id);
 
           this.#builder.addSpeciesReference({
             name: id,
@@ -168,7 +168,7 @@ export class ReactionContext extends Context {
           });
         }
 
-        this.#builder.ir.reactions.push({
+        this.#builder.addReaction({
           name: this.#id,
           products: this.#products,
           reactants: this.#reactants,

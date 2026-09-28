@@ -7,6 +7,7 @@ import { ReactionContext } from "./reaction";
 import { AssignmentContext } from "./assignment";
 import { AlgebraicContext } from "./algebraic";
 import { getBool, getNumber, getString, type UnknownAttrs } from "../attrs";
+import { EventContext } from "./event";
 
 export class SbmlContext extends Context {
   #builder: Builder;
@@ -25,7 +26,7 @@ export class SbmlContext extends Context {
         const isConstant = getBool(attrs, "constant");
 
         if (isConstant) {
-          this.#builder.constants.add(id);
+          this.#builder.addConstant(id);
         }
 
         this.#builder.addCompartment({
@@ -41,7 +42,7 @@ export class SbmlContext extends Context {
         const value = "value" in attrs ? getNumber(attrs, "value") : 0;
         const isConstant = getBool(attrs, "constant");
 
-        if (isConstant) this.#builder.constants.add(id);
+        if (isConstant) this.#builder.addConstant(id);
 
         this.#builder.addParameter({
           name: id,
@@ -67,8 +68,8 @@ export class SbmlContext extends Context {
         //   throw new SbmlCompileInternalError("Bad conversionFactor");
         // }
 
-        if (isConstant) this.#builder.constants.add(id);
-        if (isBoundaryCondition) this.#builder.boundaryConditions.add(id);
+        if (isConstant) this.#builder.addConstant(id);
+        if (isBoundaryCondition) this.#builder.addBoundary(id);
 
         let initial: IridiumExpression;
         if ("initialAmount" in attrs) {
@@ -156,6 +157,19 @@ export class SbmlContext extends Context {
       case "reaction": {
         const id = this.#builder.getId(attrs);
         return pushContext(new ReactionContext(this.#builder, id));
+      }
+      case "event": {
+        let id: string | undefined;
+        if ("id" in attrs) {
+          id = this.#builder.getId(attrs);
+        }
+        return pushContext(
+          new EventContext(
+            this.#builder,
+            id,
+            getBool(attrs, "useValuesFromTriggerTime"),
+          ),
+        );
       }
       default:
         return;

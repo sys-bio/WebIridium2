@@ -1,28 +1,30 @@
 import { walkExpression, type IridiumExpressionListener } from "../ir/ast";
 import type {
   IridiumAlgebraicRule,
+  IridiumEvent,
   IridiumModel,
+  IridiumReaction,
   IridiumVariable,
 } from "../ir/model";
 import type { UnknownAttrs } from "./attrs";
 import { SbmlCompileInternalError } from "./errors";
 
 export class Builder {
-  ir: IridiumModel;
+  #ir: IridiumModel;
 
-  ids: Set<string>;
-  boundaryConditions: Set<string>;
-  constants: Set<string>;
+  #ids: Set<string>;
+  #boundaryConditions: Set<string>;
+  #constants: Set<string>;
 
-  species: Map<string, IridiumVariable>;
-  parameters: Map<string, IridiumVariable>;
-  compartments: Map<string, IridiumVariable>;
-  speciesReferences: Map<string, IridiumVariable>;
+  #species: Map<string, IridiumVariable>;
+  #parameters: Map<string, IridiumVariable>;
+  #compartments: Map<string, IridiumVariable>;
+  #speciesReferences: Map<string, IridiumVariable>;
 
   #compartmentArrays: Map<string, string[]>;
 
   constructor() {
-    this.ir = {
+    this.#ir = {
       variables: [],
       reactions: [],
       compartments: [],
@@ -30,15 +32,15 @@ export class Builder {
       algebraicRules: [],
       functions: [],
     };
-    this.ids = new Set();
+    this.#ids = new Set();
 
-    this.boundaryConditions = new Set();
-    this.constants = new Set();
+    this.#boundaryConditions = new Set();
+    this.#constants = new Set();
 
-    this.species = new Map();
-    this.parameters = new Map();
-    this.compartments = new Map();
-    this.speciesReferences = new Map();
+    this.#species = new Map();
+    this.#parameters = new Map();
+    this.#compartments = new Map();
+    this.#speciesReferences = new Map();
 
     this.#compartmentArrays = new Map();
   }
@@ -46,9 +48,9 @@ export class Builder {
   getId(attrs: UnknownAttrs): string {
     const id = attrs["id"];
     if (id === undefined) throw new SbmlCompileInternalError(`missing "id".`);
-    if (this.ids.has(id))
+    if (this.#ids.has(id))
       throw new SbmlCompileInternalError("Duplicate id: " + id);
-    this.ids.add(id);
+    this.#ids.add(id);
     return id;
   }
 
@@ -56,9 +58,9 @@ export class Builder {
     const ref = attrs[key];
     if (ref === undefined)
       throw new SbmlCompileInternalError(`missing "${key}".`);
-    if (!this.ids.has(ref))
+    if (!this.#ids.has(ref))
       throw new SbmlCompileInternalError(`Invalid ${key} id: ${ref}.`);
-    this.ids.add(ref);
+    this.#ids.add(ref);
     return ref;
   }
 
@@ -78,14 +80,11 @@ export class Builder {
     let i = 0;
     let id: string;
     do {
-      id = `$local;${reactionId};${parameterId}`;
-      if (i > 0) {
-        id += ";" + i;
-      }
+      id = `$local;${reactionId};${parameterId};${i}`;
       i += 1;
-    } while (this.ids.has(id));
+    } while (this.#ids.has(id));
 
-    this.ids.add(id);
+    this.#ids.add(id);
 
     return id;
   }
@@ -94,16 +93,34 @@ export class Builder {
     let i = 0;
     let id: string;
     do {
-      id = `$algebraic`;
-      if (i > 0) {
-        id += ";" + i;
-      }
+      id = `$algebraic;${i}`;
       i += 1;
-    } while (this.ids.has(id));
+    } while (this.#ids.has(id));
 
-    this.ids.add(id);
+    this.#ids.add(id);
 
     return id;
+  }
+
+  getUniqueEventId(): string {
+    let i = 0;
+    let id: string;
+    do {
+      id = `$event;${i}`;
+      i += 1;
+    } while (this.#ids.has(id));
+
+    this.#ids.add(id);
+
+    return id;
+  }
+
+  addConstant(id: string): void {
+    this.#constants.add(id);
+  }
+
+  addBoundary(id: string): void {
+    this.#boundaryConditions.add(id);
   }
 
   addToCompartmentList(compartment: string, id: string): void {
@@ -111,51 +128,67 @@ export class Builder {
   }
 
   addSpecies(variable: IridiumVariable): void {
-    this.ir.variables.push(variable);
-    this.species.set(variable.name, variable);
+    this.#ir.variables.push(variable);
+    this.#species.set(variable.name, variable);
   }
 
   addParameter(variable: IridiumVariable): void {
-    this.ir.variables.push(variable);
-    this.parameters.set(variable.name, variable);
+    this.#ir.variables.push(variable);
+    this.#parameters.set(variable.name, variable);
   }
 
   addCompartment(variable: IridiumVariable): void {
-    this.ir.variables.push(variable);
-    this.compartments.set(variable.name, variable);
+    this.#ir.variables.push(variable);
+    this.#compartments.set(variable.name, variable);
 
     const list: string[] = [];
     this.#compartmentArrays.set(variable.name, list);
-    this.ir.compartments.push({
+    this.#ir.compartments.push({
       containerVariable: variable.name,
       containedVariables: list,
     });
   }
 
   addSpeciesReference(variable: IridiumVariable): void {
-    this.ir.variables.push(variable);
-    this.speciesReferences.set(variable.name, variable);
+    this.#ir.variables.push(variable);
+    this.#speciesReferences.set(variable.name, variable);
+  }
+
+  addHiddenVariable(variable: IridiumVariable): void {
+    this.#ir.variables.push(variable);
+  }
+
+  addReaction(reaction: IridiumReaction): void {
+    this.#ir.reactions.push(reaction);
   }
 
   addAlgebraicRule(rule: IridiumAlgebraicRule): void {
-    this.ir.algebraicRules.push(rule);
+    this.#ir.algebraicRules.push(rule);
+  }
+
+  addEvent(event: IridiumEvent): void {
+    this.#ir.events.push(event);
+  }
+
+  getSpecies(id: string): IridiumVariable | undefined {
+    return this.#species.get(id);
   }
 
   getVariable(id: string): IridiumVariable | undefined {
     return (
-      this.parameters.get(id) ??
-      this.species.get(id) ??
-      this.compartments.get(id) ??
-      this.speciesReferences.get(id)
+      this.#parameters.get(id) ??
+      this.#species.get(id) ??
+      this.#compartments.get(id) ??
+      this.#speciesReferences.get(id)
     );
   }
 
   isConstant(id: string): boolean {
-    return this.constants.has(id);
+    return this.#constants.has(id);
   }
 
   isBoundary(id: string): boolean {
-    return this.boundaryConditions.has(id);
+    return this.#boundaryConditions.has(id);
   }
 
   getOutput(): IridiumModel {
@@ -171,10 +204,10 @@ export class Builder {
       },
     };
 
-    for (const rule of this.ir.algebraicRules) {
+    for (const rule of this.#ir.algebraicRules) {
       walkExpression(rule.expression, listener);
     }
 
-    return this.ir;
+    return this.#ir;
   }
 }

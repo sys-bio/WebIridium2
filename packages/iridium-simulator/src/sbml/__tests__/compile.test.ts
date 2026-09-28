@@ -5,6 +5,7 @@ import {
   algebraicRule,
   algebraicVariable,
   assignmentVariable,
+  event,
   expr,
   model,
   parameter,
@@ -1315,10 +1316,10 @@ describe("reactions", () => {
 </sbml>`,
       model({
         variables: {
-          "$local;J;k1": parameter(1),
+          "$local;J;k1;0": parameter(1),
         },
         reactions: {
-          J: reaction({}, {}, expr.var("$local;J;k1")),
+          J: reaction({}, {}, expr.var("$local;J;k1;0")),
         },
       }),
     );
@@ -1347,15 +1348,15 @@ describe("reactions", () => {
 </sbml>`,
       model({
         variables: {
-          "$local;J;k1": parameter(1),
+          "$local;J;k1;0": parameter(1),
         },
         reactions: {
           J: reaction(
             {},
             {},
             expr.builtinCall("times", [
-              expr.var("$local;J;k1"),
-              expr.var("$local;J;k1"),
+              expr.var("$local;J;k1;0"),
+              expr.var("$local;J;k1;0"),
               expr.num(5),
             ]),
           ),
@@ -1385,10 +1386,10 @@ describe("reactions", () => {
 </sbml>`,
       model({
         variables: {
-          "$local;J;k1": parameter(0),
+          "$local;J;k1;0": parameter(0),
         },
         reactions: {
-          J: reaction({}, {}, expr.var("$local;J;k1")),
+          J: reaction({}, {}, expr.var("$local;J;k1;0")),
         },
       }),
     );
@@ -1577,5 +1578,456 @@ describe("reactions", () => {
   </model>
 </sbml>`);
     }).toThrowError(SbmlCompileError);
+  });
+});
+
+describe("events", () => {
+  const template = (
+    useValuesFromTriggerTime: boolean,
+    initialValue: boolean,
+    persistent: boolean,
+  ) => `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="${useValuesFromTriggerTime}">
+        <trigger initialValue="${initialValue}" persistent="${persistent}">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments>
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`;
+
+  it("should add useValuesFromTriggerTime", () => {
+    expectModel(
+      template(false, true, true),
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: false,
+              isPersistent: true,
+              isT0: true,
+            },
+          ),
+        },
+      }),
+    );
+
+    expectModel(
+      template(true, true, true),
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: true,
+              isPersistent: true,
+              isT0: true,
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should add trigger and its attributes", () => {
+    expectModel(
+      template(false, true, true),
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: false,
+              isPersistent: true,
+              isT0: true,
+            },
+          ),
+        },
+      }),
+    );
+
+    expectModel(
+      template(false, false, true),
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: false,
+              isPersistent: true,
+              isT0: false,
+            },
+          ),
+        },
+      }),
+    );
+
+    expectModel(
+      template(false, false, false),
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: false,
+              isPersistent: false,
+              isT0: false,
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should add priority", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <priority>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <plus/>
+              <cn type="integer"> 1 </cn>
+              <cn type="integer"> 2 </cn>
+            </apply>
+          </math>
+        </priority>
+        <listOfEventAssignments>
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: true,
+              isPersistent: true,
+              isT0: true,
+              priority: expr.builtinCall("plus", [expr.num(1), expr.num(2)]),
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should add delay", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <delay>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <plus/>
+              <cn type="integer"> 1 </cn>
+              <cn type="integer"> 2 </cn>
+            </apply>
+          </math>
+        </delay>
+        <listOfEventAssignments>
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+            {
+              isFromTrigger: true,
+              isPersistent: true,
+              isT0: true,
+              delay: expr.builtinCall("plus", [expr.num(1), expr.num(2)]),
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should add event assignments", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+      <parameter id="B" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments>
+          <eventAssignment variable="B">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 5 </cn>
+            </math>
+          </eventAssignment>
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+              B: expr.num(5),
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should ignore event assignments with no math", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" constant="false"/>
+      <parameter id="B" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments>
+          <eventAssignment variable="B" />
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        events: {
+          E: event(
+            expr.builtinCall("gt", [expr.builtinVar("time"), expr.num(0)]),
+            {
+              A: expr.num(3),
+            },
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should ignore events with no event assignments", () => {
+    expectModelExact(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments />
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(1),
+          B: parameter(1),
+        },
+      }),
+    );
+  });
+
+  it("should ignore events with no trigger", () => {
+    expectModelExact(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <listOfEventAssignments>
+          <eventAssignment variable="B" />
+          <eventAssignment variable="A">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(1),
+          B: parameter(1),
+        },
+      }),
+    );
+  });
+
+  it("should skip event assignment that refer to non-existent variable", () => {
+    expectModelExact(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false"/>
+      <parameter id="B" value="1" constant="false"/>
+    </listOfParameters>
+    <listOfEvents>
+      <event id="E" useValuesFromTriggerTime="true">
+        <trigger initialValue="true" persistent="true">
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn type="integer"> 0 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments>
+          <eventAssignment variable="Z">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn type="integer"> 3 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>`,
+      model({
+        variables: {
+          A: parameter(1),
+          B: parameter(1),
+        },
+      }),
+    );
   });
 });
