@@ -1,9 +1,10 @@
 import { SaxBuilder, SaxParser } from "@nodable/sax";
 import { Context, pushContext, type ContextResult } from "./contexts/base";
 import { SbmlCompileError, SbmlCompileInternalError } from "./errors";
-import { Builder, type UnknownAttrs } from "./builder";
+import { Builder } from "./builder";
 import { SbmlContext } from "./contexts/sbml";
 import type { IridiumModel } from "../ir/model";
+import type { UnknownAttrs } from "./attrs";
 
 export class ContextStateMachine {
   #contexts: Context[] = [];
@@ -119,15 +120,18 @@ export class ContextStateMachine {
   }
 }
 
-class DefaultSbmlContext extends Context {
+class CompileContext extends Context {
+  #builder: Builder;
+
   constructor(builder: Builder) {
-    super(builder);
+    super();
+    this.#builder = builder;
   }
 
   onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
     if (name === "sbml") {
       if (attrs.level === "3" && attrs.version === "2") {
-        return pushContext(new SbmlContext(this.builder));
+        return pushContext(new SbmlContext(this.#builder));
       } else {
         throw new SbmlCompileInternalError(
           `Not supported. Level: ${attrs.level}. Version: ${attrs.version}.`,
@@ -139,7 +143,7 @@ class DefaultSbmlContext extends Context {
 
 export const compileSbml = (sbmlText: string): IridiumModel => {
   const builder = new Builder();
-  const stateMachine = new ContextStateMachine(new DefaultSbmlContext(builder));
+  const stateMachine = new ContextStateMachine(new CompileContext(builder));
 
   const parser = new SaxParser(stateMachine.getParserOptions());
 

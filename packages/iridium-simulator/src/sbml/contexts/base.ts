@@ -1,4 +1,4 @@
-import type { Builder, UnknownAttrs } from "../builder";
+import type { UnknownAttrs } from "../attrs";
 
 export type ContextResult =
   | { kind: "push"; context: Context; shouldRepeatLastEvent: boolean }
@@ -19,12 +19,6 @@ export const popContext = (
 };
 
 export abstract class Context {
-  builder: Builder;
-
-  constructor(builder: Builder) {
-    this.builder = builder;
-  }
-
   onStartElement?(name: string, attrs: UnknownAttrs): ContextResult | undefined;
   onText?(text: string): ContextResult | undefined;
   onEndElement?(name: string): ContextResult | undefined;

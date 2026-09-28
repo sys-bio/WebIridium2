@@ -1,5 +1,5 @@
 import type { IridiumExpression } from "../../ir/ast";
-import type { Builder, UnknownAttrs } from "../builder";
+import type { UnknownAttrs } from "../attrs";
 import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
 import { MathContext } from "./math";
@@ -8,8 +8,8 @@ export class SemanticsContext extends Context {
   #first?: IridiumExpression;
   #annotationXmlCount: number;
 
-  constructor(builder: Builder) {
-    super(builder);
+  constructor() {
+    super();
     this.#annotationXmlCount = 0;
   }
 
@@ -18,7 +18,7 @@ export class SemanticsContext extends Context {
     _attrs: UnknownAttrs,
   ): ContextResult | undefined {
     if (!this.#first) {
-      return pushContext(new MathContext(this.builder, name), true);
+      return pushContext(new MathContext(name), true);
     } else if (name === "annotation") {
       // do nothing
     } else if (name === "annotation-xml") {

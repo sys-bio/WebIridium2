@@ -1,6 +1,6 @@
 import type { IridiumExpression } from "../../ir/ast";
 import { expr } from "../../ir/dsl";
-import type { Builder, UnknownAttrs } from "../builder";
+import { getNumber, getString, type UnknownAttrs } from "../attrs";
 import { SbmlCompileError, SbmlCompileInternalError } from "../errors";
 import {
   CSYMBOL_DEFINITION_URLS,
@@ -19,8 +19,8 @@ class NumberContext extends Context {
   #second?: number;
   #hitSep?: boolean;
 
-  constructor(builder: Builder, type: NumberType, base: number) {
-    super(builder);
+  constructor(type: NumberType, base: number) {
+    super();
     this.#type = type;
     this.#base = base;
   }
@@ -123,9 +123,7 @@ class NumberContext extends Context {
 
 class IdentifierContext extends Context {
   #text?: string;
-  constructor(builder: Builder) {
-    super(builder);
-  }
+
   onText(name: string): ContextResult | undefined {
     this.#text = name.trim();
     return;
@@ -141,8 +139,8 @@ class IdentifierContext extends Context {
 
 class SymbolContext extends Context {
   #url: string;
-  constructor(builder: Builder, url: string) {
-    super(builder);
+  constructor(url: string) {
+    super();
     this.#url = url;
   }
   onEndElement(name: string): ContextResult | undefined {
@@ -165,8 +163,8 @@ export class PiecewiseContext extends Context {
     isOtherwise: boolean;
   };
 
-  constructor(builder: Builder) {
-    super(builder);
+  constructor() {
+    super();
     this.#pieces = [];
   }
 
@@ -175,7 +173,7 @@ export class PiecewiseContext extends Context {
     _attrs: UnknownAttrs,
   ): ContextResult | undefined {
     if (this.#currentPiece) {
-      return pushContext(new MathContext(this.builder, name), true);
+      return pushContext(new MathContext(name), true);
     }
 
     if (name === "piece" || this.#currentPiece) {
@@ -243,8 +241,8 @@ export class MathContext extends Context {
   #applyCounts: number[];
   #stopOn: string;
 
-  constructor(builder: Builder, stopOn: string = "math") {
-    super(builder);
+  constructor(stopOn: string = "math") {
+    super();
     this.#stack = [];
     this.#applyCounts = [];
     this.#stopOn = stopOn;
@@ -258,11 +256,11 @@ export class MathContext extends Context {
     if (name === "apply") {
       this.#applyCounts.push(0);
     } else if (name === "ci") {
-      return pushContext(new IdentifierContext(this.builder));
+      return pushContext(new IdentifierContext());
     } else if (name === "cn") {
       let type: NumberType = "real";
       if ("type" in attrs) {
-        const got = this.builder.getString(attrs, "type");
+        const got = getString(attrs, "type");
         if (
           got !== "real" &&
           got !== "e-notation" &&
@@ -276,7 +274,7 @@ export class MathContext extends Context {
 
       let base: number = 10;
       if ("base" in attrs) {
-        base = this.builder.getNumber(attrs, "base");
+        base = getNumber(attrs, "base");
         if (base < 2)
           throw new SbmlCompileInternalError(
             "Invalid base. Must be within 2-36.",
@@ -287,16 +285,11 @@ export class MathContext extends Context {
           );
       }
 
-      return pushContext(new NumberContext(this.builder, type, base));
+      return pushContext(new NumberContext(type, base));
     } else if (name === "csymbol") {
-      return pushContext(
-        new SymbolContext(
-          this.builder,
-          this.builder.getString(attrs, "definitionURL"),
-        ),
-      );
+      return pushContext(new SymbolContext(getString(attrs, "definitionURL")));
     } else if (name === "piecewise") {
-      return pushContext(new PiecewiseContext(this.builder));
+      return pushContext(new PiecewiseContext());
     } else if (name === "logbase") {
       const last = this.#stack[this.#stack.length - 1];
       if (
@@ -308,7 +301,7 @@ export class MathContext extends Context {
           "<logbase> must be the second argument of a <log> application.",
         );
       }
-      return pushContext(new MathContext(this.builder, "logbase"), false);
+      return pushContext(new MathContext("logbase"), false);
     } else if (name === "degree") {
       const last = this.#stack[this.#stack.length - 1];
       if (
@@ -320,9 +313,9 @@ export class MathContext extends Context {
           "<degree> must be the second argument of a <root> application.",
         );
       }
-      return pushContext(new MathContext(this.builder, "degree"), false);
+      return pushContext(new MathContext("degree"), false);
     } else if (name === "semantics") {
-      return pushContext(new SemanticsContext(this.builder));
+      return pushContext(new SemanticsContext());
     } else if (
       MATHML_CONSTANT_TAGS.has(name) ||
       MATHML_FUNCTION_TAGS.has(name)

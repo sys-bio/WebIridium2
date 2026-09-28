@@ -1,18 +1,21 @@
 import type { IridiumExpression } from "../../ir/ast";
-import type { Builder, UnknownAttrs } from "../builder";
+import type { Builder } from "../builder";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
 import { MathContext } from "./math";
 import { SbmlCompileInternalError } from "../errors";
+import type { UnknownAttrs } from "../attrs";
 
 export type AssignmentKind = "initial" | "rate" | "assignment";
 
 export class AssignmentContext extends Context {
+  #builder: Builder;
   #kind: AssignmentKind;
   #math?: IridiumExpression;
   #symbol: string;
 
   constructor(builder: Builder, kind: AssignmentKind, symbol: string) {
-    super(builder);
+    super();
+    this.#builder = builder;
     this.#kind = kind;
     this.#symbol = symbol;
   }
@@ -22,7 +25,7 @@ export class AssignmentContext extends Context {
     _attrs: UnknownAttrs,
   ): ContextResult | undefined {
     if (name === "math") {
-      return pushContext(new MathContext(this.builder));
+      return pushContext(new MathContext());
     }
   }
 
@@ -43,7 +46,7 @@ export class AssignmentContext extends Context {
 
   onEndElement(tagName: string): ContextResult | undefined {
     if (tagName === this.#getTag()) {
-      const variable = this.builder.getVariable(this.#symbol);
+      const variable = this.#builder.getVariable(this.#symbol);
 
       if (!variable) {
         // spec states to just ignore it
@@ -65,7 +68,7 @@ export class AssignmentContext extends Context {
             }
             break;
           case "assignment":
-            if (this.builder.isConstant(this.#symbol))
+            if (this.#builder.isConstant(this.#symbol))
               throw new SbmlCompileInternalError(
                 "Constant objects cannot have assignment rules.",
               );
@@ -79,7 +82,7 @@ export class AssignmentContext extends Context {
             };
             break;
           case "rate":
-            if (this.builder.isConstant(this.#symbol))
+            if (this.#builder.isConstant(this.#symbol))
               throw new SbmlCompileInternalError(
                 "Constant objects cannot have rate rules.",
               );

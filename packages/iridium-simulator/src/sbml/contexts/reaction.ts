@@ -1,7 +1,8 @@
 import { walkExpression, type IridiumExpression } from "../../ir/ast";
 import { expr } from "../../ir/dsl";
 import type { IridiumReactionTerm } from "../../ir/model";
-import type { Builder, UnknownAttrs } from "../builder";
+import { getBool, getNumber, getString, type UnknownAttrs } from "../attrs";
+import type { Builder } from "../builder";
 import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
 import { MathContext } from "./math";
@@ -15,6 +16,7 @@ export class ReactionContext extends Context {
     | "listOfModifierSpeciesReferences"
     | undefined;
 
+  #builder: Builder;
   #id: string;
   #kineticLaw: IridiumExpression | undefined;
   #reactants: IridiumReactionTerm[];
@@ -22,7 +24,8 @@ export class ReactionContext extends Context {
   #localParameters: Map<string, string>;
 
   constructor(builder: Builder, id: string) {
-    super(builder);
+    super();
+    this.#builder = builder;
     this.#inside = undefined;
 
     this.#id = id;
@@ -34,8 +37,8 @@ export class ReactionContext extends Context {
   onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
     if (this.#inside === "listOfLocalParameters") {
       if (name === "localParameter") {
-        const id = this.builder.getString(attrs, "id");
-        const value = this.builder.getNumber(attrs, "value", 0);
+        const id = getString(attrs, "id");
+        const value = getNumber(attrs, "value", 0);
         if (this.#localParameters.has(id)) {
           throw new SbmlCompileInternalError(
             "Duplicate local parameter id: " + id,
@@ -49,9 +52,9 @@ export class ReactionContext extends Context {
           );
         }
 
-        const mappedId = this.builder.getUniqueLocalParameterId(this.#id, id);
+        const mappedId = this.#builder.getUniqueLocalParameterId(this.#id, id);
         this.#localParameters.set(id, mappedId);
-        this.builder.ir.variables.push({
+        this.#builder.ir.variables.push({
           name: mappedId,
           hasSubstanceOnly: false,
           value: { kind: "initial", initial: expr.num(value) },
@@ -61,7 +64,7 @@ export class ReactionContext extends Context {
       }
     } else if (this.#inside === "kineticLaw") {
       if (name === "math") {
-        return pushContext(new MathContext(this.builder));
+        return pushContext(new MathContext());
       } else if (name === "listOfLocalParameters") {
         this.#inside = "listOfLocalParameters";
       } else {
@@ -77,9 +80,9 @@ export class ReactionContext extends Context {
       } else if (name === "listOfReactants") {
         this.#inside = "listOfReactants";
       } else if (name === "speciesReference") {
-        const id = "id" in attrs ? this.builder.getId(attrs) : undefined;
-        const species = this.builder.getRef(attrs, "species");
-        const speciesVar = this.builder.species.get(species);
+        const id = "id" in attrs ? this.#builder.getId(attrs) : undefined;
+        const species = this.#builder.getRef(attrs, "species");
+        const speciesVar = this.#builder.species.get(species);
         if (!speciesVar) {
           throw new SbmlCompileInternalError(
             "speciesReference must refer to a species.",
@@ -88,15 +91,15 @@ export class ReactionContext extends Context {
           speciesVar.value = { ...speciesVar.value, kind: "reaction" };
         }
 
-        const stoichiometry = this.builder.getNumber(attrs, "stoichiometry", 1);
+        const stoichiometry = getNumber(attrs, "stoichiometry", 1);
 
         let reactionTerm: IridiumReactionTerm;
         if (id !== undefined) {
-          const isConstant = this.builder.getBool(attrs, "constant");
+          const isConstant = getBool(attrs, "constant");
 
-          if (isConstant) this.builder.constants.add(id);
+          if (isConstant) this.#builder.constants.add(id);
 
-          this.builder.addSpeciesReference({
+          this.#builder.addSpeciesReference({
             name: id,
             hasSubstanceOnly: false,
             value: { kind: "initial", initial: expr.num(stoichiometry) },
@@ -165,7 +168,7 @@ export class ReactionContext extends Context {
           });
         }
 
-        this.builder.ir.reactions.push({
+        this.#builder.ir.reactions.push({
           name: this.#id,
           products: this.#products,
           reactants: this.#reactants,

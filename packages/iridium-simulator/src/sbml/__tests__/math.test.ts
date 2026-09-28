@@ -1,19 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { type IridiumExpression } from "../../ir/ast";
-import { Builder, type UnknownAttrs } from "../builder";
 import SaxParser from "@nodable/sax";
+import { type IridiumExpression } from "../../ir/ast";
 import { ContextStateMachine } from "../compile";
 import { MathContext } from "../contexts/math";
 import { Context, pushContext, type ContextResult } from "../contexts/base";
 import { expr } from "../../ir/dsl";
 import { SbmlCompileError } from "../errors";
+import type { UnknownAttrs } from "../attrs";
 
 const compileMathMl = (mathml: string): IridiumExpression | undefined => {
-  const builder = new Builder();
   let expression: IridiumExpression | undefined;
   class DefaultContext extends Context {
     constructor() {
-      super(builder);
+      super();
     }
 
     onStartElement(
@@ -21,7 +20,7 @@ const compileMathMl = (mathml: string): IridiumExpression | undefined => {
       _attrs: UnknownAttrs,
     ): ContextResult | undefined {
       if (name === "math") {
-        return pushContext(new MathContext(builder));
+        return pushContext(new MathContext());
       }
     }
     onPop(context: Context, result?: unknown): void {
