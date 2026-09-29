@@ -1,21 +1,15 @@
-import type { IridiumExpression } from "../../ir/ast";
 import type { UnknownAttrs } from "../attrs";
 import type { Builder } from "../builder";
 import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
-import {
-  isIridiumExpressionKind,
-  MathContext,
-  prettifyMathKind,
-  type MathElement,
-} from "./math";
+import { MathContext, type MathElement } from "./math";
 
-export class AlgebraicContext extends Context {
+export class FunctionContext extends Context {
   #builder: Builder;
-  #id?: string;
-  #math: IridiumExpression | undefined;
+  #id: string;
+  #body?: Extract<MathElement, { kind: "lambda" }>;
 
-  constructor(builder: Builder, id?: string) {
+  constructor(builder: Builder, id: string) {
     super();
     this.#builder = builder;
     this.#id = id;
@@ -32,24 +26,24 @@ export class AlgebraicContext extends Context {
 
   onPop(_context: Context, result?: unknown): void {
     const math = result as MathElement;
-    if (!isIridiumExpressionKind(math)) {
+    if (math.kind !== "lambda") {
       throw new SbmlCompileInternalError(
-        `Cannot use ${prettifyMathKind(math.kind)} for algebraic rule.`,
+        "Function definition must contain a lambda.",
       );
     }
-
-    this.#math = math;
+    this.#body = math;
   }
 
   onEndElement(name: string): ContextResult | undefined {
-    if (name === "algebraicRule") {
-      if (this.#math) {
-        this.#builder.addAlgebraicRule({
-          name: this.#id ?? this.#builder.getUniqueAlgebraicRuleId(),
-          expression: this.#math,
+    if (name === "functionDefinition") {
+      // TODO: allow function bodies in the ir to be empty
+      if (this.#body) {
+        this.#builder.addFunction({
+          name: this.#id,
+          parameters: this.#body.parameters,
+          body: this.#body?.body,
         });
       }
-
       return popContext();
     }
   }

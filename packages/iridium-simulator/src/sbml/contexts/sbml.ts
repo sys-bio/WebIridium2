@@ -8,6 +8,7 @@ import { AssignmentContext } from "./assignment";
 import { AlgebraicContext } from "./algebraic";
 import { getBool, getNumber, getString, type UnknownAttrs } from "../attrs";
 import { EventContext } from "./event";
+import { FunctionContext } from "./function";
 
 export class SbmlContext extends Context {
   #builder: Builder;
@@ -19,6 +20,10 @@ export class SbmlContext extends Context {
 
   onStartElement(name: string, attrs: UnknownAttrs): ContextResult | undefined {
     switch (name) {
+      case "functionDefinition":
+        return pushContext(
+          new FunctionContext(this.#builder, this.#builder.getId(attrs)),
+        );
       case "compartment": {
         const id = this.#builder.getId(attrs);
         // default to 1 for convenience
@@ -121,9 +126,12 @@ export class SbmlContext extends Context {
           this.#builder.getId(attrs);
         }
 
-        const symbol = this.#builder.getRef(attrs, "symbol");
         return pushContext(
-          new AssignmentContext(this.#builder, "initial", symbol),
+          new AssignmentContext(
+            this.#builder,
+            "initial",
+            getString(attrs, "symbol"),
+          ),
         );
       }
       case "assignmentRule": {
@@ -131,9 +139,12 @@ export class SbmlContext extends Context {
           this.#builder.getId(attrs);
         }
 
-        const variable = this.#builder.getRef(attrs, "variable");
         return pushContext(
-          new AssignmentContext(this.#builder, "assignment", variable),
+          new AssignmentContext(
+            this.#builder,
+            "assignment",
+            getString(attrs, "variable"),
+          ),
         );
       }
       case "rateRule": {
@@ -141,9 +152,12 @@ export class SbmlContext extends Context {
           this.#builder.getId(attrs);
         }
 
-        const variable = this.#builder.getRef(attrs, "variable");
         return pushContext(
-          new AssignmentContext(this.#builder, "rate", variable),
+          new AssignmentContext(
+            this.#builder,
+            "rate",
+            getString(attrs, "variable"),
+          ),
         );
       }
       case "algebraicRule": {

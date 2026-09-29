@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import SaxParser from "@nodable/sax";
-import { type IridiumExpression } from "../../ir/ast";
 import { ContextStateMachine } from "../compile";
-import { MathContext } from "../contexts/math";
+import { MathContext, type MathElement } from "../contexts/math";
 import { Context, pushContext, type ContextResult } from "../contexts/base";
 import { expr } from "../../ir/dsl";
 import { SbmlCompileError } from "../errors";
 import type { UnknownAttrs } from "../attrs";
 
-const compileMathMl = (mathml: string): IridiumExpression | undefined => {
-  let expression: IridiumExpression | undefined;
+const compileMathMl = (mathml: string): MathElement | undefined => {
+  let expression: MathElement | undefined;
   class DefaultContext extends Context {
     constructor() {
       super();
@@ -25,7 +24,7 @@ const compileMathMl = (mathml: string): IridiumExpression | undefined => {
     }
     onPop(context: Context, result?: unknown): void {
       if (context instanceof MathContext) {
-        expression = result as IridiumExpression;
+        expression = result as MathElement;
       }
     }
   }
@@ -37,10 +36,7 @@ const compileMathMl = (mathml: string): IridiumExpression | undefined => {
   return expression;
 };
 
-export const expectExpression = (
-  mathml: string,
-  expr: IridiumExpression,
-): void => {
+export const expectExpression = (mathml: string, expr: MathElement): void => {
   const got = compileMathMl(mathml);
   expect(got).toEqual(expr);
 };
@@ -242,6 +238,99 @@ describe("root", () => {
       "<apply><root/><degree><cn>3</cn></degree><cn>8</cn></apply>",
       expr.builtinCall("root", [expr.num(3), expr.num(8)]),
     );
+  });
+});
+
+describe("bvar", () => {
+  it("should add bvar", () => {
+    expectExpression("<bvar> <cn> 5 </cn> </bvar>", {
+      kind: "bound",
+      element: expr.num(5),
+    });
+  });
+
+  it("should error with no body", () => {
+    expect(() => {
+      compileMathMl("<bvar></bvar>");
+    }).toThrow(SbmlCompileError);
+  });
+
+  it("should error with too much body", () => {
+    expect(() => {
+      compileMathMl("<bvar><cn> 5 </cn><cn> 5 </cn></bvar>");
+    }).toThrow(SbmlCompileError);
+  });
+});
+
+describe("lambda", () => {
+  it("should add parameters and body", () => {
+    expectExpression(
+      `<lambda>
+        <bvar><ci> A </ci></bvar>
+        <bvar><ci> B </ci></bvar>
+        <apply><root/><degree><ci>A</ci></degree><ci>B</ci></apply>
+       </lambda>`,
+      {
+        kind: "lambda",
+        parameters: ["A", "B"],
+        body: expr.builtinCall("root", [expr.var("A"), expr.var("B")]),
+      },
+    );
+  });
+
+  it("should add parameters and body when inside semantics", () => {
+    expectExpression(
+      `<semantics>
+        <lambda>
+          <bvar><ci> A </ci></bvar>
+          <bvar><ci> B </ci></bvar>
+          <apply><root/><degree><ci>A</ci></degree><ci>B</ci></apply>
+         </lambda>
+         <annotation>hey</annotation>
+       </semantics>`,
+      {
+        kind: "lambda",
+        parameters: ["A", "B"],
+        body: expr.builtinCall("root", [expr.var("A"), expr.var("B")]),
+      },
+    );
+  });
+
+  it("should error when it is more than one expression", () => {
+    expect(() => {
+      compileMathMl(
+        `<lambda>
+        <bvar><ci> A </ci></bvar>
+        <bvar><ci> B </ci></bvar>
+        <apply><root/><degree><ci>A</ci></degree><ci>B</ci></apply>
+        <apply><root/><degree><ci>A</ci></degree><ci>B</ci></apply>
+       </lambda>`,
+      );
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when it is missing last expression", () => {
+    expect(() => {
+      compileMathMl(
+        `<lambda>
+        <bvar><ci> A </ci></bvar>
+        <bvar><ci> B </ci></bvar>
+       </lambda>`,
+      );
+    }).toThrowError(SbmlCompileError);
+  });
+
+  it("should error when bvar occurs after body", () => {
+    expect(() => {
+      compileMathMl(
+        `<lambda>
+        <bvar><ci> A </ci></bvar>
+        <bvar><ci> B </ci></bvar>
+        <apply><root/><degree><ci>A</ci></degree><ci>B</ci></apply>
+        <bvar><ci> C </ci></bvar>
+       </lambda>`,
+      );
+    }).toThrowError(SbmlCompileError);
   });
 });
 

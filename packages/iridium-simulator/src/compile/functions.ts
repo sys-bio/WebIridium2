@@ -782,7 +782,7 @@ const builtinFunctionDefinitions: {
       } else {
         visitExpression(expr.args[0], visitor);
         visitExpression(expr.args[1], visitor);
-        emitter.emitByte(OpCode.f64min);
+        emitter.emitByte(OpCode.f64sub);
       }
     },
   },

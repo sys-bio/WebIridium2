@@ -1,11 +1,10 @@
-import type { IridiumExpression } from "../../ir/ast";
 import type { UnknownAttrs } from "../attrs";
 import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
-import { MathContext } from "./math";
+import { MathContext, type MathElement } from "./math";
 
 export class SemanticsContext extends Context {
-  #first?: IridiumExpression;
+  #first?: MathElement;
   #annotationXmlCount: number;
 
   constructor() {
@@ -31,7 +30,7 @@ export class SemanticsContext extends Context {
   }
 
   onPop(_context: Context, result?: unknown): void {
-    this.#first = result as IridiumExpression;
+    this.#first = result as MathElement;
   }
 
   onEndElement(name: string): ContextResult | undefined {

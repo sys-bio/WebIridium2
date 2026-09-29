@@ -39,6 +39,12 @@ export const getBool = (
   }
 };
 
+const specialNumbers: Record<string, number> = {
+  "-INF": -Infinity,
+  INF: Infinity,
+  NaN: NaN,
+};
+
 export const getNumber = (
   attrs: UnknownAttrs,
   key: string,
@@ -50,6 +56,11 @@ export const getNumber = (
       throw new SbmlCompileInternalError(`missing "${key}".`);
     else return defaultValue;
   }
+
+  if (Object.hasOwn(specialNumbers, value)) {
+    return specialNumbers[value];
+  }
+
   const number = Number(value);
   if (Number.isNaN(number)) {
     throw new SbmlCompileInternalError(`"${key}" must be number.`);

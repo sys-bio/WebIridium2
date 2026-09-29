@@ -56,7 +56,7 @@ const checkArity = (
     arity = scope.getUserFunctionInfo(expr.name)?.arity;
   }
 
-  if (!arity) {
+  if (arity === undefined) {
     throw new CompileError(`Unknown function: ${expr.name}.`, expr);
   } else if (typeof arity === "number") {
     if (expr.args.length !== arity) {

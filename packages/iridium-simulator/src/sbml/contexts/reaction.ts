@@ -1,11 +1,21 @@
-import { walkExpression, type IridiumExpression } from "../../ir/ast";
+import {
+  walkExpression,
+  type IridiumExpression,
+  type IridiumExpressionRateOf,
+  type IridiumExpressionVariable,
+} from "../../ir/ast";
 import { expr } from "../../ir/dsl";
 import type { IridiumReactionTerm } from "../../ir/model";
 import { getBool, getNumber, getString, type UnknownAttrs } from "../attrs";
 import type { Builder } from "../builder";
 import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
-import { MathContext } from "./math";
+import {
+  isIridiumExpressionKind,
+  MathContext,
+  prettifyMathKind,
+  type MathElement,
+} from "./math";
 
 export class ReactionContext extends Context {
   #inside:
@@ -138,7 +148,13 @@ export class ReactionContext extends Context {
 
   onPop(context: Context, result?: unknown): void {
     if (this.#inside === "kineticLaw" && context instanceof MathContext) {
-      this.#kineticLaw = result as IridiumExpression;
+      const math = result as MathElement;
+      if (!isIridiumExpressionKind(math)) {
+        throw new SbmlCompileInternalError(
+          `Cannot use ${prettifyMathKind(math.kind)} in kinetic law.`,
+        );
+      }
+      this.#kineticLaw = math;
     }
   }
 
@@ -158,13 +174,17 @@ export class ReactionContext extends Context {
       case "reaction": {
         // re-map local parameter names
         if (this.#localParameters.size > 0 && this.#kineticLaw) {
+          const rename = (
+            expr: IridiumExpressionVariable | IridiumExpressionRateOf,
+          ) => {
+            const newName = this.#localParameters.get(expr.name);
+            if (newName) {
+              expr.name = newName;
+            }
+          };
           walkExpression(this.#kineticLaw, {
-            beforeVariable: (expr) => {
-              const newName = this.#localParameters.get(expr.name);
-              if (newName) {
-                expr.name = newName;
-              }
-            },
+            beforeVariable: rename,
+            beforeRateOf: rename,
           });
         }
 

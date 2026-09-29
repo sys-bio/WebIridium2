@@ -45,16 +45,17 @@ export class ContextStateMachine {
       attrs: UnknownAttrs,
     ): void => {
       try {
-        const current = contexts[contexts.length - 1];
-        const shouldRepeat = applyResult(current.onStartElement?.(name, attrs));
-        if (shouldRepeat) {
-          onStart(sax, name, attrs);
+        let shouldRepeat = true;
+        while (shouldRepeat) {
+          const current = contexts[contexts.length - 1];
+          shouldRepeat = applyResult(current.onStartElement?.(name, attrs));
         }
       } catch (err) {
         if (err instanceof SbmlCompileInternalError) {
           throw new SbmlCompileError(
             // eslint-disable-next-line
             `at ${sax.matcher!.toString()}: ${err.message}`,
+            { cause: err },
           );
         }
 
@@ -64,16 +65,17 @@ export class ContextStateMachine {
 
     const onText = (sax: SaxBuilder, text: string): void => {
       try {
-        const current = contexts[contexts.length - 1];
-        const shouldRepeat = applyResult(current.onText?.(text));
-        if (shouldRepeat) {
-          onText(sax, text);
+        let shouldRepeat = true;
+        while (shouldRepeat) {
+          const current = contexts[contexts.length - 1];
+          shouldRepeat = applyResult(current.onText?.(text));
         }
       } catch (err) {
         if (err instanceof SbmlCompileInternalError) {
           throw new SbmlCompileError(
             // eslint-disable-next-line
             `at ${sax.matcher!.toString()}: ${err.message}`,
+            { cause: err },
           );
         }
 
@@ -83,16 +85,17 @@ export class ContextStateMachine {
 
     const onEnd = (sax: SaxBuilder, name: string): void => {
       try {
-        const current = contexts[contexts.length - 1];
-        const shouldRepeat = applyResult(current.onEndElement?.(name));
-        if (shouldRepeat) {
-          onEnd(sax, name);
+        let shouldRepeat = true;
+        while (shouldRepeat) {
+          const current = contexts[contexts.length - 1];
+          shouldRepeat = applyResult(current.onEndElement?.(name));
         }
       } catch (err) {
         if (err instanceof SbmlCompileInternalError) {
           throw new SbmlCompileError(
             // eslint-disable-next-line
             `at ${sax.matcher!.toString()}: ${err.message}`,
+            { cause: err },
           );
         }
 

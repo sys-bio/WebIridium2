@@ -2,12 +2,26 @@ import { walkExpression, type IridiumExpressionListener } from "../ir/ast";
 import type {
   IridiumAlgebraicRule,
   IridiumEvent,
+  IridiumFunction,
   IridiumModel,
   IridiumReaction,
   IridiumVariable,
 } from "../ir/model";
 import type { UnknownAttrs } from "./attrs";
-import { SbmlCompileInternalError } from "./errors";
+import { SbmlCompileError, SbmlCompileInternalError } from "./errors";
+
+/**
+ * These are for things we want to run after everything else has been initialized.
+ * This is to ensure all IDs have been resolved.
+ *
+ * timeline:
+ *   - main build phase
+ *   - delayed build phase
+ *   - final ir
+ */
+export interface DelayedBuildable {
+  build(isDelayed: boolean): void;
+}
 
 export class Builder {
   #ir: IridiumModel;
@@ -20,8 +34,12 @@ export class Builder {
   #parameters: Map<string, IridiumVariable>;
   #compartments: Map<string, IridiumVariable>;
   #speciesReferences: Map<string, IridiumVariable>;
+  #reactions: Map<string, IridiumReaction>;
 
   #compartmentArrays: Map<string, string[]>;
+
+  #isDone: boolean;
+  #delayedBuildables: DelayedBuildable[];
 
   constructor() {
     this.#ir = {
@@ -41,8 +59,12 @@ export class Builder {
     this.#parameters = new Map();
     this.#compartments = new Map();
     this.#speciesReferences = new Map();
+    this.#reactions = new Map();
 
     this.#compartmentArrays = new Map();
+
+    this.#isDone = true;
+    this.#delayedBuildables = [];
   }
 
   getId(attrs: UnknownAttrs): string {
@@ -160,6 +182,7 @@ export class Builder {
 
   addReaction(reaction: IridiumReaction): void {
     this.#ir.reactions.push(reaction);
+    this.#reactions.set(reaction.name, reaction);
   }
 
   addAlgebraicRule(rule: IridiumAlgebraicRule): void {
@@ -168,6 +191,15 @@ export class Builder {
 
   addEvent(event: IridiumEvent): void {
     this.#ir.events.push(event);
+  }
+
+  addFunction(func: IridiumFunction): void {
+    this.#ir.functions.push(func);
+  }
+
+  addDelayedBuildable(buildable: DelayedBuildable): void {
+    if (this.#isDone) return;
+    this.#delayedBuildables.push(buildable);
   }
 
   getSpecies(id: string): IridiumVariable | undefined {
@@ -183,6 +215,10 @@ export class Builder {
     );
   }
 
+  getReaction(id: string): IridiumReaction | undefined {
+    return this.#reactions.get(id);
+  }
+
   isConstant(id: string): boolean {
     return this.#constants.has(id);
   }
@@ -192,6 +228,20 @@ export class Builder {
   }
 
   getOutput(): IridiumModel {
+    this.#isDone = true;
+
+    try {
+      for (const buildable of this.#delayedBuildables) {
+        buildable.build(true);
+      }
+    } catch (err) {
+      if (err instanceof SbmlCompileInternalError) {
+        throw new SbmlCompileError(err.message, { cause: err });
+      }
+
+      throw err;
+    }
+
     const listener: IridiumExpressionListener = {
       afterVariable: ({ name }) => {
         if (this.isConstant(name)) return;

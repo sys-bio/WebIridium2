@@ -2,8 +2,14 @@ import type { IridiumExpression } from "../../ir/ast";
 import type { IridiumEventAssignment } from "../../ir/model";
 import { getBool, getString, type UnknownAttrs } from "../attrs";
 import type { Builder } from "../builder";
+import { SbmlCompileInternalError } from "../errors";
 import { Context, popContext, pushContext, type ContextResult } from "./base";
-import { MathContext } from "./math";
+import {
+  isIridiumExpressionKind,
+  MathContext,
+  prettifyMathKind,
+  type MathElement,
+} from "./math";
 
 const TRIGGER = 0;
 const DELAY = 1;
@@ -82,25 +88,32 @@ export class EventContext extends Context {
   }
 
   onPop(_context: Context, result?: unknown): void {
+    const math = result as MathElement;
     if (this.#inside === undefined || this.#insideUsedMath) return;
+
+    if (!isIridiumExpressionKind(math)) {
+      throw new SbmlCompileInternalError(
+        `Cannot use ${prettifyMathKind(math.kind)} in event.`,
+      );
+    }
 
     this.#insideUsedMath = true;
 
     switch (this.#inside) {
       case TRIGGER:
-        this.#trigger = result as IridiumExpression;
+        this.#trigger = math;
         break;
       case DELAY:
-        this.#delay = result as IridiumExpression;
+        this.#delay = math;
         break;
       case PRIORITY:
-        this.#priority = result as IridiumExpression;
+        this.#priority = math;
         break;
       case ASSIGNMENT:
         if (this.#assignmentName !== undefined) {
           this.#assignments.push({
             name: this.#assignmentName,
-            value: result as IridiumExpression,
+            value: math,
           });
           this.#assignmentName = undefined;
         }

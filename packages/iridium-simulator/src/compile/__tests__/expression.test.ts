@@ -90,19 +90,21 @@ describe("binary", () => {
       },
     );
   });
+});
 
+describe("functions", () => {
   it("should error with call incorrect arguments", async () => {
     expect(() => {
-      compileExpression(expr.call("ln", [expr.num(0), expr.num(0)]));
+      compileExpression(expr.builtinCall("ln", [expr.num(0), expr.num(0)]));
     }).toThrowError(CompileError);
 
     expect(() => {
-      compileExpression(expr.call("min", []));
+      compileExpression(expr.builtinCall("min", []));
     }).toThrowError(CompileError);
 
     expect(() => {
       compileExpression(
-        expr.call("minus", [expr.num(1), expr.num(1), expr.num(1)]),
+        expr.builtinCall("minus", [expr.num(1), expr.num(1), expr.num(1)]),
       );
     }).toThrowError(CompileError);
 
@@ -114,6 +116,18 @@ describe("binary", () => {
           },
           functions: {
             test: func(["a", "b"], expr.add(expr.var("a"), expr.var("b"))),
+          },
+        }),
+      ),
+    ).rejects.toThrowError(CompileError);
+  });
+
+  it("should error when trying to refer to time in user-defined function", async () => {
+    await expect(
+      compile(
+        model({
+          functions: {
+            test: func(["a", "b"], expr.builtinVar("time")),
           },
         }),
       ),

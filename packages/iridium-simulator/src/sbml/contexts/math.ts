@@ -10,7 +10,27 @@ import {
 import { Context, popContext, pushContext, type ContextResult } from "./base";
 import { SemanticsContext } from "./semantics";
 
+export type MathElement =
+  | IridiumExpression
+  | { kind: "lambda"; parameters: string[]; body: IridiumExpression }
+  | { kind: "bound"; element: MathElement };
+
 type NumberType = "real" | "e-notation" | "integer" | "rational";
+
+export const isIridiumExpressionKind = (
+  element: MathElement,
+): element is IridiumExpression => {
+  return element.kind !== "lambda" && element.kind !== "bound";
+};
+
+export const prettifyMathKind = (kind: MathElement["kind"]): string => {
+  switch (kind) {
+    case "bound":
+      return "bound variable";
+    default:
+      return kind;
+  }
+};
 
 class NumberContext extends Context {
   #type: NumberType;
@@ -188,11 +208,18 @@ export class PiecewiseContext extends Context {
   }
 
   onPop(_context: Context, result?: unknown): void {
+    const math = result as MathElement;
+    if (!isIridiumExpressionKind(math)) {
+      throw new SbmlCompileInternalError(
+        `Cannot use ${prettifyMathKind(math.kind)} in piecewise.`,
+      );
+    }
+
     if (this.#currentPiece) {
       if (!this.#currentPiece.value) {
-        this.#currentPiece.value = result as IridiumExpression;
+        this.#currentPiece.value = math;
       } else if (!this.#currentPiece.isOtherwise) {
-        this.#currentPiece.condition = result as IridiumExpression;
+        this.#currentPiece.condition = math;
       } else {
         throw new SbmlCompileError("Bad result.");
       }
@@ -236,8 +263,100 @@ export class PiecewiseContext extends Context {
   }
 }
 
+class LambdaContext extends Context {
+  #params: string[] = [];
+  #body: IridiumExpression | undefined;
+  #isDoneWithParameters: boolean = false;
+
+  onStartElement(
+    name: string,
+    _attrs: UnknownAttrs,
+  ): ContextResult | undefined {
+    return pushContext(new MathContext(name), true);
+  }
+
+  onPop(_context: Context, result?: unknown): void {
+    const math = result as MathElement;
+    if (math.kind === "bound") {
+      if (this.#isDoneWithParameters) {
+        throw new SbmlCompileInternalError(
+          "Bound variable must occur before the lambda body.",
+        );
+      }
+      if (math.element.kind !== "variable") {
+        throw new SbmlCompileInternalError(
+          "Bound variable must be an identifier.",
+        );
+      }
+
+      this.#params.push(math.element.name);
+    } else {
+      if (this.#body) {
+        throw new SbmlCompileInternalError(
+          "Lambda may only contain one expression.",
+        );
+      } else if (!isIridiumExpressionKind(math)) {
+        throw new SbmlCompileInternalError(
+          `Lambda body may not contain a ${prettifyMathKind(math.kind)}.`,
+        );
+      }
+      this.#body = math;
+      this.#isDoneWithParameters = true;
+    }
+  }
+
+  onEndElement(name: string): ContextResult | undefined {
+    if (name === "lambda") {
+      if (this.#body) {
+        return popContext(
+          {
+            kind: "lambda",
+            parameters: this.#params,
+            body: this.#body,
+          } satisfies MathElement,
+          true,
+        );
+      } else {
+        throw new SbmlCompileInternalError("Lambda must have a body.");
+      }
+    }
+  }
+}
+
+class BvarContext extends Context {
+  #body: MathElement | undefined;
+
+  onStartElement(
+    name: string,
+    _attrs: UnknownAttrs,
+  ): ContextResult | undefined {
+    return pushContext(new MathContext(name), true);
+  }
+
+  onPop(_context: Context, result?: unknown): void {
+    if (this.#body) {
+      throw new SbmlCompileInternalError(
+        "Bound variable should only have on child.",
+      );
+    } else {
+      this.#body = result as MathElement;
+    }
+  }
+
+  onEndElement(name: string): ContextResult | undefined {
+    if (name === "bvar") {
+      if (!this.#body) {
+        throw new SbmlCompileInternalError(
+          "Bound variable must contain something.",
+        );
+      }
+      return popContext({ kind: "bound", element: this.#body }, true);
+    }
+  }
+}
+
 export class MathContext extends Context {
-  #stack: IridiumExpression[];
+  #stack: MathElement[];
   #applyCounts: number[];
   #stopOn: string;
 
@@ -313,7 +432,11 @@ export class MathContext extends Context {
           "<degree> must be the second argument of a <root> application.",
         );
       }
-      return pushContext(new MathContext("degree"), false);
+      return pushContext(new MathContext("degree"));
+    } else if (name === "lambda") {
+      return pushContext(new LambdaContext());
+    } else if (name === "bvar") {
+      return pushContext(new BvarContext());
     } else if (name === "semantics") {
       return pushContext(new SemanticsContext());
     } else if (
@@ -330,7 +453,7 @@ export class MathContext extends Context {
 
   onPop(_context: Context, result?: unknown): void {
     if (result) {
-      this.#stack.push(result as IridiumExpression);
+      this.#stack.push(result as MathElement);
     }
   }
 
@@ -344,6 +467,13 @@ export class MathContext extends Context {
       for (let i = 0; i < count; i++) {
         const got = this.#stack.pop();
         if (!got) throw new SbmlCompileInternalError("Bad <apply>.");
+
+        if (!isIridiumExpressionKind(got)) {
+          throw new SbmlCompileInternalError(
+            `Cannot use ${prettifyMathKind(got.kind)} in <apply>. Create a function definition then refer to that.`,
+          );
+        }
+
         children.push(got);
       }
 

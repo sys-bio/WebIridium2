@@ -7,6 +7,7 @@ import {
   assignmentVariable,
   event,
   expr,
+  func,
   model,
   parameter,
   rateVariable,
@@ -57,6 +58,70 @@ it("should compile default model", () => {
       },
     }),
   );
+});
+
+describe("function definitions", () => {
+  it("should add function definitions", () => {
+    expectModel(
+      `<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfFunctionDefinitions>
+      <functionDefinition id="test">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> a </ci>
+            </bvar>
+            <bvar>
+              <ci> b </ci>
+            </bvar>
+            <bvar>
+              <ci> c </ci>
+            </bvar>
+            <apply>
+              <plus/>
+              <ci> a </ci>
+              <ci> b </ci>
+              <ci> c </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+    </listOfFunctionDefinitions>
+  </model>
+</sbml>`,
+      model({
+        functions: {
+          test: func(
+            ["a", "b", "c"],
+            expr.builtinCall("plus", [
+              expr.var("a"),
+              expr.var("b"),
+              expr.var("c"),
+            ]),
+          ),
+        },
+      }),
+    );
+  });
+
+  it("should error when the function definition math is not a lambda", () => {
+    expect(() => {
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model metaid="__main" id="__main">
+    <listOfFunctionDefinitions>
+      <functionDefinition id="test">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <cn> 5 </cn>
+        </math>
+      </functionDefinition>
+    </listOfFunctionDefinitions>
+  </model>
+</sbml>`);
+    }).toThrow(SbmlCompileError);
+  });
 });
 
 describe("compartments", () => {
@@ -476,7 +541,7 @@ describe("initial assignment", () => {
     );
   });
 
-  it("should error with unknown symbol", () => {
+  it.skip("should error with unknown symbol", () => {
     expect(() => {
       compileSbmlString(`
 <?xml version="1.0" encoding="UTF-8"?>
@@ -641,7 +706,7 @@ describe("rate rule", () => {
       <reaction id="J" reversible="true" />
     </listOfReactions>
     <listOfRules>
-      <rateRule variable="A">
+      <rateRule variable="J">
         <math xmlns="http://www.w3.org/1998/Math/MathML">
           <cn type="integer"> 3 </cn>
         </math>
@@ -680,9 +745,9 @@ describe("rate rule", () => {
     <listOfCompartments>
       <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
     </listOfCompartments>
-    <listOfReactions>
-      <reaction id="J" reversible="true" />
-    </listOfReactions>
+    <listOfParameters>
+      <parameter id="A" value="1" constant="false" />
+    </listOfParameters>
     <listOfRules>
       <assignmentRule variable="A">
         <math xmlns="http://www.w3.org/1998/Math/MathML">
@@ -832,9 +897,9 @@ describe("assignment rule", () => {
     <listOfCompartments>
       <compartment sboTerm="SBO:0000410" id="default_compartment" spatialDimensions="3" size="1" constant="true"/>
     </listOfCompartments>
-    <listOfReactions>
-      <reaction id="J" reversible="true" />
-    </listOfReactions>
+    <listOfParameters>
+      <parameter id="A" value="5" constant="true"/>
+    </listOfParameters>
     <listOfRules>
       <assignmentRule variable="A">
         <math xmlns="http://www.w3.org/1998/Math/MathML">

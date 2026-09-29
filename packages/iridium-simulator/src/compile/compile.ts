@@ -90,6 +90,7 @@ export const compile = async (ir: IridiumModel): Promise<RuntimeModel> => {
     compileIntermediate(ir);
 
   const initialValues = await evaluateInitialValues(compilation);
+  console.log(initialValues);
 
   if (isUsingIda) {
     return {

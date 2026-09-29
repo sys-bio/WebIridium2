@@ -53,8 +53,11 @@ export const MATHML_FUNCTION_TAGS = new Set<string>([
   "arcsin",
   "arccos",
   "arctan",
+  "arcsec",
   "arccsc",
   "arccot",
+  "arcsinh",
+  "arccosh",
   "arctanh",
   "arcsech",
   "arccsch",
@@ -62,6 +65,7 @@ export const MATHML_FUNCTION_TAGS = new Set<string>([
 
   "and",
   "or",
+  "xor",
   "not",
   "implies",
 
