@@ -1,0 +1,17 @@
+// Created by libAntimony v3.2.0
+model *case01597()
+
+  // Assignment Rules:
+  P1 := cosh(time);
+
+  // Events:
+  E0: at 1 after time > 4.5: P2 = cosh(time);
+
+  // Variable initializations:
+  P2 = 1;
+
+  // Other declarations:
+  var P2, P1;
+end
+
+case01597 is "case01597"

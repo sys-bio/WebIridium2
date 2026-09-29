@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01818()
+
+  // Variable initializations:
+  pi_ = 7;
+  Pi = 8;
+  PI = 9;
+
+  // Other declarations:
+  const pi_, Pi, PI;
+end

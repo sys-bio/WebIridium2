@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01300()
+
+  // Reactions:
+  J0:  -> ; 3;
+
+  // Variable initializations:
+  p1 = J0;
+
+  // Other declarations:
+  var p1;
+end
+
+case01300 is "case01300"

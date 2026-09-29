@@ -1,0 +1,23 @@
+// Created by libAntimony v3.2.0
+model *case00893()
+
+  // Rate Rules:
+  P1' = -1*P1*P3;
+  P3' = k1*time;
+  P2' = P1*P3;
+
+  // Variable initializations:
+  P1 = 0.0015;
+  P3 = 0.001;
+  P2 = 0;
+  k1 = 0.5;
+
+  // Other declarations:
+  var P1, P3, P2;
+  const k1;
+
+  // Unit definitions:
+  unit time_unit = second;
+end
+
+case00893 is "case00893"

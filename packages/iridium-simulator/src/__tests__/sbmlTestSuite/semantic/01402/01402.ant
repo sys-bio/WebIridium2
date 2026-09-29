@@ -1,0 +1,31 @@
+// Created by libAntimony v3.2.0
+model *case01402()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Assignment Rules:
+  P0 := rateOf(S1);
+
+  // Reactions:
+  J0: S1 -> S2; 0.1*S1;
+
+  model.conversionFactor = conversion;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  conversion = 2;
+
+  // Other declarations:
+  var P0;
+  const conversion, C;
+end
+
+case01402 is "case01402"

@@ -1,0 +1,16 @@
+// Created by libAntimony v3.2.0
+model *case01329()
+
+  // Events:
+  E1: at time > 3.5: x = 7;
+  E0: at 2 after time > 2.5, fromTrigger=false: y = x;
+
+  // Variable initializations:
+  x = 1;
+  y = 0;
+
+  // Other declarations:
+  var x, y;
+end
+
+case01329 is "case01329"

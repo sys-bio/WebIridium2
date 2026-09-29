@@ -1,0 +1,35 @@
+// Created by libAntimony v3.2.0
+model *case01734()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, $S3 in C, $S4 in C;
+
+  // Reactions:
+  J0: S3_stoich $S3 + S1_stoich S1 -> S2_stoich S2 + S4_stoich $S4; 0.01;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 3/C;
+  S3 = 2/C;
+  S4 = 3/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  s1_cf = 5;
+  S3_stoich = 1.5;
+  S1_stoich = 1.5;
+  S2_stoich = 1.5;
+  S4_stoich = 1.5;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
+  S3.conversionFactor = s1_cf;
+
+  // Other declarations:
+  const C, s1_cf;
+end
+
+case01734 is "case01734"

@@ -1,0 +1,15 @@
+// Created by libAntimony v3.2.0
+model *case01811()
+
+  // Variable initializations:
+  INF_ = 10;
+  Inf = 1;
+  inf_ = 0.1;
+  a = INF_;
+  b = Inf;
+  c = inf_;
+  d = INF;
+
+  // Other declarations:
+  const INF_, Inf, inf_, a, b, c, d;
+end

@@ -216,7 +216,9 @@ class IrBuilder {
   getNameOf(source: AntimonyObject): string {
     const got = this.#sources.get(source);
     if (!got) {
-      throw new AntimonyCompileInvariantError(`Object ${source.name} missing name.`);
+      throw new AntimonyCompileInvariantError(
+        `Object ${source.name} missing name.`,
+      );
     }
     return got;
   }
@@ -878,7 +880,7 @@ const resolveFunctionScopeVariable = (
   return [reference[0] as string, undefined];
 };
 
-export const compileToIridium = (
+export const compileAntimonyDocument = (
   document: AntimonyDocument,
 ): IridiumModel<Metadata> => {
   const builder = new IrBuilder();
@@ -897,8 +899,10 @@ export const compileToIridium = (
   return builder.build();
 };
 
-export const compile = async (source: string): Promise<RuntimeModel> => {
+export const compileAntimonyString = async (
+  source: string,
+): Promise<RuntimeModel> => {
   const document = buildAntimonyDocument(source);
-  const ir = compileToIridium(document);
+  const ir = compileAntimonyDocument(document);
   return await compileIridium(ir);
 };

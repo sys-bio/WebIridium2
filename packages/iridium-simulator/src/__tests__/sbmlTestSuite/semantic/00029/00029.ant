@@ -1,0 +1,29 @@
+// Created by libAntimony v3.2.0
+model *case00029()
+
+  // Compartments and Species:
+  compartment compartment_;
+  species S1 in compartment_;
+
+  // Assignment Rules:
+  S1 := 7;
+  S1 has substance_per_volume;
+
+  // Compartment initializations:
+  compartment_ = 1;
+  compartment_ has volume;
+
+  // Other declarations:
+  const compartment_;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = second;
+  unit substance_per_volume = mole / litre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case00029 is "case00029"

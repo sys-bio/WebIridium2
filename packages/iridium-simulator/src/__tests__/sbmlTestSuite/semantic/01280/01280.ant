@@ -1,0 +1,13 @@
+// Created by libAntimony v3.2.0
+model *case01280()
+
+  // Assignment Rules:
+  p1 := max(-5, -time);
+  p2 := max(time);
+  p3 := max(5, time);
+
+  // Other declarations:
+  var p1, p2, p3;
+end
+
+case01280 is "case01280"

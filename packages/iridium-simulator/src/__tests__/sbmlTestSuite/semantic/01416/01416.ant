@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01416()
+
+  // Assignment Rules:
+  P1 := delay(S1, 1);
+
+  // Variable initializations:
+  S1 = 3;
+
+  // Other declarations:
+  var S1, P1;
+end
+
+case01416 is "case01416"

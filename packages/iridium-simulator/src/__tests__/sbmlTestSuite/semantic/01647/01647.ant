@@ -1,0 +1,27 @@
+// Created by libAntimony v3.2.0
+model *case01647()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species S1 in C, S2 in C;
+
+  // Reactions:
+  J0: S1 -> S2; 0.01;
+
+  model.conversionFactor = m_cf;
+
+  // Species initializations:
+  S1 = 2;
+  S2 = 3;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Variable initializations:
+  m_cf = 3;
+
+  // Other declarations:
+  const m_cf, C;
+end
+
+case01647 is "case01647"

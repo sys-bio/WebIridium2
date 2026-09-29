@@ -1,0 +1,16 @@
+// Created by libAntimony v3.2.0
+model *case01319()
+
+  // Assignment Rules:
+  p2 := 1 + time;
+  p3 := delay(p2, 1);
+
+  // Variable initializations:
+  p1 = 5;
+
+  // Other declarations:
+  var p2, p3;
+  const p1;
+end
+
+case01319 is "case01319"

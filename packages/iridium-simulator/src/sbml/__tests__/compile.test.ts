@@ -1,5 +1,5 @@
 import { expect, describe, it } from "vitest";
-import { compileSbml } from "../compile";
+import { compileSbmlString } from "../compile";
 import type { IridiumModel } from "../../ir/model";
 import {
   algebraicRule,
@@ -19,12 +19,12 @@ import { toComparableModel } from "../../testingUtils/ir";
 import { SbmlCompileError } from "../errors";
 
 const expectModel = (sbml: string, expected: IridiumModel) => {
-  const got = compileSbml(sbml);
+  const got = compileSbmlString(sbml);
   expect(toComparableModel(got)).toMatchObject(toComparableModel(expected));
 };
 
 const expectModelExact = (sbml: string, expected: IridiumModel) => {
-  const got = compileSbml(sbml);
+  const got = compileSbmlString(sbml);
   expect(toComparableModel(got)).toEqual(toComparableModel(expected));
 };
 
@@ -104,7 +104,7 @@ describe("compartments", () => {
 
   it("should error on duplicate compartments", () => {
     expect(() => {
-      compileSbml(
+      compileSbmlString(
         `<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
@@ -158,7 +158,7 @@ describe("parameter", () => {
 
   it("should error on duplicate parameters", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfParameters>
@@ -341,7 +341,7 @@ describe("species", () => {
 
   it("should error on duplicate species", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -478,7 +478,7 @@ describe("initial assignment", () => {
 
   it("should error with unknown symbol", () => {
     expect(() => {
-      compileSbml(`
+      compileSbmlString(`
 <?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
@@ -500,7 +500,7 @@ describe("initial assignment", () => {
 
   it("should error when assigning to reaction", () => {
     expect(() => {
-      compileSbml(`
+      compileSbmlString(`
 <?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
@@ -631,7 +631,7 @@ describe("rate rule", () => {
 
   it("should error when trying to set rate of reaction", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -654,7 +654,7 @@ describe("rate rule", () => {
 
   it("should error when trying to set rate of const object", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfParameters>
@@ -674,7 +674,7 @@ describe("rate rule", () => {
 
   it("should error when trying to set rate of object with assignment rule", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -702,7 +702,7 @@ describe("rate rule", () => {
 
   it.skip("should error when trying to set rate of floating species", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -783,7 +783,7 @@ describe("assignment rule", () => {
 
   it.skip("should error when trying to set value of floating species", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -806,7 +806,7 @@ describe("assignment rule", () => {
 
   it("should error when trying to assign const object", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfParameters>
@@ -826,7 +826,7 @@ describe("assignment rule", () => {
 
   it("should error when trying to assign to object with rate rule", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -1397,7 +1397,7 @@ describe("reactions", () => {
 
   it("should error on duplicate stoichiometries", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -1432,7 +1432,7 @@ describe("reactions", () => {
 
   it("should error on duplicate local parameters", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -1471,7 +1471,7 @@ describe("reactions", () => {
 
   it("should error with local parameters outside list", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -1508,7 +1508,7 @@ describe("reactions", () => {
 
   it("should error with local parameters with same name as referenced species", () => {
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>
@@ -1544,7 +1544,7 @@ describe("reactions", () => {
     }).toThrowError(SbmlCompileError);
 
     expect(() => {
-      compileSbml(`<?xml version="1.0" encoding="UTF-8"?>
+      compileSbmlString(`<?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
   <model metaid="__main" id="__main">
     <listOfCompartments>

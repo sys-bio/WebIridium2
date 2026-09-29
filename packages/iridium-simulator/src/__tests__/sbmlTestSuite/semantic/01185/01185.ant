@@ -1,0 +1,25 @@
+// Created by libAntimony v3.2.0
+model *case_01185()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Reactions:
+  _J0:  -> S1; k1;
+
+  // Species initializations:
+  S1 = 1/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = y;
+  y = 3;
+
+  // Other declarations:
+  const C, k1, y;
+end
+
+case_01185 is "case_01185"

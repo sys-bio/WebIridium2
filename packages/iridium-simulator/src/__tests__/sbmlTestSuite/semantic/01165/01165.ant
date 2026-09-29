@@ -1,0 +1,34 @@
+// Created by libAntimony v3.2.0
+model enzyme()
+
+  // Compartments and Species:
+  compartment comp;
+  species S in comp, E in comp, D in comp, ES in comp;
+
+  // Reactions:
+  J0: S + E -> ES; (S + E)/ES;
+  J1: ES -> E + D; ES/(E + D);
+
+  // Species initializations:
+  S = 1;
+  E = 1;
+  D = 1;
+  ES = 1;
+
+  // Compartment initializations:
+  comp = 1;
+
+  // Other declarations:
+  const comp;
+end
+
+enzyme is "enzyme"
+
+model *aggregate()
+
+  // Sub-modules, and any changes to those submodules:
+  submod1: enzyme();
+  submod2: enzyme();
+end
+
+aggregate is "aggregate"

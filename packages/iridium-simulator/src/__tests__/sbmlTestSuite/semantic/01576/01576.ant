@@ -1,0 +1,21 @@
+// Created by libAntimony v3.2.0
+model *case01576()
+
+  // Rate Rules:
+  k1' = 1;
+
+  // Algebraic Rules:
+  _alg0: 0 = k1 - k2;
+
+  // Events:
+  E0: at 1 after (k2 > 3.5) && (k2 < 4), persistent=false: k1 = 1;
+
+  // Variable initializations:
+  k2 = ;
+  k1 = 1;
+
+  // Other declarations:
+  var k2, k1;
+end
+
+case01576 is "case01576"

@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case01342()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C;
+
+  // Species initializations:
+  S1 = 2/C;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Other declarations:
+  const C;
+end
+
+case01342 is "case01342"

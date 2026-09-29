@@ -1,0 +1,35 @@
+// Created by libAntimony v3.2.0
+model *case01683()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  J0: S1 -> S2; 0.01;
+
+  model.conversionFactor = m_cf;
+
+  // Events:
+  E0: at time > 3.5, priority = S2: S2 = 3, S1 = 1;
+  E1: at time > 3.5, priority = 3.013: S2 = 4, S1 = 4;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 3/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  m_cf = 3;
+  s1_cf = 5;
+
+  // Species conversion factors:
+  S1.conversionFactor = s1_cf;
+
+  // Other declarations:
+  const m_cf, C, s1_cf;
+end
+
+case01683 is "case01683"

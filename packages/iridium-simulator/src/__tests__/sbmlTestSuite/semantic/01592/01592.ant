@@ -1,0 +1,29 @@
+// Created by libAntimony v3.2.0
+model *case01592()
+
+  // Assignment Rules:
+  S := Q + R;
+
+  // Rate Rules:
+  reset' = 1;
+
+  // Events:
+  Qinc: at reset >= 0.01, priority = 1, persistent=false: reset = 0, Q = Q + delay(reset, 0.005) + 0.005;
+  Rinc: at reset >= 0.01, priority = 1, persistent=false: reset = 0, R = R + delay(reset, 0.005) + 0.005;
+  maxcheck: at abs(Q - R) > maxdiff: maxdiff = abs(Q - R);
+  error_check: at (time >= 99) && (maxdiff < 0.2): errorLow = 1;
+  error_check2: at maxdiff >= 4: errorHigh = 1;
+
+  // Variable initializations:
+  reset = 0;
+  Q = 0;
+  R = 0;
+  maxdiff = 0;
+  errorLow = 0;
+  errorHigh = 0;
+
+  // Other declarations:
+  var reset, Q, R, maxdiff, errorLow, errorHigh, S;
+end
+
+case01592 is "case01592"

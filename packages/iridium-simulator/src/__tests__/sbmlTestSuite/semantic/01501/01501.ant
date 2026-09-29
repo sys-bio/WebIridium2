@@ -1,0 +1,38 @@
+// Created by libAntimony v3.2.0
+model *case01501()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Algebraic Rules:
+  _alg0: 0 = P0 - S1;
+  _alg1: 0 = P1 - S2;
+
+  // Reactions:
+  J0: S1 -> S2; 0.1*S1;
+
+  model.conversionFactor = mconversion;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  mconversion = 3;
+  sconversion = 2;
+  P0 = ;
+  P1 = ;
+
+  // Species conversion factors:
+  S1.conversionFactor = sconversion;
+
+  // Other declarations:
+  var P0, P1;
+  const mconversion, C, sconversion;
+end
+
+case01501 is "case01501"

@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case00982()
+
+  // Assignment Rules:
+  temp := time/2;
+  y := delay(x, temp);
+
+  // Rate Rules:
+  x' = 1;
+
+  // Variable initializations:
+  x = 0;
+
+  // Other declarations:
+  var x, temp, y;
+end
+
+case00982 is "case00982"

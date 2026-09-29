@@ -1,0 +1,26 @@
+// Created by libAntimony v3.2.0
+model *case01574()
+
+  // Compartments and Species:
+  compartment C;
+  species $S1 in C, S2 in C;
+
+  // Assignment Rules:
+  S1_stoich := 2;
+
+  // Reactions:
+  J0: S1_stoich $S1 -> S2; S1*0.1;
+
+  // Species initializations:
+  S1 = 3;
+  S2 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  var S1_stoich;
+  const C;
+end
+
+case01574 is "case01574"

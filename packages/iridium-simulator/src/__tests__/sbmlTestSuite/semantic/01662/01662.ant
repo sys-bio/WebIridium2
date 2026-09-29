@@ -1,0 +1,15 @@
+// Created by libAntimony v3.2.0
+model *case01662()
+
+  // Events:
+  E0: at time >= 2.5, priority = 1: p1 = 3;
+  E1: at time >= 2.5, priority = avogadro/6.022e23: p1 = 5;
+
+  // Variable initializations:
+  p1 = 1;
+
+  // Other declarations:
+  var p1;
+end
+
+case01662 is "case01662"

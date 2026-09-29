@@ -1,0 +1,17 @@
+// Created by libAntimony v3.2.0
+model *case01302()
+
+  // Rate Rules:
+  p1' = J0;
+
+  // Reactions:
+  J0:  -> ; 3;
+
+  // Variable initializations:
+  p1 = 0;
+
+  // Other declarations:
+  var p1;
+end
+
+case01302 is "case01302"

@@ -1,0 +1,13 @@
+// Created by libAntimony v3.2.0
+model *case01282()
+
+  // Variable initializations:
+  p1 = piecewise(0, 5, 1);
+  p2 = true && (0 || 0);
+  p3 = 0 || (1 - 1) || (0^3);
+
+  // Other declarations:
+  const p1, p2, p3;
+end
+
+case01282 is "case01282"

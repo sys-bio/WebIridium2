@@ -1,0 +1,27 @@
+// Created by libAntimony v3.2.0
+model *case01808()
+
+  // Compartments and Species:
+  compartment C, c;
+  species spec in C, Spec in c, sPeC in C;
+
+  // Reactions:
+  J:  -> spec; K;
+  j:  -> Spec + 2 sPeC; k;
+
+  // Species initializations:
+  spec = 3;
+  Spec = 4;
+  sPeC = 5;
+
+  // Compartment initializations:
+  C = 1;
+  c = 2;
+
+  // Variable initializations:
+  K = 1;
+  k = 2;
+
+  // Other declarations:
+  const C, c, K, k;
+end

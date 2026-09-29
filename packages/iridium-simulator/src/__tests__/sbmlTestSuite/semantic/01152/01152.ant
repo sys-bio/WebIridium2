@@ -1,0 +1,30 @@
+// Created by libAntimony v3.2.0
+model moddef1()
+
+  // Events:
+  E1: at time > 0.31: p80 = 800 + p80;
+
+  // Variable initializations:
+  p80 = 80;
+
+  // Other declarations:
+  var p80;
+end
+
+moddef1 is "moddef1"
+
+model *case01152()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+  sub1.p80 * conv is p8;
+
+  // Variable initializations:
+  conv = 0.1;
+  p8 = 8;
+
+  // Other declarations:
+  const conv;
+end
+
+case01152 is "case01152"

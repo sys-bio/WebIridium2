@@ -1,0 +1,26 @@
+// Created by libAntimony v3.2.0
+model *case00906()
+
+  // Compartments and Species:
+  compartment c;
+
+  // Rate Rules:
+  c' = -1*c*k1;
+
+  // Compartment initializations:
+  c = 0.002;
+  c has area;
+
+  // Variable initializations:
+  k1 = 1.1;
+
+  // Other declarations:
+  var c;
+  const k1;
+
+  // Unit definitions:
+  unit area = metre^2;
+  unit time_unit = second;
+end
+
+case00906 is "case00906"

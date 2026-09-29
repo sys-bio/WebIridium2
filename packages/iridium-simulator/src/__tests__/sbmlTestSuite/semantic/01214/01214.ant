@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01214()
+
+  // Events:
+  E0: at time > 0.01: x = piecewise(5, 1 == 1 == 2, 7);
+
+  // Variable initializations:
+  x = 3;
+
+  // Other declarations:
+  var x;
+end
+
+case01214 is "case01214"

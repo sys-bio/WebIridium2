@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model *case01398()
+
+  // Compartments and Species:
+  species S1, S2;
+
+  // Reactions:
+  J0: S1_stoichiometry S1 -> S2; 1*S1;
+
+  // Events:
+  _E0: at time > 4.5: S1 = 5, S1_stoichiometry = 5;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 0;
+
+  // Variable initializations:
+  S1_stoichiometry = 1;
+
+  // Other declarations:
+  var S1_stoichiometry;
+end
+
+case01398 is "case01398"

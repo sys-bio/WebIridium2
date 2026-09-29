@@ -17,7 +17,7 @@ import {
 } from "../../../ir/dsl";
 import { AntimonyCompileError } from "../../errors";
 import { buildAntimonyDocument } from "../../semantic/semantic";
-import { compileToIridium } from "../../compile/compile";
+import { compileAntimonyDocument } from "../../compile/compile";
 import defaultModel from "../../__tests__/results/default.ant?raw";
 import { writeFileSync } from "node:fs";
 import { toComparableModel } from "../../../testingUtils/ir";
@@ -34,7 +34,7 @@ const variables = (variables: {
 
 const compileToIr = (source: string): IridiumModel => {
   const document = buildAntimonyDocument(source);
-  const iridium = compileToIridium(document);
+  const iridium = compileAntimonyDocument(document);
   return iridium;
 };
 
@@ -1484,7 +1484,7 @@ describe("ir", () => {
 describe("wasm", () => {
   it("should compile valid WASM", () => {
     const document = buildAntimonyDocument(defaultModel);
-    const ir = compileToIridium(document);
+    const ir = compileAntimonyDocument(document);
     const { bytecode } = compileIntermediate(ir);
 
     if (WRITE_BASIC_MODEL) {

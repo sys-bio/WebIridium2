@@ -8,7 +8,7 @@ DEVINSTRUCTIONS/**/*.md
 manual/theme/**/*
 manual/book/**/*
 packages/iridium-simulator/src/antimony/generated/
+packages/iridium-simulator/simResults
 packages/iridium-simulator/scripts/
-packages/iridium-simulator/src/antimony/__tests__/sbmlTestSuiteOriginal
-packages/iridium-simulator/src/antimony/__tests__/sbmlTestSuite
+packages/iridium-simulator/src/__tests__/sbmlTestSuite/semantic
 packages/iridium-simulator/build/

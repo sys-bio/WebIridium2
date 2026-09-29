@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01790()
+
+  // Algebraic Rules:
+  _alg0: 0 = P2 - P1;
+
+  // Variable initializations:
+  P1 = 2;
+  P2 = 3;
+
+  // Other declarations:
+  var P2;
+  const P1;
+end

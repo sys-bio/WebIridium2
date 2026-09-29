@@ -1,0 +1,43 @@
+// Created by libAntimony v3.2.0
+model foo(x)
+
+  // Rate Rules:
+  x' = 37 + y;
+
+  // Variable initializations:
+  x = 50*Q;
+  Q = 2;
+  y = 7;
+
+  // Other declarations:
+  var x;
+  const Q, y;
+end
+
+foo is "foo"
+
+model bar(y)
+
+  // Sub-modules, and any changes to those submodules:
+  A: foo(y);
+end
+
+bar is "bar"
+
+model *case01153()
+
+  // Sub-modules, and any changes to those submodules:
+  A: bar(z);
+
+  // Rate Rules:
+  z' = ;
+
+  // Variable initializations:
+  z = 34*i;
+  i = 2;
+
+  // Other declarations:
+  const i;
+end
+
+case01153 is "case01153"

@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model *case01109()
+
+  // Compartments and Species:
+  species X;
+
+  // Assignment Rules:
+  Xref := time;
+
+  // Reactions:
+  J0:  -> Xref X; k1;
+
+  // Species initializations:
+  X = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  var Xref;
+  const k1;
+end
+
+case01109 is "case01109"

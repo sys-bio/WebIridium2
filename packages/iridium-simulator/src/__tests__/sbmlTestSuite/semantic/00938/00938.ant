@@ -1,0 +1,31 @@
+// Created by libAntimony v3.2.0
+model *case00938()
+
+  // Compartments and Species:
+  compartment default_compartment;
+  species x in default_compartment;
+
+  // Assignment Rules:
+  y := 2 + delay(x, 0.2);
+
+  // Reactions:
+  _J0:  => x; 1;
+
+  // Species initializations:
+  x = 1*sin(10*time);
+
+  // Compartment initializations:
+  default_compartment = 1;
+
+  // Other declarations:
+  var y;
+  const default_compartment;
+
+  // SBO terms:
+  default_compartment.sboTerm = 410
+
+  // Notes:
+  model notes "Originally created by libAntimony 1.4 (using libSBML 5.0.0-a1)"
+end
+
+case00938 is "case00938"

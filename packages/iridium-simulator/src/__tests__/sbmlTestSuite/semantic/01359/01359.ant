@@ -1,0 +1,31 @@
+// Created by libAntimony v3.2.0
+model sub1()
+
+  // Algebraic Rules:
+  _alg0: 0 = x - J0;
+
+  // Variable initializations:
+  J0 = 2;
+  x = ;
+
+  // Other declarations:
+  var x;
+  const J0;
+end
+
+sub1 is "sub1"
+
+model *case01359()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.J0 is J1;
+
+  // Algebraic Rules:
+  A._alg0: 0 = A.x - J1;
+
+  // Variable initializations:
+  J1 = 5;
+end
+
+case01359 is "case01359"

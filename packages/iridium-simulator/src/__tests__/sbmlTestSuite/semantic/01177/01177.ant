@@ -1,0 +1,27 @@
+// Created by libAntimony v3.2.0
+model moddef1()
+
+  // Events:
+  _E0: at 1e-5/time after time > 0.005: t5 = time;
+
+  // Variable initializations:
+  t5 = 1;
+
+  // Other declarations:
+  var t5;
+end
+
+model *case01177()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.t5 is t5;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+case01177 is "case01177"

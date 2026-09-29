@@ -1,0 +1,29 @@
+// Created by libAntimony v3.2.0
+model *case00932()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C, S3 in C;
+
+  // Reactions:
+  reaction1: S1 => S2; C*k1*S1;
+
+  // Events:
+  _E0: at 3 after (S1 <= 5e-5) && (S1 >= 4e-5), persistent=false: S3 = 0.00025;
+
+  // Species initializations:
+  S1 = 0.00015/C;
+  S2 = 0.00015/C;
+  S3 = 0.00015/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k1 = 1;
+
+  // Other declarations:
+  const C, k1;
+end
+
+case00932 is "case00932"

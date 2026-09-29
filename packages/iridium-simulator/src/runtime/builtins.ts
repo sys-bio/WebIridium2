@@ -101,6 +101,14 @@ export const builtinFunctions = {
       "Returns the root of the second argument where the first argument is the degree. If only one argument is provided, a default degree of 2 is used.",
     arity: { min: 1, max: 2 },
   },
+  power: {
+    description: "Raise the first argument to the power of the second.",
+    arity: 2,
+  },
+  pow: {
+    description: "Alias for power",
+    arity: 2,
+  },
   max: {
     description: "Returns the argument with the maximum value.",
     arity: { min: 1 },
@@ -134,6 +142,10 @@ export const builtinFunctions = {
   },
   sqrt: {
     description: "Returns the square root.",
+    arity: 1,
+  },
+  sqr: {
+    description: "Alias for sqrt.",
     arity: 1,
   },
   times: {

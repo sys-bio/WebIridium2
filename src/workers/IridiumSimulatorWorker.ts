@@ -5,7 +5,7 @@ import {
 } from "iridium-simulator";
 import {
   buildAntimonyDocument,
-  compileToIridium,
+  compileAntimonyDocument,
   type AntimonyModel,
 } from "iridium-simulator/antimony";
 import type { Action, ErrorResult, Result } from "@/features/taskPool";
@@ -97,7 +97,7 @@ self.onmessage = async (e: MessageEvent<unknown>) => {
     switch (action.type) {
       case "compile": {
         const antimonyDocument = buildAntimonyDocument(action.payload);
-        const iridiumModel = compileToIridium(antimonyDocument);
+        const iridiumModel = compileAntimonyDocument(antimonyDocument);
         const runtimeModel = await compile(iridiumModel);
         if (!runtimeModel) throw new Error("Unable to compile model.");
 

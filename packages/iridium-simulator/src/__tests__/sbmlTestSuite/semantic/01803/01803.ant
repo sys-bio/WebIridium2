@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01803()
+
+  // Variable initializations:
+  param = 3;
+  Param = 4;
+  pArAm = 5;
+
+  // Other declarations:
+  const param, Param, pArAm;
+end

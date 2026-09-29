@@ -1,0 +1,15 @@
+// Created by libAntimony v3.2.0
+model *case00937()
+
+  // Assignment Rules:
+  x := sin(10*time);
+  y := 2 + delay(x, 0.2);
+
+  // Other declarations:
+  var x, y;
+
+  // Notes:
+  model notes "Originally created by libAntimony 1.4 (using libSBML 5.0.0-a1)"
+end
+
+case00937 is "case00937"

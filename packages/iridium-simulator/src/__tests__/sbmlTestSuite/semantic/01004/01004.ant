@@ -1,0 +1,37 @@
+// Created by libAntimony v3.2.0
+model *case01004()
+
+  // Compartments and Species:
+  compartment compartment_;
+  substanceOnly species S1 in compartment_, S2 in compartment_;
+
+  // Reactions:
+  reaction1: S1 => S2; k1*S1;
+
+  // Species initializations:
+  S1 = 0.15;
+  S1 has substance;
+  S2 = 0;
+  S2 has substance;
+
+  // Compartment initializations:
+  compartment_ = 10;
+  compartment_ has volume;
+
+  // Variable initializations:
+  k1 = 1.5;
+
+  // Other declarations:
+  const compartment_, k1;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = second;
+  unit substance_volume = mole * litre;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case01004 is "case01004"

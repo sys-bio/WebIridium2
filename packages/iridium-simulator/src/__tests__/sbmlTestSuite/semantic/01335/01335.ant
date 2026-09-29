@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01335()
+
+  // Events:
+  E1: at 2.5 after x > 2, t0=false: x = 7;
+
+  // Variable initializations:
+  x = 3;
+
+  // Other declarations:
+  var x;
+end
+
+case01335 is "case01335"

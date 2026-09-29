@@ -1,0 +1,40 @@
+// Created by libAntimony v3.2.0
+model moddef1()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species s1 in C;
+
+  // Assignment Rules:
+  t5 := time;
+
+  // Reactions:
+  J0:  -> s1; delay(t5, 0.2)*time;
+
+  // Species initializations:
+  s1 = 0.001;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  var t5;
+  const C;
+end
+
+model *case01176()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.C is C;
+  sub1.s1 is s1;
+  sub1.t5 is t5;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+case01176 is "case01176"

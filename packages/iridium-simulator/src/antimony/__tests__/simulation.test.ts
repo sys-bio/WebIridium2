@@ -1,15 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { promises as fs } from "fs";
 import path from "path";
+
+// import defaultModel from "@/features/__benches__/smallbone_xlarge.ant?raw";
+import defaultModel from "@/assets/default.ant?raw";
+import type { TimeCourseOutput } from "../../runtime/output.ts";
+import { createSimulator } from "../../runtime/simulator.ts";
+import { buildAntimonyDocument } from "../semantic/semantic.ts";
+import { compileAntimonyDocument } from "../compile/compile.ts";
+import { compile } from "../../compile/compile.ts";
 import {
   getColumnsFromCsv,
   getColumnsFromTimeCourseOutput,
   parseTestParams,
-  simulateOnce,
-} from "./testUtil.ts";
-
-// import defaultModel from "@/features/__benches__/smallbone_xlarge.ant?raw";
-import defaultModel from "@/assets/default.ant?raw";
+} from "../../testingUtils/simTests.ts";
 
 // Turn this on then you can use plotCompare.py script to compare the results with expected.
 const WRITE_TEST_OUTPUT = true;
@@ -18,6 +22,34 @@ const resultsDir = path.resolve(__dirname, "..", "..", "..", "simResults");
 if (WRITE_TEST_OUTPUT) {
   console.log(`Writing to ${resultsDir}`);
 }
+
+const simulateOnce = async (
+  model: string,
+  startTime: number,
+  endTime: number,
+  numPoints: number,
+  absoluteTolerance?: number,
+  relativeTolerance?: number,
+): Promise<TimeCourseOutput> => {
+  const simulator = await createSimulator();
+  const document = buildAntimonyDocument(model);
+  const ir = compileAntimonyDocument(document);
+  const runtimeModel = await compile(ir);
+
+  await simulator.setModel(runtimeModel);
+
+  if (absoluteTolerance) {
+    simulator.setAbsoluteTolerance(absoluteTolerance);
+  }
+
+  if (relativeTolerance) {
+    simulator.setRelativeTolerance(relativeTolerance);
+  }
+
+  const output = simulator.simulate(startTime, endTime, numPoints);
+
+  return output;
+};
 
 describe("simulating basic model", () => {
   it("should not error", async () => {
@@ -30,13 +62,13 @@ describe("simulating basic model", () => {
 });
 
 describe("simulation results", () => {
-  const simulationFiles = import.meta.glob("./results/*.ant", {
+  const simulationFiles = import.meta.glob("./timeCourses/*.ant", {
     query: "?raw",
     import: "default",
     eager: true,
   });
 
-  const simulationResults = import.meta.glob("./results/*.csv", {
+  const simulationResults = import.meta.glob("./timeCourses/*.csv", {
     query: "?raw",
     import: "default",
     eager: true,

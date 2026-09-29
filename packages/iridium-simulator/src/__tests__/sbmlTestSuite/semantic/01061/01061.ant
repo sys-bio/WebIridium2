@@ -1,0 +1,35 @@
+// Created by libAntimony v3.2.0
+model *case01061()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Reactions:
+  reaction1: S2 -> S1; -(C*(kf*S1 + -1*kr*S2));
+
+  // Species initializations:
+  S1 = 1;
+  S1 has substance_per_volume;
+  S2 = 0;
+  S2 has substance_per_volume;
+
+  // Compartment initializations:
+  C = 0.5;
+  C has volume;
+
+  // Variable initializations:
+  kf = 0.9;
+  kr = 0.075;
+
+  // Other declarations:
+  const C, kf, kr;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = second;
+  unit substance_per_volume = mole / litre;
+end
+
+case01061 is "case01061"

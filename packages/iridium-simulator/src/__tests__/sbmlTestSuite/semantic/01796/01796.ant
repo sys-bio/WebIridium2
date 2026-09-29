@@ -1,0 +1,25 @@
+// Created by libAntimony v3.2.0
+model *case01796()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+  substanceOnly species S3 in C;
+
+  // Assignment Rules:
+  x := S1;
+  y := S2;
+  z := S3;
+
+  // Species initializations:
+  S1 = 2/C;
+  S2 = 2/C;
+  S3 = 2;
+
+  // Compartment initializations:
+  C = 3;
+
+  // Other declarations:
+  var x, y, z;
+  const C;
+end

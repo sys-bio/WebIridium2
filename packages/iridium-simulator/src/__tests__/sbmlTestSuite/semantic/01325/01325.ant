@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case01325()
+
+  // Rate Rules:
+  x' = 1;
+
+  // Events:
+  E0: at 2 after x >= 3.5, fromTrigger=false: y = x;
+
+  // Variable initializations:
+  x = 1;
+  y = 0;
+
+  // Other declarations:
+  var x, y;
+end
+
+case01325 is "case01325"

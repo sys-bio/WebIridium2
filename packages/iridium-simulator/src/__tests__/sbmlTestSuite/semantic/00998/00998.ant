@@ -1,0 +1,21 @@
+// Created by libAntimony v3.2.0
+model *case00998()
+
+  // Compartments and Species:
+  compartment comp;
+  substanceOnly species S1 in comp;
+
+  // Reactions:
+  J0:  -> S1; 10/S1;
+
+  // Species initializations:
+  S1 = 1*comp;
+
+  // Compartment initializations:
+  comp = 5;
+
+  // Other declarations:
+  const comp;
+end
+
+case00998 is "case00998"

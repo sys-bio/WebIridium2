@@ -60,7 +60,7 @@ const itShouldErrorForAll = (models: Record<string, string>): void => {
 
 describe("good models", () => {
   const goodModels: Record<string, string> = import.meta.glob(
-    "./good-parse/*.ant",
+    "./goodParse/*.ant",
     {
       eager: true,
       query: "?raw",
@@ -99,7 +99,7 @@ describe("examples", () => {
 
 describe("bad models", () => {
   const badModels: Record<string, string> = import.meta.glob(
-    "./bad-parse/*.ant",
+    "./badParse/*.ant",
     {
       eager: true,
       query: "?raw",

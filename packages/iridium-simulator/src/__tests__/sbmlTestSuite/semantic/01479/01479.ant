@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01479()
+
+  // Algebraic Rules:
+  _alg0: 0 = avogadro/1e23 - P1;
+
+  // Variable initializations:
+  P1 = ;
+
+  // Other declarations:
+  var P1;
+end
+
+case01479 is "case01479"

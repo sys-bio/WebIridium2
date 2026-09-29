@@ -1,0 +1,16 @@
+// Created by libAntimony v3.2.0
+model *case01334()
+
+  // Events:
+  E1: at x > 2, priority = 10, t0=false: x = 7;
+  E2: at x > 2, priority = 5, t0=false, fromTrigger=false: y = x;
+
+  // Variable initializations:
+  x = 3;
+  y = 0;
+
+  // Other declarations:
+  var x, y;
+end
+
+case01334 is "case01334"

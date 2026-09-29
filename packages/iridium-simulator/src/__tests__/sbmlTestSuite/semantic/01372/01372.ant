@@ -1,0 +1,34 @@
+// Created by libAntimony v3.2.0
+model sub1()
+
+  // Compartments and Species:
+  compartment C;
+  species $J0 in C;
+
+  // Species initializations:
+  J0 = 2/C;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  x = J0 + 2;
+
+  // Other declarations:
+  const C, x;
+end
+
+sub1 is "sub1"
+
+model *case01372()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.C is A_C;
+  A.J0 is J1;
+
+  // Species initializations:
+  J1 = 5;
+end
+
+case01372 is "case01372"

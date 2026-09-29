@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01461()
+
+  // Assignment Rules:
+  x := rateOf(p);
+
+  // Variable initializations:
+  p = 2;
+
+  // Other declarations:
+  var x, p;
+end
+
+case01461 is "case01461"

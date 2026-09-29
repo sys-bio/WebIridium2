@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01209()
+
+  // Variable initializations:
+  x = piecewise(1, 1 < 2 < 1, 3);
+
+  // Other declarations:
+  const x;
+end
+
+case01209 is "case01209"

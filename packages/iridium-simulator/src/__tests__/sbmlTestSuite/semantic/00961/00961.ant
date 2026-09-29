@@ -1,0 +1,15 @@
+// Created by libAntimony v3.2.0
+model *case00961()
+
+  // Assignment Rules:
+  P1 := avogadro;
+  P2 := avogadro;
+  P3 := avogadro;
+  P4 := avogadro;
+  P5 := avogadro - 6.0221e23;
+
+  // Other declarations:
+  var P1, P2, P3, P4, P5;
+end
+
+case00961 is "case00961"

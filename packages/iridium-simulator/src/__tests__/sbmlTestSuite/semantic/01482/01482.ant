@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case01482()
+
+  // Rate Rules:
+  S1' = 2;
+
+  // Algebraic Rules:
+  _alg0: 0 = rateOf(S1) - P1;
+
+  // Variable initializations:
+  S1 = 1;
+  P1 = ;
+
+  // Other declarations:
+  var S1, P1;
+end
+
+case01482 is "case01482"

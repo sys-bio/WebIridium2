@@ -1,0 +1,26 @@
+// Created by libAntimony v3.2.0
+model moddef1()
+
+  // Assignment Rules:
+  t2 := time + 3;
+
+  // Other declarations:
+  var t2;
+end
+
+moddef1 is "moddef1"
+
+model *case01171()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1(), timeconv = timeconv;
+  sub1.t2 is t2;
+
+  // Variable initializations:
+  timeconv = 60;
+
+  // Other declarations:
+  const timeconv;
+end
+
+case01171 is "case01171"

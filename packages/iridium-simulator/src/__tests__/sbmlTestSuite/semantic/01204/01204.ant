@@ -1,0 +1,19 @@
+// Created by libAntimony v3.2.0
+model *case01204()
+
+  // Assignment Rules:
+  z := piecewise(piecewise(2, y > 1.49, 1), piecewise(true, x <= 0.49, false), piecewise(1, y > 0.49, 0));
+
+  // Rate Rules:
+  y' = -2;
+  x' = 1;
+
+  // Variable initializations:
+  y = 2;
+  x = 0;
+
+  // Other declarations:
+  var z, y, x;
+end
+
+case01204 is "case01204"

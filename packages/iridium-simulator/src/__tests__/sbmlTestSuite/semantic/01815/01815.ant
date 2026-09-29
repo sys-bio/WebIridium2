@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01815()
+
+  // Variable initializations:
+  true_ = 10;
+  True_ = 20;
+  TRUE_ = 30;
+  a = true_;
+  b = True_;
+  c = TRUE_;
+
+  // Other declarations:
+  const true_, True_, TRUE_, a, b, c;
+end

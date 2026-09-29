@@ -1,0 +1,12 @@
+// Created by libAntimony v3.2.0
+model *case01248()
+
+  // Variable initializations:
+  p1 = 1;
+  p2 = rateOf(p1);
+
+  // Other declarations:
+  const p1, p2;
+end
+
+case01248 is "case01248"

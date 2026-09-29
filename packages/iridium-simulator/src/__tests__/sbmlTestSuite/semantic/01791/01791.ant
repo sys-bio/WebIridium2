@@ -1,0 +1,19 @@
+// Created by libAntimony v3.2.0
+model *case01791()
+
+  // Compartments and Species:
+  compartment C1;
+
+  // Algebraic Rules:
+  _alg0: 0 = P2 - C1;
+
+  // Compartment initializations:
+  C1 = 2;
+
+  // Variable initializations:
+  P2 = 3;
+
+  // Other declarations:
+  var C1;
+  const P2;
+end

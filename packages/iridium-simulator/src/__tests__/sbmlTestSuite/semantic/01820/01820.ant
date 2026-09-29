@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01820()
+
+  // Variable initializations:
+  time_ = 10;
+  Time = 11;
+  TIME = 12;
+
+  // Other declarations:
+  const time_, Time, TIME;
+end

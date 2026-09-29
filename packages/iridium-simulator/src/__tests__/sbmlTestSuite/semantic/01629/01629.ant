@@ -1,0 +1,190 @@
+// Created by libAntimony v3.2.0
+model *case01629()
+
+  // Compartments and Species:
+  compartment Cell;
+  species A in Cell, B in Cell, C in Cell, D in Cell, E in Cell, F in Cell;
+  species G in Cell, H in Cell, I in Cell, J in Cell, K in Cell, L in Cell;
+  species M in Cell, N in Cell, O in Cell, P in Cell, Q in Cell, R in Cell;
+  species S in Cell, $T in Cell, $U in Cell, $X in Cell, $Y in Cell;
+
+  // Reactions:
+  R16: J => M; ;
+  R14: K -> L; ;
+  R15: L => Q; ;
+  R12: I => J; ;
+  R07: E => F; ;
+  R13: J => K; ;
+  R01: $X => A; ;
+  R17: M => N; ;
+  R03: A -> C; ;
+  R02: A -> B; ;
+  R05: B => D; ;
+  R04: C -> B; ;
+  R10: G => H; ;
+  R06: D => E; ;
+  R09: D => G; ;
+  R08: F => I; ;
+  R11: H => I; ;
+  R18: N => Q; ;
+  R19: K -> O; ;
+  R26: S => $Y; ;
+  R25: A + $T => 0.5 S + $U; ;
+  R24: R => S; ;
+  R23: R -> S; ;
+  R22: Q => R; ;
+  R21: P -> L; ;
+  R20: O -> P; ;
+
+  // The objective function (for FBC analysis):
+  OBJF: maximize R26;
+
+  // Constraints:
+  constraint R16_fluxBounds: fb_0 <= R16 <= fb_1000
+  constraint R14_fluxBounds: fb_neg_1000 <= R14 <= fb_1000
+  constraint R15_fluxBounds: fb_0 <= R15 <= fb_1000
+  constraint R12_fluxBounds: fb_0 <= R12 <= fb_1000
+  constraint R07_fluxBounds: fb_0 <= R07 <= fb_1000
+  constraint R13_fluxBounds: fb_0 <= R13 <= fb_1000
+  constraint R01_fluxBounds: fb_0 <= R01 <= fb_1
+  constraint R17_fluxBounds: fb_0 <= R17 <= fb_1000
+  constraint R03_fluxBounds: fb_neg_1000 <= R03 <= fb_1000
+  constraint R02_fluxBounds: fb_neg_1000 <= R02 <= fb_1000
+  constraint R05_fluxBounds: fb_0 <= R05 <= fb_1000
+  constraint R04_fluxBounds: fb_neg_1000 <= R04 <= fb_1000
+  constraint R10_fluxBounds: fb_0 <= R10 <= fb_1000
+  constraint R06_fluxBounds: fb_0 <= R06 <= fb_1000
+  constraint R09_fluxBounds: fb_0 <= R09 <= fb_1000
+  constraint R08_fluxBounds: fb_0 <= R08 <= fb_1000
+  constraint R11_fluxBounds: fb_0 <= R11 <= fb_1000
+  constraint R18_fluxBounds: fb_0 <= R18 <= fb_1000
+  constraint R19_fluxBounds: fb_neg_1000 <= R19 <= fb_1000
+  constraint R26_fluxBounds: fb_0 <= R26 <= fb_1000
+  constraint R25_fluxBounds: fb_0 <= R25 <= fb_1000
+  constraint R24_fluxBounds: fb_0 <= R24 <= fb_1000
+  constraint R23_fluxBounds: fb_neg_1000 <= R23 <= fb_1000
+  constraint R22_fluxBounds: fb_0 <= R22 <= fb_1000
+  constraint R21_fluxBounds: fb_neg_1000 <= R21 <= fb_1000
+  constraint R20_fluxBounds: fb_neg_1000 <= R20 <= fb_1000
+
+  // Species initializations:
+  A = 0;
+  B = 0;
+  C = 0;
+  D = 0;
+  E = 0;
+  F = 0;
+  G = 0;
+  H = 0;
+  I = 0;
+  J = 0;
+  K = 0;
+  L = 0;
+  M = 0;
+  N = 0;
+  O = 0;
+  P = 0;
+  Q = 0;
+  R = 0;
+  S = 0;
+  T = 0;
+  U = 0;
+  X = 0;
+  Y = 0;
+
+  // Compartment initializations:
+  Cell = 1;
+
+  // Variable initializations:
+  fb_0 = 0;
+  fb_1 = 1;
+  fb_1000 = 1000;
+  fb_neg_1000 = -1000;
+
+  // Species charges:
+  A.charge = 0;
+  B.charge = 0;
+  C.charge = 0;
+  D.charge = 0;
+  E.charge = 0;
+  F.charge = 0;
+  G.charge = 0;
+  H.charge = 0;
+  I.charge = 0;
+  J.charge = 0;
+  K.charge = 0;
+  L.charge = 0;
+  M.charge = 0;
+  N.charge = 0;
+  O.charge = 0;
+  P.charge = 0;
+  Q.charge = 0;
+  R.charge = 0;
+  S.charge = 0;
+  T.charge = 0;
+  U.charge = 0;
+  X.charge = 0;
+  Y.charge = 0;
+
+  // Other declarations:
+  const Cell, fb_0, fb_1, fb_1000, fb_neg_1000;
+
+  // Display Names:
+  A.formula is "C2H6O";
+  B.formula is "C2H6O";
+  C.formula is "C2H6O";
+  D.formula is "C2H6O";
+  E.formula is "C2H6O";
+  F.formula is "C2H6O";
+  G.formula is "C2H6O";
+  H.formula is "C2H6O";
+  I.formula is "C2H6O";
+  J.formula is "C2H6O";
+  K.formula is "C2H6O";
+  L.formula is "C2H6O";
+  M.formula is "C2H6O";
+  N.formula is "C2H6O";
+  O.formula is "C2H6O";
+  P.formula is "C2H6O";
+  Q.formula is "C2H6O";
+  R.formula is "C2H6O";
+  S.formula is "C2H6O";
+  T.formula is "C2H6O";
+  U.formula is "C2H6O";
+  X.formula is "C2H6O";
+  Y.formula is "C2H6O";
+
+  // SBO terms:
+  fb_0.sboTerm = 625
+  fb_1.sboTerm = 625
+  fb_1000.sboTerm = 625
+  fb_neg_1000.sboTerm = 625
+
+  // Notes:
+  R16 notes "subsystem: C3"
+  R14 notes "subsystem: C3"
+  R15 notes "subsystem: C3"
+  R12 notes "subsystem: L"
+  R07 notes "subsystem: C2"
+  R13 notes "subsystem: C3"
+  R01 notes "subsystem: L"
+  R17 notes "subsystem: C3"
+  R03 notes "subsystem: C1"
+  R02 notes "subsystem: C1"
+  R05 notes "subsystem: L"
+  R04 notes "subsystem: C1"
+  R10 notes "subsystem: C2"
+  R06 notes "subsystem: C2"
+  R09 notes "subsystem: C2"
+  R08 notes "subsystem: C2"
+  R11 notes "subsystem: C2"
+  R18 notes "subsystem: C3"
+  R19 notes "subsystem: C3"
+  R26 notes "subsystem: L"
+  R25 notes "subsystem: L"
+  R24 notes "subsystem: C4"
+  R23 notes "subsystem: C4"
+  R22 notes "subsystem: L"
+  R21 notes "subsystem: C3"
+  R20 notes "subsystem: C3"
+end

@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01495()
+
+  // Assignment Rules:
+  p1 := quotient(time, 2);
+
+  // Other declarations:
+  var p1;
+end
+
+case01495 is "case01495"

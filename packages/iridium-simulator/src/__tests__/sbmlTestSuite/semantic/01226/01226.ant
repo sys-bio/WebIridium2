@@ -1,0 +1,28 @@
+// Created by libAntimony v3.2.0
+model *case01226()
+
+  // Compartments and Species:
+  compartment c;
+  species S1 in c;
+
+  // Rate Rules:
+  p1' = J0;
+
+  // Reactions:
+  J0:  => S1; 1;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  c = 1;
+
+  // Variable initializations:
+  p1 = 0;
+
+  // Other declarations:
+  var p1;
+  const c;
+end
+
+case01226 is "case01226"

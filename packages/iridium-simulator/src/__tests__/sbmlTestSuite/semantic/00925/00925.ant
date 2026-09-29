@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case00925()
+
+  // Assignment Rules:
+  k1 := 3*k2;
+
+  // Variable initializations:
+  k2 = 0.2;
+
+  // Other declarations:
+  var k1;
+  const k2;
+
+  // Unit definitions:
+  unit time_unit = second;
+end
+
+case00925 is "case00925"

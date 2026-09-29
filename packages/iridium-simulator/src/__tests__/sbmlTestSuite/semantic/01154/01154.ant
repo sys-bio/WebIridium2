@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model moddef1()
+
+  // Events:
+  E0: at time > 0.31: t1 = 3.3, t2 = 5.5;
+
+  // Variable initializations:
+  t1 = 1;
+  t2 = 1;
+
+  // Other declarations:
+  var t1, t2;
+end
+
+model *case01154()
+
+  // Sub-modules, and any changes to those submodules:
+  sub1: moddef1();
+
+  // Deleted elements from submodels:
+  delete sub1.E0;
+end
+
+case01154 is "case01154"

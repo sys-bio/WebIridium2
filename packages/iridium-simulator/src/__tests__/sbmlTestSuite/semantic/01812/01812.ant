@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01812()
+
+  // Variable initializations:
+  NAN_ = 0.1;
+  NaN_ = 0.01;
+  nan_ = 0.001;
+
+  // Other declarations:
+  const NAN_, NaN_, nan_;
+end

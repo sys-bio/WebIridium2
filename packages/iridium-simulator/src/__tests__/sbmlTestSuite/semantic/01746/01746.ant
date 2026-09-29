@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model *case01746()
+
+  // Compartments and Species:
+  compartment C;
+  substanceOnly species S1 in C;
+
+  // Reactions:
+  J0:  -> S1_stoich S1; 0.1;
+
+  // Species initializations:
+  S1 = 2;
+
+  // Compartment initializations:
+  C = 2;
+
+  // Variable initializations:
+  S1_stoich = 1.5;
+
+  // Other declarations:
+  const C;
+end
+
+case01746 is "case01746"

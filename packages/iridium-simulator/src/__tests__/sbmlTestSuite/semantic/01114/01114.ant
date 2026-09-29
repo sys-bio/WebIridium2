@@ -1,0 +1,15 @@
+// Created by libAntimony v3.2.0
+model *case_01114()
+
+  // Variable initializations:
+  a = 1 + (1 + plus());
+  b = 2*(2*times());
+  c = piecewise(1, (and() && true) && true, 0);
+  d = piecewise(1, (or() || true) || true, 0);
+  e = piecewise(1, xor(xor(xor(), true), true), 0);
+
+  // Other declarations:
+  const a, b, c, d, e;
+end
+
+case_01114 is "case_01114"

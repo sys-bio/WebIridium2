@@ -1,0 +1,315 @@
+// Created by libAntimony v3.2.0
+model *MODEL_01189()
+
+  // Compartments and Species:
+  compartment Cell;
+  species A in Cell, B in Cell, C in Cell, D in Cell, E in Cell, F in Cell;
+  species G in Cell, H in Cell, I in Cell, J in Cell, K in Cell, L in Cell;
+  species M in Cell, N in Cell, O in Cell, P in Cell, Q in Cell, R in Cell;
+  species S in Cell, $T in Cell, $U in Cell, $X in Cell, $Y in Cell;
+
+  // Reactions:
+  R16: J => M; ;
+  R14: K -> L; ;
+  R15: L => Q; ;
+  R12: I => J; ;
+  R07: E => F; ;
+  R13: J => K; ;
+  R01: $X => A; ;
+  R17: M => N; ;
+  R03: A -> C; ;
+  R02: A -> B; ;
+  R05: B => D; ;
+  R04: C -> B; ;
+  R10: G => H; ;
+  R06: D => E; ;
+  R09: D => G; ;
+  R08: F => I; ;
+  R11: H => I; ;
+  R18: N => Q; ;
+  R19: K -> O; ;
+  R26: S => $Y; ;
+  R25: A + $T => 0.5 S + $U; ;
+  R24: R => S; ;
+  R23: R -> S; ;
+  R22: Q => R; ;
+  R21: P -> L; ;
+  R20: O -> P; ;
+
+  // The objective function (for FBC analysis):
+  OBJF: minimize R26;
+
+  // Constraints:
+  constraint R16_fluxBounds: fb_R16_greaterEqual <= R16 <= fb_R16_lessEqual
+  constraint R14_fluxBounds: fb_R14_greaterEqual <= R14 <= fb_R14_lessEqual
+  constraint R15_fluxBounds: fb_R15_greaterEqual <= R15 <= fb_R15_lessEqual
+  constraint R12_fluxBounds: fb_R12_greaterEqual <= R12 <= fb_R12_lessEqual
+  constraint R07_fluxBounds: fb_R07_greaterEqual <= R07 <= fb_R07_lessEqual
+  constraint R13_fluxBounds: fb_R13_greaterEqual <= R13 <= fb_R13_lessEqual
+  constraint R01_fluxBounds: fb_R01_greaterEqual <= R01 <= fb_R01_lessEqual
+  constraint R17_fluxBounds: fb_R17_greaterEqual <= R17 <= fb_R17_lessEqual
+  constraint R03_fluxBounds: fb_R03_greaterEqual <= R03 <= fb_R03_lessEqual
+  constraint R02_fluxBounds: fb_R02_greaterEqual <= R02 <= fb_R02_lessEqual
+  constraint R05_fluxBounds: fb_R05_greaterEqual <= R05 <= fb_R05_lessEqual
+  constraint R04_fluxBounds: fb_R04_greaterEqual <= R04 <= fb_R04_lessEqual
+  constraint R10_fluxBounds: fb_R10_greaterEqual <= R10 <= fb_R10_lessEqual
+  constraint R06_fluxBounds: fb_R06_greaterEqual <= R06 <= fb_R06_lessEqual
+  constraint R09_fluxBounds: fb_R09_greaterEqual <= R09 <= fb_R09_lessEqual
+  constraint R08_fluxBounds: fb_R08_greaterEqual <= R08 <= fb_R08_lessEqual
+  constraint R11_fluxBounds: fb_R11_greaterEqual <= R11 <= fb_R11_lessEqual
+  constraint R18_fluxBounds: fb_R18_greaterEqual <= R18 <= fb_R18_lessEqual
+  constraint R19_fluxBounds: fb_R19_greaterEqual <= R19 <= fb_R19_lessEqual
+  constraint R26_fluxBounds: fb_R26_greaterEqual <= R26 <= fb_R26_lessEqual
+  constraint R25_fluxBounds: fb_R25_greaterEqual <= R25 <= fb_R25_lessEqual
+  constraint R24_fluxBounds: fb_R24_greaterEqual <= R24 <= fb_R24_lessEqual
+  constraint R23_fluxBounds: fb_R23_greaterEqual <= R23 <= fb_R23_lessEqual
+  constraint R22_fluxBounds: fb_R22_greaterEqual <= R22 <= fb_R22_lessEqual
+  constraint R21_fluxBounds: fb_R21_greaterEqual <= R21 <= fb_R21_lessEqual
+  constraint R20_fluxBounds: fb_R20_greaterEqual <= R20 <= fb_R20_lessEqual
+
+  // Species initializations:
+  A = 0;
+  B = 0;
+  C = 0;
+  D = 0;
+  E = 0;
+  F = 0;
+  G = 0;
+  H = 0;
+  I = 0;
+  J = 0;
+  K = 0;
+  L = 0;
+  M = 0;
+  N = 0;
+  O = 0;
+  P = 0;
+  Q = 0;
+  R = 0;
+  S = 0;
+  T = 0;
+  U = 0;
+  X = 0;
+  Y = 0;
+
+  // Compartment initializations:
+  Cell = 1;
+
+  // Variable initializations:
+  fb_R16_greaterEqual = 0;
+  fb_R16_lessEqual = inf;
+  fb_R03_greaterEqual = -inf;
+  fb_R03_lessEqual = inf;
+  fb_R02_greaterEqual = -inf;
+  fb_R02_lessEqual = inf;
+  fb_R05_greaterEqual = 0;
+  fb_R05_lessEqual = inf;
+  fb_R07_greaterEqual = 0;
+  fb_R07_lessEqual = inf;
+  fb_R04_greaterEqual = -inf;
+  fb_R04_lessEqual = inf;
+  fb_R01_greaterEqual = 0;
+  fb_R01_lessEqual = 1;
+  fb_R17_greaterEqual = 0;
+  fb_R17_lessEqual = inf;
+  fb_R14_greaterEqual = -inf;
+  fb_R14_lessEqual = inf;
+  fb_R15_greaterEqual = 0;
+  fb_R15_lessEqual = inf;
+  fb_R12_greaterEqual = 0;
+  fb_R12_lessEqual = inf;
+  fb_R13_greaterEqual = 0;
+  fb_R13_lessEqual = inf;
+  fb_R10_greaterEqual = 0;
+  fb_R10_lessEqual = inf;
+  fb_R11_greaterEqual = 0;
+  fb_R11_lessEqual = inf;
+  fb_R09_greaterEqual = 0;
+  fb_R09_lessEqual = inf;
+  fb_R08_greaterEqual = 0;
+  fb_R08_lessEqual = inf;
+  fb_R06_greaterEqual = 0;
+  fb_R06_lessEqual = inf;
+  fb_R18_greaterEqual = 0;
+  fb_R18_lessEqual = inf;
+  fb_R19_greaterEqual = -inf;
+  fb_R19_lessEqual = inf;
+  fb_R26_greaterEqual = 0;
+  fb_R26_lessEqual = inf;
+  fb_R25_greaterEqual = 0;
+  fb_R25_lessEqual = inf;
+  fb_R24_greaterEqual = 0;
+  fb_R24_lessEqual = inf;
+  fb_R23_greaterEqual = -inf;
+  fb_R23_lessEqual = inf;
+  fb_R22_greaterEqual = 0;
+  fb_R22_lessEqual = inf;
+  fb_R21_greaterEqual = -inf;
+  fb_R21_lessEqual = inf;
+  fb_R20_greaterEqual = -inf;
+  fb_R20_lessEqual = inf;
+
+  // Species charges:
+  A.charge = 0;
+  B.charge = 0;
+  C.charge = 0;
+  D.charge = 0;
+  E.charge = 0;
+  F.charge = 0;
+  G.charge = 0;
+  H.charge = 0;
+  I.charge = 0;
+  J.charge = 0;
+  K.charge = 0;
+  L.charge = 0;
+  M.charge = 0;
+  N.charge = 0;
+  O.charge = 0;
+  P.charge = 0;
+  Q.charge = 0;
+  R.charge = 0;
+  S.charge = 0;
+  T.charge = 0;
+  U.charge = 0;
+  X.charge = 0;
+  Y.charge = 0;
+
+  // Other declarations:
+  var Cell;
+  const fb_R16_greaterEqual, fb_R16_lessEqual, fb_R03_greaterEqual, fb_R03_lessEqual;
+  const fb_R02_greaterEqual, fb_R02_lessEqual, fb_R05_greaterEqual, fb_R05_lessEqual;
+  const fb_R07_greaterEqual, fb_R07_lessEqual, fb_R04_greaterEqual, fb_R04_lessEqual;
+  const fb_R01_greaterEqual, fb_R01_lessEqual, fb_R17_greaterEqual, fb_R17_lessEqual;
+  const fb_R14_greaterEqual, fb_R14_lessEqual, fb_R15_greaterEqual, fb_R15_lessEqual;
+  const fb_R12_greaterEqual, fb_R12_lessEqual, fb_R13_greaterEqual, fb_R13_lessEqual;
+  const fb_R10_greaterEqual, fb_R10_lessEqual, fb_R11_greaterEqual, fb_R11_lessEqual;
+  const fb_R09_greaterEqual, fb_R09_lessEqual, fb_R08_greaterEqual, fb_R08_lessEqual;
+  const fb_R06_greaterEqual, fb_R06_lessEqual, fb_R18_greaterEqual, fb_R18_lessEqual;
+  const fb_R19_greaterEqual, fb_R19_lessEqual, fb_R26_greaterEqual, fb_R26_lessEqual;
+  const fb_R25_greaterEqual, fb_R25_lessEqual, fb_R24_greaterEqual, fb_R24_lessEqual;
+  const fb_R23_greaterEqual, fb_R23_lessEqual, fb_R22_greaterEqual, fb_R22_lessEqual;
+  const fb_R21_greaterEqual, fb_R21_lessEqual, fb_R20_greaterEqual, fb_R20_lessEqual;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit area = metre^2;
+  unit volume = litre;
+  unit length = metre;
+  unit time_unit = second;
+  unit mmol_per_gDW_per_hr = 1e-3 mole / (gram * 0.00027777 second);
+
+  // Display Names:
+  time_unit is "time";
+  A.formula is "C2H6O";
+  B.formula is "C2H6O";
+  C.formula is "C2H6O";
+  D.formula is "C2H6O";
+  E.formula is "C2H6O";
+  F.formula is "C2H6O";
+  G.formula is "C2H6O";
+  H.formula is "C2H6O";
+  I.formula is "C2H6O";
+  J.formula is "C2H6O";
+  K.formula is "C2H6O";
+  L.formula is "C2H6O";
+  M.formula is "C2H6O";
+  N.formula is "C2H6O";
+  O.formula is "C2H6O";
+  P.formula is "C2H6O";
+  Q.formula is "C2H6O";
+  R.formula is "C2H6O";
+  S.formula is "C2H6O";
+  T.formula is "C2H6O";
+  U.formula is "C2H6O";
+  X.formula is "C2H6O";
+  Y.formula is "C2H6O";
+
+  // SBO terms:
+  fb_R16_greaterEqual.sboTerm = 625
+  fb_R16_lessEqual.sboTerm = 625
+  fb_R03_greaterEqual.sboTerm = 625
+  fb_R03_lessEqual.sboTerm = 625
+  fb_R02_greaterEqual.sboTerm = 625
+  fb_R02_lessEqual.sboTerm = 625
+  fb_R05_greaterEqual.sboTerm = 625
+  fb_R05_lessEqual.sboTerm = 625
+  fb_R07_greaterEqual.sboTerm = 625
+  fb_R07_lessEqual.sboTerm = 625
+  fb_R04_greaterEqual.sboTerm = 625
+  fb_R04_lessEqual.sboTerm = 625
+  fb_R01_greaterEqual.sboTerm = 625
+  fb_R01_lessEqual.sboTerm = 625
+  fb_R17_greaterEqual.sboTerm = 625
+  fb_R17_lessEqual.sboTerm = 625
+  fb_R14_greaterEqual.sboTerm = 625
+  fb_R14_lessEqual.sboTerm = 625
+  fb_R15_greaterEqual.sboTerm = 625
+  fb_R15_lessEqual.sboTerm = 625
+  fb_R12_greaterEqual.sboTerm = 625
+  fb_R12_lessEqual.sboTerm = 625
+  fb_R13_greaterEqual.sboTerm = 625
+  fb_R13_lessEqual.sboTerm = 625
+  fb_R10_greaterEqual.sboTerm = 625
+  fb_R10_lessEqual.sboTerm = 625
+  fb_R11_greaterEqual.sboTerm = 625
+  fb_R11_lessEqual.sboTerm = 625
+  fb_R09_greaterEqual.sboTerm = 625
+  fb_R09_lessEqual.sboTerm = 625
+  fb_R08_greaterEqual.sboTerm = 625
+  fb_R08_lessEqual.sboTerm = 625
+  fb_R06_greaterEqual.sboTerm = 625
+  fb_R06_lessEqual.sboTerm = 625
+  fb_R18_greaterEqual.sboTerm = 625
+  fb_R18_lessEqual.sboTerm = 625
+  fb_R19_greaterEqual.sboTerm = 625
+  fb_R19_lessEqual.sboTerm = 625
+  fb_R26_greaterEqual.sboTerm = 625
+  fb_R26_lessEqual.sboTerm = 625
+  fb_R25_greaterEqual.sboTerm = 625
+  fb_R25_lessEqual.sboTerm = 625
+  fb_R24_greaterEqual.sboTerm = 625
+  fb_R24_lessEqual.sboTerm = 625
+  fb_R23_greaterEqual.sboTerm = 625
+  fb_R23_lessEqual.sboTerm = 625
+  fb_R22_greaterEqual.sboTerm = 625
+  fb_R22_lessEqual.sboTerm = 625
+  fb_R21_greaterEqual.sboTerm = 625
+  fb_R21_lessEqual.sboTerm = 625
+  fb_R20_greaterEqual.sboTerm = 625
+  fb_R20_lessEqual.sboTerm = 625
+  model created "2012-12-21T11:05:21Z"
+  model modified "2012-12-21T10:05:21Z"
+  model creator1.givenName "Brett"
+  model creator1.familyName "Olivier"
+  model creator1.organization "VU university Amsterdam"
+  model creator1.email "bgoli@users.sourceforge.net"
+
+  // Notes:
+  model notes "Minimize single objective function, infinite bounds."
+  R16 notes "subsystem: C3"
+  R14 notes "subsystem: C3"
+  R15 notes "subsystem: C3"
+  R12 notes "subsystem: L"
+  R07 notes "subsystem: C2"
+  R13 notes "subsystem: C3"
+  R01 notes "subsystem: L"
+  R17 notes "subsystem: C3"
+  R03 notes "subsystem: C1"
+  R02 notes "subsystem: C1"
+  R05 notes "subsystem: L"
+  R04 notes "subsystem: C1"
+  R10 notes "subsystem: C2"
+  R06 notes "subsystem: C2"
+  R09 notes "subsystem: C2"
+  R08 notes "subsystem: C2"
+  R11 notes "subsystem: C2"
+  R18 notes "subsystem: C3"
+  R19 notes "subsystem: C3"
+  R26 notes "subsystem: L"
+  R25 notes "subsystem: L"
+  R24 notes "subsystem: C4"
+  R23 notes "subsystem: C4"
+  R22 notes "subsystem: L"
+  R21 notes "subsystem: C3"
+  R20 notes "subsystem: C3"
+end

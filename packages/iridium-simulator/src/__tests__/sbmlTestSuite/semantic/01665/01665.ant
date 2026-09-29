@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01665()
+
+  // Rate Rules:
+  p1' = avogadro/1e23;
+
+  // Variable initializations:
+  p1 = 1;
+
+  // Other declarations:
+  var p1;
+end
+
+case01665 is "case01665"

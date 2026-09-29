@@ -1,0 +1,20 @@
+// Created by libAntimony v3.2.0
+model Mod1(subparam1)
+
+  // Variable initializations:
+  subparam1 = 5.01;
+
+  // Other declarations:
+  const subparam1;
+end
+
+model *case01125()
+
+  // Sub-modules, and any changes to those submodules:
+  submod1: Mod1(param1);
+
+  // Variable initializations:
+  param1 = 10.42;
+end
+
+case01125 is "case01125"

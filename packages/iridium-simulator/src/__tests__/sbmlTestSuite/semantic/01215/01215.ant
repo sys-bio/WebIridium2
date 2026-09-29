@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01215()
+
+  // Rate Rules:
+  x' = piecewise(1, 2 > 1 > 2, 0);
+
+  // Variable initializations:
+  x = 3;
+
+  // Other declarations:
+  var x;
+end
+
+case01215 is "case01215"

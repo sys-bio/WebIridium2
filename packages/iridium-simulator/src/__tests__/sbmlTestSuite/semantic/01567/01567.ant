@@ -1,0 +1,29 @@
+// Created by libAntimony v3.2.0
+model *case01567()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Algebraic Rules:
+  _alg0: 0 = k + 3;
+
+  // Reactions:
+  J0: S1 -> S2; S2*k;
+
+  // Species initializations:
+  S1 = 3;
+  S2 = 3;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Variable initializations:
+  k = ;
+
+  // Other declarations:
+  var k;
+  const C;
+end
+
+case01567 is "case01567"

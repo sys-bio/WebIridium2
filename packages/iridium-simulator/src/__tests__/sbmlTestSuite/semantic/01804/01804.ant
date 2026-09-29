@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case01804()
+
+  // Compartments and Species:
+  compartment C;
+  species spec in C, Spec in C, sPeC in C;
+
+  // Species initializations:
+  spec = 3;
+  Spec = 4;
+  sPeC = 5;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  const C;
+end

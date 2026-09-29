@@ -1,0 +1,21 @@
+// Created by libAntimony v3.2.0
+model *case01261()
+
+  // Assignment Rules:
+  p3 := rateOf(p1);
+
+  // Rate Rules:
+  p1' = 0.01*p1;
+
+  // Events:
+  _E0: at rateOf(p1) > 0.0105: p2 = 5;
+
+  // Variable initializations:
+  p1 = 1;
+  p2 = 10;
+
+  // Other declarations:
+  var p1, p2, p3;
+end
+
+case01261 is "case01261"

@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model *case01222()
+
+  // Compartments and Species:
+  compartment c;
+  substanceOnly species $S1 in c;
+
+  // Rate Rules:
+  S1' = 1;
+
+  // Events:
+  _E0: at time > 5.5: c = 4;
+
+  // Species initializations:
+  S1 = 1.2;
+
+  // Compartment initializations:
+  c = 2;
+
+  // Other declarations:
+  var c;
+end
+
+case01222 is "case01222"

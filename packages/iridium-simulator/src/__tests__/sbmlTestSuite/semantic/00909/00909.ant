@@ -1,0 +1,26 @@
+// Created by libAntimony v3.2.0
+model *case00909()
+
+  // Compartments and Species:
+  compartment C1, C2;
+
+  // Rate Rules:
+  C1' = 0.4*C1 + 0.25*C2;
+  C2' = 0.15*C1 + 0.2*C2;
+
+  // Compartment initializations:
+  C1 = 0.015;
+  C1 has volume;
+  C2 = 0.01;
+  C2 has length;
+
+  // Other declarations:
+  var C1, C2;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit length = metre;
+  unit time_unit = second;
+end
+
+case00909 is "case00909"

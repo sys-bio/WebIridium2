@@ -141,13 +141,13 @@ class CompileContext extends Context {
   }
 }
 
-export const compileSbml = (sbmlText: string): IridiumModel => {
+export const compileSbmlString = (source: string): IridiumModel => {
   const builder = new Builder();
   const stateMachine = new ContextStateMachine(new CompileContext(builder));
 
   const parser = new SaxParser(stateMachine.getParserOptions());
 
-  parser.parse(sbmlText);
+  parser.parse(source);
 
   return builder.getOutput();
 };

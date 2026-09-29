@@ -1,0 +1,17 @@
+// Created by libAntimony v3.2.0
+model *case01343()
+
+  // Assignment Rules:
+  P2 := tanh(-0.4);
+  P3 := tanh(time);
+  P4 := tanh(-time);
+
+  // Variable initializations:
+  P1 = tanh(0.3);
+
+  // Other declarations:
+  var P2, P3, P4;
+  const P1;
+end
+
+case01343 is "case01343"

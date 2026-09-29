@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case01399()
+
+  // Compartments and Species:
+  species S1, S2;
+
+  // Reactions:
+  J0: S1 -> S2; J0_k1*S1*S2;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 5;
+
+  // Variable initializations:
+  J0_k1 = -1;
+end
+
+case01399 is "case01399"

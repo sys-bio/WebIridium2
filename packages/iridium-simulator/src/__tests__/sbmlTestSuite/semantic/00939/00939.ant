@@ -1,0 +1,37 @@
+// Created by libAntimony v3.2.0
+model *case00939()
+
+  // Compartments and Species:
+  compartment default_compartment;
+  species x in default_compartment;
+
+  // Assignment Rules:
+  y := 2 + delay(x, 0.2);
+
+  // Reactions:
+  _J0:  -> x; 1;
+
+  // Species initializations:
+  x = 3/default_compartment;
+  x has substance_per_volume;
+
+  // Compartment initializations:
+  default_compartment = 1;
+  default_compartment has volume;
+
+  // Other declarations:
+  var y;
+  const default_compartment;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = second;
+  unit substance_per_volume = mole / litre;
+
+  // SBO terms:
+  default_compartment.sboTerm = 410
+
+  // Notes:
+  model notes "Originally created by libAntimony 1.4 (using libSBML 5.0.0-a1)"
+end

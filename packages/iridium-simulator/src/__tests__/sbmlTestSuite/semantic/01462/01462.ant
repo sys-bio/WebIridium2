@@ -1,0 +1,25 @@
+// Created by libAntimony v3.2.0
+model *case01462()
+
+  // Compartments and Species:
+  compartment C1;
+  species $S1 in C1;
+
+  // Assignment Rules:
+  x := rateOf(S1);
+
+  // Rate Rules:
+  C1' = 0.2;
+  S1' = 0.4;
+
+  // Species initializations:
+  S1 = 0;
+
+  // Compartment initializations:
+  C1 = 0.5;
+
+  // Other declarations:
+  var C1, x;
+end
+
+case01462 is "case01462"

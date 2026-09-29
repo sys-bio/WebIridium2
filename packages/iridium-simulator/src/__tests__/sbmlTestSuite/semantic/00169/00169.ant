@@ -1,0 +1,27 @@
+// Created by libAntimony v3.2.0
+model *case00169()
+
+  // Rate Rules:
+  S1' = -1*k1*S1;
+  S2' = k1*S1 + -1*k2*S2;
+  S3' = k2*S2 + -1*k3*S3;
+  S4' = k3*S3;
+
+  // Variable initializations:
+  S1 = 0.01;
+  k1 = 0.7;
+  S2 = 0;
+  k2 = 0.5;
+  S3 = 0;
+  k3 = 1;
+  S4 = 0;
+
+  // Other declarations:
+  var S1, S2, S3, S4;
+  const k1, k2, k3;
+
+  // Unit definitions:
+  unit time_unit = second;
+end
+
+case00169 is "case00169"

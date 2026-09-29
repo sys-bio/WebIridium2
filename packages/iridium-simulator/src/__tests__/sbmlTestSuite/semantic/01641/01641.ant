@@ -1,0 +1,12 @@
+// Created by libAntimony v3.2.0
+model *case01641()
+
+  // Variable initializations:
+  k1 = time;
+  k2 = avogadro;
+
+  // Other declarations:
+  const k1, k2;
+end
+
+case01641 is "case01641"

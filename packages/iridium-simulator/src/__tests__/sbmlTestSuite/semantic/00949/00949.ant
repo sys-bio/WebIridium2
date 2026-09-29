@@ -1,0 +1,12 @@
+// Created by libAntimony v3.2.0
+model *case000949()
+
+  // Variable initializations:
+  P = 3.7;
+
+  // Other declarations:
+  const P;
+
+  // Notes:
+  model notes "Originally created by libAntimony v1.4 (using libSBML 5.0.0-a1)"
+end

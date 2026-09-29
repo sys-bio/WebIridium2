@@ -1,0 +1,24 @@
+// Created by libAntimony v3.2.0
+model *case_01120()
+
+  // Compartments and Species:
+  compartment comp;
+  substanceOnly species S3 in comp;
+
+  // Rate Rules:
+  comp' = 1;
+
+  // Events:
+  E1: at 1.05 after comp <= 5.1, t0=false: S3 = 4;
+
+  // Species initializations:
+  S3 = 2;
+
+  // Compartment initializations:
+  comp = 5;
+
+  // Other declarations:
+  var comp;
+end
+
+case_01120 is "case_01120"

@@ -1,0 +1,29 @@
+// Created by libAntimony v3.2.0
+model *case00926()
+
+  // Compartments and Species:
+  compartment c;
+  species s in c;
+
+  // Rate Rules:
+  c' = 0.5*c;
+
+  // Species initializations:
+  s = 2;
+  s has substance_per_volume;
+
+  // Compartment initializations:
+  c = 1;
+  c has volume;
+
+  // Other declarations:
+  var c;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit substance = mole;
+  unit time_unit = second;
+  unit substance_per_volume = mole / litre;
+end
+
+case00926 is "case00926"

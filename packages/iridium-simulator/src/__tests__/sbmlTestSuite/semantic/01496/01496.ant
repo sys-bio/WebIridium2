@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01496()
+
+  // Assignment Rules:
+  p1 := rem(time, 2);
+
+  // Other declarations:
+  var p1;
+end
+
+case01496 is "case01496"

@@ -1,0 +1,34 @@
+// Created by libAntimony v3.2.0
+model sub1()
+
+  // Compartments and Species:
+  compartment J0;
+
+  // Events:
+  E0: at time > 5.5, priority = J0: x = 4;
+  E1: at time > 5.5, priority = 4: x = 10;
+
+  // Compartment initializations:
+  J0 = 2;
+
+  // Variable initializations:
+  x = 1;
+
+  // Other declarations:
+  var x;
+  const J0;
+end
+
+sub1 is "sub1"
+
+model *case01365()
+
+  // Sub-modules, and any changes to those submodules:
+  A: sub1();
+  A.J0 is J1;
+
+  // Compartment initializations:
+  J1 = 5;
+end
+
+case01365 is "case01365"

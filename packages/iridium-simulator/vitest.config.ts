@@ -13,5 +13,6 @@ export default defineConfig({
       include: ["packages/iridium-simulator/**/*.bench.ts"],
     },
     include: ["packages/iridium-simulator/**/*.test.{ts,js}"],
+    exclude: ["packages/iridium-simulator/src/__tests__/sbmlTestSuite/**"],
   },
 });

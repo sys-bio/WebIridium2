@@ -1,0 +1,11 @@
+// Created by libAntimony v3.2.0
+model *case01235()
+
+  // Variable initializations:
+  p = 3;
+
+  // Other declarations:
+  var p;
+end
+
+case01235 is "case01235"

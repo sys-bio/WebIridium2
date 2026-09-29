@@ -1,0 +1,14 @@
+// Created by libAntimony v3.2.0
+model *case01242()
+
+  // Events:
+  _E0: at time > 5.5: p = 5;
+
+  // Variable initializations:
+  p = 3;
+
+  // Other declarations:
+  var p;
+end
+
+case01242 is "case01242"

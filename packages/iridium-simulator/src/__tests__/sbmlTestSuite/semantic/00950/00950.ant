@@ -1,0 +1,16 @@
+// Created by libAntimony v3.2.0
+model *case000950()
+
+  // Variable initializations:
+  P = INF;
+  Q = -INF;
+  R = NaN;
+
+  // Other declarations:
+  const P, Q, R;
+
+  // Notes:
+  model notes "Originally created by libAntimony v1.4 (using libSBML 5.0.0-a1)"
+end
+
+case000950 is "case000950"

@@ -1,0 +1,26 @@
+// Created by libAntimony v3.2.0
+model *case01411()
+
+  // Compartments and Species:
+  compartment C;
+  species S1 in C, S2 in C;
+
+  // Assignment Rules:
+  P1 := delay(S1 + S2, 1);
+
+  // Reactions:
+  J0: S1 -> 2 S2; 0.1*S1;
+
+  // Species initializations:
+  S1 = 5;
+  S2 = 1;
+
+  // Compartment initializations:
+  C = 1;
+
+  // Other declarations:
+  var P1;
+  const C;
+end
+
+case01411 is "case01411"

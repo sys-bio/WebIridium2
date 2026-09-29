@@ -164,6 +164,23 @@ const createBooleanFunction = (
   };
 };
 
+const createAliasFunction = (
+  original: string,
+  args: number,
+): ((ft: FunctionTable) => Uint8Array) => {
+  return (functionTable) => {
+    const emitter = new Emitter();
+    emitter.emitListHeader(0);
+    for (let i = 0; i < args; i++) {
+      emitter.emitByte(OpCode.localget);
+      emitter.emitUint(i);
+    }
+    emitter.emitCallOp(functionTable.getBuiltin(original));
+    emitter.emitByte(OpCode.end);
+    return emitter.getOutput();
+  };
+};
+
 const flattenComparisonFunction = (
   { args, metadata }: IridiumExpressionBuiltinCall,
   op: IridiumBinaryOperator,
@@ -328,6 +345,22 @@ const builtinFunctionDefinitions: {
     results: [ValType.f64],
     js: Math.log10,
   },
+  power: {
+    kind: "import",
+    name: "power",
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    js: Math.pow,
+  },
+  pow: {
+    kind: "compile",
+    name: "pow",
+    isExported: false,
+    params: [ValType.f64, ValType.f64],
+    results: [ValType.f64],
+    depends: ["power"],
+    compileBody: createAliasFunction("power", 2),
+  },
   quotient: {
     kind: "inline",
     name: "quotient",
@@ -384,6 +417,11 @@ const builtinFunctionDefinitions: {
   sqrt: {
     kind: "inline",
     name: "sqrt",
+    emit: (emitter) => emitter.emitByte(OpCode.f64sqrt),
+  },
+  sqr: {
+    kind: "inline",
+    name: "sqr",
     emit: (emitter) => emitter.emitByte(OpCode.f64sqrt),
   },
   not: {

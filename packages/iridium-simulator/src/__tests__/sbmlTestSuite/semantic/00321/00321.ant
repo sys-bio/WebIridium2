@@ -1,0 +1,39 @@
+// Created by libAntimony v3.2.0
+model *case00321()
+
+  // Compartments and Species:
+  compartment compartment_;
+  substanceOnly species S1 in compartment_, S2 in compartment_, S3 in compartment_;
+
+  // Rate Rules:
+  S3' = 0.65;
+
+  // Reactions:
+  reaction1: S1 => S2; k1*S1;
+
+  // Species initializations:
+  S1 = 1.5;
+  S1 has substance;
+  S2 = 0;
+  S2 has substance;
+  S3 = 0;
+  S3 has substance;
+
+  // Compartment initializations:
+  compartment_ = ;
+
+  // Variable initializations:
+  k1 = 1.546;
+
+  // Other declarations:
+  const compartment_, k1;
+
+  // Unit definitions:
+  unit substance = mole;
+  unit time_unit = second;
+
+  // Display Names:
+  compartment_ is "compartment";
+end
+
+case00321 is "case00321"

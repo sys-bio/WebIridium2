@@ -18,6 +18,7 @@ export default tseslint.config(
       "src/vendor",
       "src/features/editor/language-handler",
       "packages/iridium-simulator/src/antimony/generated",
+      "packages/iridium-simulator/src/__tests__/sbmlTestSuite/semantic",
       "packages/iridium-simulator/scripts",
       "packages/iridium-simulator/build",
     ],

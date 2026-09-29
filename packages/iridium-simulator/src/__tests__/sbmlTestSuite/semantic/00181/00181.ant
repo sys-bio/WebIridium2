@@ -1,0 +1,25 @@
+// Created by libAntimony v3.2.0
+model *case00181()
+
+  // Assignment Rules:
+  S3 := k1*S2;
+
+  // Rate Rules:
+  S1' = -1*k2*S1;
+  S2' = k2*S1;
+
+  // Variable initializations:
+  S1 = 1;
+  k2 = 50;
+  S2 = 1.5e-15;
+  k1 = 0.75;
+
+  // Other declarations:
+  var S1, S2, S3;
+  const k2, k1;
+
+  // Unit definitions:
+  unit time_unit = second;
+end
+
+case00181 is "case00181"

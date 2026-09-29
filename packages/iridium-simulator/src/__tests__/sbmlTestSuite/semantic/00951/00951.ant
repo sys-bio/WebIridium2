@@ -1,0 +1,18 @@
+// Created by libAntimony v3.2.0
+model *case000951()
+
+  // Variable initializations:
+  P = inf;
+  Q = -inf;
+  R = NaN;
+
+  // Other declarations:
+  const P, Q, R;
+
+  // Unit definitions:
+  unit volume = litre;
+  unit time_unit = second;
+
+  // Notes:
+  model notes "Originally created by libAntimony v1.4 (using libSBML 5.0.0-a1)"
+end

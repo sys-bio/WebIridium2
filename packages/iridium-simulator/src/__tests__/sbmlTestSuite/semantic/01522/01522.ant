@@ -1,0 +1,17 @@
+// Created by libAntimony v3.2.0
+model *case01522()
+
+  // Assignment Rules:
+  P1 := time;
+
+  // Events:
+  E0: at delay(P1, 1) < -0.5, t0=false: P2 = 3;
+
+  // Variable initializations:
+  P2 = 0;
+
+  // Other declarations:
+  var P1, P2;
+end
+
+case01522 is "case01522"

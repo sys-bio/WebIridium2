@@ -1,0 +1,19 @@
+// Created by libAntimony v3.2.0
+model *case01521()
+
+  // Rate Rules:
+  P1' = 1;
+
+  // Events:
+  E0: at P1 > 1.5, priority = delay(P1, 1): P2 = 3;
+  E1: at P1 > 1.5, priority = 1: P2 = 5;
+
+  // Variable initializations:
+  P1 = 0;
+  P2 = 0;
+
+  // Other declarations:
+  var P1, P2;
+end
+
+case01521 is "case01521"
